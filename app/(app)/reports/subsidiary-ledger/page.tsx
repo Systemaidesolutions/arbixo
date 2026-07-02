@@ -7,7 +7,7 @@ export default async function SubsidiaryLedgerPage() {
 
   if (!company) {
     return (
-      <main className="mx-auto max-w-4xl p-8">
+      <main className="mx-auto max-w-4xl p-4 sm:p-8">
         <h1 className="text-xl font-medium text-neutral-900">Debtors' / creditors' ledger</h1>
         <p className="mt-2 text-neutral-600">Complete company setup first.</p>
       </main>

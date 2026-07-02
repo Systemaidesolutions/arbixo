@@ -12,7 +12,7 @@ export const NAV_SECTIONS: NavSection[] = [
     title: "Setup",
     icon: "settings",
     links: [
-      { href: "/company/setup", label: "Company setup" },
+      { href: "/company/setup", label: "Company details" },
       { href: "/company/tax-posting-setup", label: "Tax posting setup" },
       { href: "/accounts", label: "Chart of accounts" },
       { href: "/agents", label: "Customers, vendors, employees, contacts" },

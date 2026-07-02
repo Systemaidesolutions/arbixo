@@ -1,61 +1,50 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/currentUser";
+import { AdminUsersTable, type AdminUserRow } from "./AdminUsersTable";
 
 export default async function AdminUsersPage() {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   const users = await prisma.user.findMany({
     include: { company: { select: { tradeName: true } } },
     orderBy: { createdAt: "desc" },
   });
 
+  // Count posted transactions per company so the table can decide which
+  // users are safe to delete (deletion is blocked once a company has any).
+  const companyIds = users
+    .map((u) => u.companyId)
+    .filter((id): id is string => Boolean(id));
+  const txGroups = companyIds.length
+    ? await prisma.ledgerEntry.groupBy({
+        by: ["companyId"],
+        where: { companyId: { in: companyIds } },
+        _count: { _all: true },
+      })
+    : [];
+  const txByCompany = new Map(txGroups.map((g) => [g.companyId, g._count._all]));
+
+  const rows: AdminUserRow[] = users.map((u) => ({
+    id: u.id,
+    email: u.email,
+    role: u.role,
+    companyName: u.company?.tradeName ?? null,
+    isVerified: u.isVerified,
+    isDisabled: u.isDisabled,
+    createdAt: u.createdAt.toISOString(),
+    transactionCount: u.companyId ? txByCompany.get(u.companyId) ?? 0 : 0,
+    isSelf: u.id === admin.id,
+  }));
+
   return (
-    <main className="mx-auto max-w-4xl px-8 py-12">
+    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-12">
       <h1 className="text-xl font-medium text-neutral-900">Users</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Every account on this Arbixo instance — Arbixo admins and subscriber users.
+        Every account on this Arbixo instance. Disable an account to block sign-in without losing
+        its data; deletion is only allowed while the user's company has no posted transactions.
       </p>
 
-      <div className="mt-6 overflow-hidden rounded-lg border border-neutral-200">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-            <tr>
-              <th className="px-3 py-2 text-left">Email</th>
-              <th className="px-3 py-2 text-left">Type</th>
-              <th className="px-3 py-2 text-left">Company</th>
-              <th className="px-3 py-2 text-left">Verified</th>
-              <th className="px-3 py-2 text-left">Joined</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-100">
-            {users.map((u) => (
-              <tr key={u.id}>
-                <td className="px-3 py-2">{u.email}</td>
-                <td className="px-3 py-2">
-                  <span
-                    className={`rounded px-1.5 py-0.5 text-xs ${
-                      u.role === "ADMIN" ? "bg-brand-navy/10 text-brand-navy" : "bg-neutral-100 text-neutral-600"
-                    }`}
-                  >
-                    {u.role === "ADMIN" ? "Arbixo admin" : "Subscriber"}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-neutral-500">{u.company?.tradeName ?? "—"}</td>
-                <td className="px-3 py-2">
-                  {u.isVerified ? (
-                    <span className="text-brand-green">Verified</span>
-                  ) : (
-                    <span className="text-amber-600">Pending</span>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-neutral-500">
-                  {new Date(u.createdAt).toLocaleDateString()}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <AdminUsersTable users={rows} />
     </main>
   );
 }

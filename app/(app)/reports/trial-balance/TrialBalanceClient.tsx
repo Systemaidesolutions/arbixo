@@ -57,7 +57,7 @@ export function TrialBalanceClient({ companyId }: { companyId: string }) {
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-8">
+    <main className="mx-auto max-w-3xl p-4 sm:p-8">
       <h1 className="text-xl font-medium text-neutral-900">Trial balance</h1>
       <p className="mt-1 text-sm text-neutral-500">
         Year-to-Date includes each account's opening balance plus every entry ever posted up to

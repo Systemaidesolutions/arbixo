@@ -28,7 +28,7 @@ export function IncomeStatementClient({ companyId }: { companyId: string }) {
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
+    <main className="mx-auto max-w-2xl p-4 sm:p-8">
       <h1 className="text-xl font-medium text-neutral-900">Income statement</h1>
       <p className="mt-1 text-sm text-neutral-500">For the period selected below.</p>
 

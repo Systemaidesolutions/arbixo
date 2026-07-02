@@ -78,7 +78,7 @@ export function SubsidiaryLedgerClient({
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
 
   return (
-    <main className="mx-auto max-w-4xl p-8">
+    <main className="mx-auto max-w-4xl p-4 sm:p-8">
       <h1 className="text-xl font-medium text-neutral-900">
         {partyType === "CUSTOMER" ? "Debtors' ledger" : "Creditors' ledger"}
       </h1>

@@ -10,12 +10,24 @@ export default async function AdminCompaniesPage() {
   });
 
   return (
-    <main className="mx-auto max-w-4xl px-8 py-12">
-      <h1 className="text-xl font-medium text-neutral-900">Companies</h1>
-      <p className="mt-1 text-sm text-neutral-500">Every subscriber company set up on this Arbixo instance.</p>
+    <main className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-12">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-medium text-neutral-900">Companies</h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            Every subscriber company set up on this Arbixo instance.
+          </p>
+        </div>
+        <a
+          href="/admin/companies/new"
+          className="rounded bg-brand-navy px-4 py-2 text-sm text-white hover:bg-brand-navyLight"
+        >
+          + Create company
+        </a>
+      </div>
 
-      <div className="mt-6 overflow-hidden rounded-lg border border-neutral-200">
-        <table className="w-full text-sm">
+      <div className="mt-6 overflow-x-auto rounded-lg border border-neutral-200">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
               <th className="px-3 py-2 text-left">Trade name</th>
@@ -35,7 +47,11 @@ export default async function AdminCompaniesPage() {
             ) : (
               companies.map((c) => (
                 <tr key={c.id}>
-                  <td className="px-3 py-2 font-medium text-brand-navy">{c.tradeName}</td>
+                  <td className="px-3 py-2 font-medium">
+                    <a href={`/admin/companies/${c.id}`} className="text-brand-navy hover:underline">
+                      {c.tradeName}
+                    </a>
+                  </td>
                   <td className="px-3 py-2 font-mono text-neutral-500">{c.tin}</td>
                   <td className="px-3 py-2 text-neutral-500">
                     {c.registrationType === "VAT" ? "VAT" : "Non-VAT"}

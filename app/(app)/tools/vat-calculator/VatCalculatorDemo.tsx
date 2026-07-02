@@ -12,7 +12,7 @@ export function VatCalculatorDemo({ atcCodes }: { atcCodes: AtcCode[] }) {
   const [result, setResult] = useState<VatComputationValue | null>(null);
 
   return (
-    <main className="mx-auto max-w-xl p-8">
+    <main className="mx-auto max-w-xl p-4 sm:p-8">
       <h1 className="text-xl font-medium text-neutral-900">VAT / withholding calculator</h1>
       <p className="mt-1 text-sm text-neutral-500">
         Standalone test harness for the shared calculator every journal screen will embed. Try

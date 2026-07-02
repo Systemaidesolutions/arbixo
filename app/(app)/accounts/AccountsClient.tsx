@@ -190,7 +190,7 @@ export function AccountsClient({
   }
 
   return (
-    <main className="mx-auto grid max-w-6xl grid-cols-[1fr_320px] gap-8 p-8">
+    <main className="mx-auto grid max-w-6xl grid-cols-[1fr_320px] gap-8 p-4 sm:p-8">
       <section>
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-xl font-medium text-neutral-900">Chart of accounts</h1>

@@ -81,7 +81,7 @@ export function VatComputationFields({
 
   return (
     <div className="space-y-3 rounded-lg border border-neutral-200 p-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className={label}>
           VAT type
           <select
@@ -129,7 +129,7 @@ export function VatComputationFields({
         />
       </label>
 
-      <div className="grid grid-cols-3 gap-3 rounded bg-neutral-50 p-3 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded bg-neutral-50 p-3 text-sm">
         <div>
           <div className="text-xs text-neutral-400">Gross</div>
           <div className="font-mono">{vatResult.grossAmount.toFixed(2)}</div>

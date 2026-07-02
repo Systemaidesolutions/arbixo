@@ -45,3 +45,14 @@ export async function requireAdmin(): Promise<User> {
   }
   return user;
 }
+
+/**
+ * API-route counterpart to requireAdmin. Returns the admin user, or null
+ * if the caller isn't a signed-in admin — the route then replies with a
+ * 403 JSON body itself (route handlers can't use `redirect()` cleanly the
+ * way page components can).
+ */
+export async function getAdminUser(): Promise<User | null> {
+  const user = await getCurrentUserRecord();
+  return user && user.role === "ADMIN" ? user : null;
+}

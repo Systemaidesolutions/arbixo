@@ -36,6 +36,18 @@ model User {
   isVerified            Boolean   @default(false)
   verificationCode      String?
   verificationExpiresAt DateTime?
+
+  // An admin can disable an account (e.g. a lapsed subscriber) without
+  // deleting it — disabled users keep all their data but can't log in,
+  // and any still-valid session is rejected on the next page load.
+  isDisabled            Boolean   @default(false)
+
+  // Password reset — admin (or a future "forgot password" flow) issues a
+  // single-use token emailed to the user; it verifies against this hash
+  // and expires. Stored hashed so a leaked DB row can't be used to reset.
+  resetTokenHash        String?
+  resetTokenExpiresAt   DateTime?
+
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 

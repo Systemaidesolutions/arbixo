@@ -48,7 +48,7 @@ export function BalanceSheetClient({
   const isBalanced = sheet ? Math.round((sheet.totalAssets - sheet.totalLiabilitiesAndEquity) * 100) === 0 : true;
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
+    <main className="mx-auto max-w-2xl p-4 sm:p-8">
       <h1 className="text-xl font-medium text-neutral-900">Balance sheet</h1>
       <p className="mt-1 text-sm text-neutral-500">As of the date below.</p>
 

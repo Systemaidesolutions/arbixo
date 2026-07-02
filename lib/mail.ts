@@ -63,3 +63,54 @@ export async function sendVerificationEmail(email: string, code: string): Promis
 
   return { sent: true };
 }
+
+/**
+ * Sends a password-reset link. Like sendVerificationEmail, the link is
+ * ALWAYS logged to the server console so a misconfigured email setup is
+ * recoverable from Vercel's function logs. Returns whether it actually
+ * sent, so an admin-triggered reset can surface the link directly when
+ * email delivery isn't configured yet.
+ */
+export async function sendPasswordResetEmail(
+  email: string,
+  resetUrl: string
+): Promise<{ sent: boolean }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM ?? "Arbixo <onboarding@resend.dev>";
+
+  console.log(`[mail] Password reset link for ${email}: ${resetUrl}`);
+
+  if (!apiKey) {
+    console.warn("[mail] RESEND_API_KEY is not set — reset email was not sent, only logged above.");
+    return { sent: false };
+  }
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: email,
+      subject: "Reset your Arbixo password",
+      html: `
+        <div style="font-family: sans-serif; max-width: 420px; margin: 0 auto;">
+          <h2 style="color: #0B2A5E;">Reset your Arbixo password</h2>
+          <p>An administrator started a password reset for your account. Click below to set a new password:</p>
+          <p><a href="${resetUrl}" style="display:inline-block; background:#0B2A5E; color:#fff; padding:10px 16px; border-radius:6px; text-decoration:none;">Reset password</a></p>
+          <p style="color: #666; font-size: 13px;">This link expires in 1 hour. If you didn't expect this, you can ignore this email.</p>
+        </div>
+      `,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error(`[mail] Resend rejected the reset email (${res.status}): ${body}`);
+    return { sent: false };
+  }
+
+  return { sent: true };
+}

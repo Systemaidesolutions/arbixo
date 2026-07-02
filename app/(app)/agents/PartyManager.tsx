@@ -284,7 +284,7 @@ export function PartyManager({
 
             {isEmployee ? (
               <>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <label className={label}>
                     Last name
                     <input
@@ -349,7 +349,7 @@ export function PartyManager({
                     />
                   </label>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <label className={label}>
                       Last name
                       <input
@@ -456,7 +456,7 @@ export function PartyManager({
               Address
               <input value={form.address} onChange={(e) => set("address", e.target.value)} className={field} />
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <label className={label}>
                 Tel no.
                 <input value={form.telNo} onChange={(e) => set("telNo", e.target.value)} className={field} />

@@ -12,7 +12,7 @@ export default async function AccountsPage() {
 
   if (!company) {
     return (
-      <main className="mx-auto max-w-4xl p-8">
+      <main className="mx-auto max-w-4xl p-4 sm:p-8">
         <h1 className="text-xl font-medium text-neutral-900">Chart of accounts</h1>
         <p className="mt-2 text-neutral-600">
           No company is set up yet. Complete company setup before creating accounts.

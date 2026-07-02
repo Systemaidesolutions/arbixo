@@ -49,7 +49,7 @@ export function VatReturnClient({
   }
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
+    <main className="mx-auto max-w-2xl p-4 sm:p-8">
       <h1 className="text-xl font-medium text-neutral-900">Monthly VAT return</h1>
       <p className="mt-1 text-sm text-neutral-500">
         BIR Form 2550M shape, computed from posted ledger entries. Not a substitute for the actual

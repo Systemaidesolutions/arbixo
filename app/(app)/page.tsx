@@ -11,7 +11,7 @@ export default async function HomePage() {
   const company = await getCurrentCompany();
 
   return (
-    <main className="mx-auto max-w-2xl px-8 py-12">
+    <main className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-12">
       <div className="flex flex-col items-center text-center">
         <Image
           src="/arbixo-logo.jpg"
@@ -27,15 +27,9 @@ export default async function HomePage() {
         {!company ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-center">
             <p className="text-sm text-amber-900">
-              No company is set up in this instance yet — start here before anything else will
-              work.
+              No company has been assigned to your account yet. Please contact your Arbixo
+              administrator to have your company set up — the rest of the app unlocks once it is.
             </p>
-            <a
-              href="/company/setup"
-              className="mt-3 inline-block rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73]"
-            >
-              Set up company
-            </a>
           </div>
         ) : (
           <div className="rounded-lg border border-neutral-200 p-5">
@@ -43,7 +37,7 @@ export default async function HomePage() {
               Company
             </div>
             <div className="mt-1 text-lg font-medium text-brand-navy">{company.tradeName}</div>
-            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-neutral-600">
+            <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm text-neutral-600">
               <dt className="text-neutral-400">TIN</dt>
               <dd className="font-mono">{company.tin}</dd>
               <dt className="text-neutral-400">Registration</dt>
@@ -54,7 +48,7 @@ export default async function HomePage() {
               <dd>{company.rdoCode}</dd>
             </dl>
             <a href="/company/setup" className="mt-3 inline-block text-xs text-brand-blue hover:underline">
-              Edit company details →
+              View company details →
             </a>
           </div>
         )}

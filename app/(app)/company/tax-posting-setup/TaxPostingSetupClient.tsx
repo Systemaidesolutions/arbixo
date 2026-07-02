@@ -59,7 +59,7 @@ export function TaxPostingSetupClient({
   }
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
+    <main className="mx-auto max-w-2xl p-4 sm:p-8">
       <h1 className="text-xl font-medium text-neutral-900">Tax posting setup</h1>
       <p className="mt-1 text-sm text-neutral-500">
         Tells the posting engine which accounts to hit automatically for VAT and withholding — the

@@ -156,7 +156,7 @@ export function GeneralJournalForm({
   const label = "block text-xs text-neutral-500";
 
   return (
-    <main className="mx-auto max-w-4xl p-8">
+    <main className="mx-auto max-w-4xl p-4 sm:p-8">
       <h1 className="text-xl font-medium text-neutral-900">General journal</h1>
       <p className="mt-1 text-sm text-neutral-500">
         Anything not covered by the other four journals — depreciation, capital goods purchases,
@@ -165,7 +165,7 @@ export function GeneralJournalForm({
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-        <div className="grid grid-cols-3 gap-3 rounded-lg border border-neutral-200 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg border border-neutral-200 p-4">
           <label className={label}>
             Date
             <input
@@ -243,7 +243,7 @@ export function GeneralJournalForm({
                 </select>
               </label>
 
-              <div className="mb-3 grid grid-cols-2 gap-3">
+              <div className="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className={label}>
                   Debit
                   <input
@@ -366,7 +366,7 @@ export function GeneralJournalForm({
           ))}
         </div>
 
-        <div className="grid grid-cols-3 gap-3 rounded-lg bg-neutral-50 p-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg bg-neutral-50 p-4 text-sm">
           <div>
             <div className="text-xs text-neutral-400">Total debit</div>
             <div className="font-mono">{totals.totalDebit.toFixed(2)}</div>

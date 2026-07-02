@@ -11,11 +11,11 @@ export default async function AdminDashboardPage() {
   ]);
 
   return (
-    <main className="mx-auto max-w-3xl px-8 py-12">
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-12">
       <h1 className="text-xl font-medium text-neutral-900">Admin dashboard</h1>
       <p className="mt-1 text-sm text-neutral-500">Signed in as {admin.email} (Arbixo admin).</p>
 
-      <div className="mt-8 grid grid-cols-3 gap-4">
+      <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-lg border border-neutral-200 p-4">
           <div className="text-2xl font-medium text-brand-navy">{companyCount}</div>
           <div className="text-xs text-neutral-500">Subscriber companies</div>

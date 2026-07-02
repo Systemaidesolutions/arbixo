@@ -137,7 +137,7 @@ export function PurchasesForm({
   const label = "block text-xs text-neutral-500";
 
   return (
-    <main className="mx-auto max-w-4xl p-8">
+    <main className="mx-auto max-w-4xl p-4 sm:p-8">
       <h1 className="text-xl font-medium text-neutral-900">Purchases on account</h1>
       <p className="mt-1 text-sm text-neutral-500">
         Invoices billed by a supplier — no cash moves until you pay (recorded separately, as a
@@ -145,7 +145,7 @@ export function PurchasesForm({
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-        <div className="grid grid-cols-3 gap-3 rounded-lg border border-neutral-200 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg border border-neutral-200 p-4">
           <label className={label}>
             Date
             <input
@@ -277,7 +277,7 @@ export function PurchasesForm({
           ))}
         </div>
 
-        <div className="grid grid-cols-3 gap-3 rounded-lg bg-neutral-50 p-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg bg-neutral-50 p-4 text-sm">
           <div>
             <div className="text-xs text-neutral-400">Total debit</div>
             <div className="font-mono">{totals.totalDebit.toFixed(2)}</div>

@@ -16,7 +16,7 @@ export function AgentsClient({
   const [tab, setTab] = useState<PartyEntityType>("customer");
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
+    <main className="mx-auto max-w-6xl p-4 sm:p-8">
       <h1 className="mb-1 text-xl font-medium text-neutral-900">Agents</h1>
       <p className="mb-6 text-sm text-neutral-500">
         Customers, vendors, employees, and other contacts — split into separate tables so each can

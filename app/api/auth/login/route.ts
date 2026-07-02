@@ -23,6 +23,13 @@ export async function POST(request: NextRequest) {
   const passwordOk = await verifyPassword(password, user.passwordHash);
   if (!passwordOk) return invalid();
 
+  if (user.isDisabled) {
+    return NextResponse.json(
+      { error: "This account has been disabled. Contact your administrator." },
+      { status: 403 }
+    );
+  }
+
   if (!user.isVerified) {
     return NextResponse.json(
       { error: "This account hasn't been verified yet. Check your email for the code, or register again to get a new one." },
