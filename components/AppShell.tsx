@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { Footer } from "@/components/Footer";
 import type { SessionPayload } from "@/lib/auth";
 import type { SubscriberSubtype } from "@prisma/client";
+import type { BrandingFlags } from "@/lib/branding";
 
 /**
  * App shell: fixed-height layout with a dark header on top, a dark docked
@@ -16,18 +17,24 @@ export function AppShell({
   user,
   role,
   subtype = null,
+  branding,
   children,
 }: {
   user: SessionPayload | null;
   role: "ADMIN" | "USER";
   subtype?: SubscriberSubtype | null;
+  branding?: BrandingFlags;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="flex h-screen flex-col">
-      <AppHeader user={user} onMenu={() => setMobileOpen(true)} />
+      <AppHeader
+        user={user}
+        onMenu={() => setMobileOpen(true)}
+        headerLogo={branding?.headerLogo}
+      />
 
       <div className="flex min-h-0 flex-1">
         <Sidebar
@@ -37,19 +44,35 @@ export function AppShell({
           onCloseMobile={() => setMobileOpen(false)}
         />
 
-        <main className="relative flex-1 overflow-y-auto bg-gradient-to-b from-[#eef4fb] to-[#f7fafd]">
-          {/* Faint brand watermark behind the content */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 flex justify-center overflow-hidden"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/arbixo-icon.png"
-              alt=""
-              className="mt-12 w-[440px] max-w-[70%] opacity-[0.04]"
-            />
-          </div>
+        <main
+          className="relative flex-1 overflow-y-auto bg-gradient-to-b from-[#eef4fb] to-[#f7fafd]"
+          style={
+            branding?.background
+              ? {
+                  backgroundImage: "url(/api/branding/background)",
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  backgroundAttachment: "fixed",
+                }
+              : undefined
+          }
+        >
+          {/* A custom background gets a soft white scrim so content stays readable. */}
+          {branding?.background ? (
+            <div aria-hidden className="pointer-events-none absolute inset-0 bg-white/70" />
+          ) : (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 flex justify-center overflow-hidden"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/arbixo-icon.png"
+                alt=""
+                className="mt-12 w-[440px] max-w-[70%] opacity-[0.04]"
+              />
+            </div>
+          )}
           <div className="relative min-h-full">{children}</div>
         </main>
       </div>

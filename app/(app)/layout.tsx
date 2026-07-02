@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord } from "@/lib/currentUser";
+import { brandingFlags } from "@/lib/branding";
 import { AppShell } from "@/components/AppShell";
 import type { SessionPayload } from "@/lib/auth";
 
@@ -27,9 +28,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const user: SessionPayload = { sub: record.id, email: record.email, role: record.role };
+  const branding = await brandingFlags();
 
   return (
-    <AppShell user={user} role={record.role} subtype={record.subscriberSubtype}>
+    <AppShell user={user} role={record.role} subtype={record.subscriberSubtype} branding={branding}>
       {children}
     </AppShell>
   );

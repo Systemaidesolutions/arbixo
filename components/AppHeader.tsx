@@ -7,9 +7,11 @@ import type { SessionPayload } from "@/lib/auth";
 export function AppHeader({
   user,
   onMenu,
+  headerLogo = false,
 }: {
   user: SessionPayload | null;
   onMenu?: () => void;
+  headerLogo?: boolean;
 }) {
   return (
     <header className="shrink-0 bg-gradient-to-r from-brand-navyDark via-brand-navy to-[#0e3a63] text-white shadow-sm">
@@ -30,14 +32,21 @@ export function AppHeader({
         )}
 
         <a href="/" className="flex items-center gap-2.5">
-          <Image src="/arbixo-icon.png" alt="Arbixo" width={191} height={124} className="h-8 w-auto" priority />
-          <span className="text-lg font-semibold tracking-tight text-white">
-            ARbi
-            <span className="bg-gradient-to-br from-brand-blue to-brand-green bg-clip-text text-transparent">
-              x
-            </span>
-            o
-          </span>
+          {headerLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/api/branding/header-logo" alt="Logo" className="h-9 w-auto max-w-[220px] object-contain" />
+          ) : (
+            <>
+              <Image src="/arbixo-icon.png" alt="Arbixo" width={191} height={124} className="h-8 w-auto" priority />
+              <span className="text-lg font-semibold tracking-tight text-white">
+                ARbi
+                <span className="bg-gradient-to-br from-brand-blue to-brand-green bg-clip-text text-transparent">
+                  x
+                </span>
+                o
+              </span>
+            </>
+          )}
         </a>
         <span className="hidden text-xs md:inline">
           <span className="text-white/70">Accounting Intelligence. </span>

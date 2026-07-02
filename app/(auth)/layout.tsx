@@ -1,17 +1,32 @@
 import Image from "next/image";
+import { brandingFlags } from "@/lib/branding";
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default async function AuthLayout({ children }: { children: React.ReactNode }) {
+  const branding = await brandingFlags();
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-neutral-50 px-4 py-12">
+    <main
+      className="relative flex min-h-screen flex-col items-center justify-center bg-neutral-50 px-4 py-12"
+      style={
+        branding.login
+          ? {
+              backgroundImage: "url(/api/branding/login)",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }
+          : undefined
+      }
+    >
+      {branding.login && <div aria-hidden className="pointer-events-none absolute inset-0 bg-black/20" />}
       <Image
         src="/arbixo-logo.jpg"
         alt="Arbixo — Accounting Intelligence. Business Excellence."
         width={360}
         height={202}
         priority
-        className="mb-8 h-auto w-full max-w-[280px]"
+        className="relative mb-8 h-auto w-full max-w-[280px]"
       />
-      <div className="w-full max-w-sm rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
+      <div className="relative w-full max-w-sm rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
         {children}
       </div>
     </main>

@@ -39,6 +39,18 @@ enum SubscriberSubtype {
   REPORT_CREATOR
 }
 
+// Single-row table (id = "singleton") holding uploaded brand images as data
+// URLs. Served (decoded) via /api/branding/[slot]; set from the admin
+// Branding page. Kept out of the app payload — only the image bytes are
+// fetched, and only when actually shown.
+model AppSettings {
+  id              String   @id @default("singleton")
+  backgroundImage String?
+  loginImage      String?
+  headerLogo      String?
+  updatedAt       DateTime @updatedAt
+}
+
 model User {
   id                    String    @id @default(cuid())
   email                 String    @unique
