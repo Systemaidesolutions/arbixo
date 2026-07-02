@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -50,6 +51,35 @@ const STARTER_ATC_CODES = [
   },
 ];
 
+async function seedAdminUser() {
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD;
+
+  if (!email || !password) {
+    console.warn(
+      "ADMIN_EMAIL / ADMIN_PASSWORD not set — skipping admin user bootstrap. " +
+        "Set both in .env and re-run the seed to create the global admin account."
+    );
+    return;
+  }
+  if (password.length < 8) {
+    throw new Error("ADMIN_PASSWORD must be at least 8 characters.");
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  // Pre-verified and role ADMIN — this is the one account meant to
+  // bootstrap access to a fresh deployment without going through the
+  // email verification flow (there's no one else to verify it yet).
+  await prisma.user.upsert({
+    where: { email },
+    update: { passwordHash, role: "ADMIN", isVerified: true },
+    create: { email, passwordHash, role: "ADMIN", isVerified: true },
+  });
+
+  console.log(`Seeded global admin account: ${email}`);
+}
+
 async function main() {
   for (const atc of STARTER_ATC_CODES) {
     await prisma.atcCode.upsert({
@@ -59,6 +89,8 @@ async function main() {
     });
   }
   console.log(`Seeded ${STARTER_ATC_CODES.length} starter ATC codes. Verify rates against bir.gov.ph before going live.`);
+
+  await seedAdminUser();
 }
 
 main()

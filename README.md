@@ -245,6 +245,68 @@ Receipts, Sales on Account, Purchases on Account, General Journal.
     Balance Sheet specifically, Assets = Liabilities + Equity should
     always hold given the above.
 
+## Authentication
+
+- **Sessions are stateless signed JWTs** (`lib/auth.ts`), not rows in a
+  database table — deliberate, because `middleware.ts` checks auth on
+  every request and runs on the Edge runtime, which can't reach Postgres
+  through Prisma. Verifying a JWT's signature needs no database call.
+  The tradeoff, stated plainly: no way to force-expire a single session
+  before its 7-day cookie expiry (no revocation list). A real "sign out
+  everywhere" feature would need to reintroduce a DB-backed denylist.
+- **Password hashing lives in its own file** (`lib/password.ts`),
+  deliberately separate from `lib/auth.ts`. Middleware imports from
+  `lib/auth.ts`; keeping bcryptjs out of that file means the Edge bundle
+  never needs to include it, even though bcryptjs happens to be pure JS
+  with no native bindings that would break on Edge anyway.
+- **Flow**: `/register` (email + password) → creates an unverified user,
+  generates a 6-digit code, emails it (or logs it to the console if
+  `RESEND_API_KEY` isn't set) → `/verify` (enter the code) → auto-logs in
+  on success. Re-registering an email that's never been verified
+  overwrites the password and resends a fresh code rather than erroring
+  — someone who mistyped their password or lost the first code shouldn't
+  get stuck.
+- **Global admin account**: `prisma/seed.ts` upserts one pre-verified
+  `ADMIN` user from `ADMIN_EMAIL`/`ADMIN_PASSWORD`, since there's no one
+  else yet to send a verification email to on a fresh deployment.
+- **`middleware.ts`** redirects any request without a valid session to
+  `/login`, for everything except `/login`, `/register`, `/verify`, and
+  `/api/auth/*`.
+- **Known consideration, not yet addressed**: `/register` is open —
+  anyone who finds the URL can create an account and, once verified, see
+  this company's full financial data. That's fine for solo testing but
+  worth revisiting before handing this to anyone else: either gate
+  registration behind an admin invite, or add a `role`-based check
+  (`User.role` already exists) restricting which pages a `USER` vs
+  `ADMIN` can reach. Neither is built yet — every logged-in user
+  currently has identical access.
+
+## Navigation redesign
+
+- **Route groups, not a URL change**: every existing page moved from
+  `app/<section>/` to `app/(app)/<section>/` — parenthesized folders are
+  invisible to the URL, so `/accounts` is still `/accounts`. This let the
+  authenticated pages share one layout (header + sidebar) while
+  `app/(auth)/login` etc. get a separate, minimal layout with neither.
+  Nothing needed to change inside the moved page files themselves, since
+  every internal import already used the `@/` absolute alias rather than
+  relative paths — only relative-path imports would have broken from the
+  move.
+- **`lib/navigation.ts`** is the single source of truth for the sidebar's
+  sections/links — previously the home page had its own hardcoded copy
+  of the same list, which is exactly the kind of duplication that drifts
+  out of sync the first time someone adds a page and forgets one of the
+  two places. The home page no longer needs its own nav grid at all,
+  now that the sidebar is present on every page.
+- **`components/Sidebar.tsx`**: BC-style collapsible groups (click a
+  section header to expand/collapse its links, independent of the
+  sidebar's own collapsed state), plus a separate collapse toggle that
+  shrinks the whole sidebar to an icon-only rail. Collapsed state
+  persists to `localStorage` across visits. Deliberately *not* built as
+  an overlay/drawer — it's a real flex sibling of the content area, so
+  collapsing it reflows the page rather than covering it, closer to how
+  a docked desktop nav pane behaves than a mobile hamburger drawer.
+
 ## Database and deployment
 
 - **Local testing**: `docker-compose.yml` runs Postgres 16 locally.

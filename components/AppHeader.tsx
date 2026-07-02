@@ -1,6 +1,8 @@
 import Image from "next/image";
+import { LogoutButton } from "@/components/LogoutButton";
+import type { SessionPayload } from "@/lib/auth";
 
-export function AppHeader() {
+export function AppHeader({ user }: { user: SessionPayload | null }) {
   return (
     <header className="border-b border-neutral-200 bg-white">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-8 py-3">
@@ -17,6 +19,13 @@ export function AppHeader() {
         <span className="hidden text-xs text-neutral-400 sm:inline">
           Accounting Intelligence. Business Excellence.
         </span>
+
+        {user && (
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-xs text-neutral-500">{user.email}</span>
+            <LogoutButton />
+          </div>
+        )}
       </div>
       <div className="h-[3px] w-full bg-gradient-to-r from-brand-navy via-brand-blue to-brand-green" />
     </header>

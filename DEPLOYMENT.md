@@ -19,7 +19,17 @@ exist for local testing.
 cp .env.example .env
 ```
 The default `DATABASE_URL` in `.env.example` already matches
-`docker-compose.yml`, so no editing needed for local testing.
+`docker-compose.yml`, so no editing needed for local testing. You do
+need to fill in two more things before the app will run at all:
+- `AUTH_SECRET` — generate a real one with `openssl rand -base64 32`.
+  Sessions are signed JWTs; without this set, every login attempt throws.
+- `ADMIN_EMAIL` / `ADMIN_PASSWORD` — your own login. The seed script
+  (next step) creates this account pre-verified, since there's no one
+  else yet to send a verification email to.
+
+`RESEND_API_KEY` can stay blank for local testing — without it,
+verification codes for anyone who registers print to the server console
+instead of being emailed.
 
 **3. Install dependencies and create the database schema.**
 ```
@@ -34,32 +44,38 @@ migration history (needed for team collaboration and safe production
 upgrades later), switch to `npx prisma migrate dev` instead — see the
 note at the bottom.
 
-**4. Seed the starter ATC codes.**
+**4. Seed the starter ATC codes and your admin account.**
 ```
 npm run prisma:seed
 ```
-Remember: these are only the codes shown in the manual's own screenshots,
-not a complete or current BIR table. See `prisma/seed.ts` for the full
-disclaimer.
+Remember: the ATC codes are only the ones shown in the manual's own
+screenshots, not a complete or current BIR table. See `prisma/seed.ts`
+for the full disclaimer. This also creates your global admin account
+from `ADMIN_EMAIL`/`ADMIN_PASSWORD`, pre-verified.
 
 **5. Run the app.**
 ```
 npm run dev
 ```
-Open http://localhost:3000/company/setup and create your company — every
-other page depends on this existing first. Then:
-1. `/accounts` — build out your Chart of Accounts (at minimum: one Cash
+Open http://localhost:3000 — you'll land on `/login` first (middleware
+redirects anyone without a session there). Log in with `ADMIN_EMAIL` /
+`ADMIN_PASSWORD`. From there:
+1. `/company/setup` — every other page depends on this existing first.
+2. `/accounts` — build out your Chart of Accounts (at minimum: one Cash
    in Bank account, one Accounts Receivable, one Accounts Payable, one
    Input VAT, one Output VAT, one Withholding Tax Payable, one
    Creditable Withholding Tax account).
-2. `/company/tax-posting-setup` — point the four tax accounts at what you
+3. `/company/tax-posting-setup` — point the four tax accounts at what you
    just created.
-3. `/agents` — add at least one customer and one vendor.
-4. Post a transaction through `/transactions/cash-disbursement` or any
+4. `/agents` — add at least one customer and one vendor.
+5. Post a transaction through `/transactions/cash-disbursement` or any
    other journal, then check `/reports/trial-balance` — it should show
    your entry and the "debits equal credits" check should be green.
 
-If all of that works, the app is functioning correctly end to end.
+To test registration as a second user: log out, go to `/register`, sign
+up with a different email. Since `RESEND_API_KEY` is blank locally, the
+verification code prints to your terminal (the one running `npm run
+dev`) instead of arriving by email — copy it into the `/verify` page.
 
 ## Path B — deploy to Vercel
 
@@ -90,10 +106,17 @@ git push -u origin main
 **3. Import the project in Vercel** (vercel.com → Add New → Project →
 import your GitHub repo).
 
-**4. Set the environment variable.** In the Vercel project's Settings →
-Environment Variables, add `DATABASE_URL` with the connection string
-from step 1. Do this for Production, Preview, and Development
-environments.
+**4. Set the environment variables.** In the Vercel project's Settings →
+Environment Variables, add for Production, Preview, and Development:
+- `DATABASE_URL` — from step 1
+- `AUTH_SECRET` — generate with `openssl rand -base64 32`; use a
+  different value than your local `.env`
+- `ADMIN_EMAIL` / `ADMIN_PASSWORD` — your production login
+- `RESEND_API_KEY` / `EMAIL_FROM` — only if you want registration emails
+  to actually send in production (strongly recommended for anything
+  beyond your own testing — without it, verification codes for anyone
+  who self-registers only appear in Vercel's function logs, which they
+  can't see)
 
 **5. Deploy.** Vercel will run `npm install` (triggers `postinstall` →
 `prisma generate`) then `npm run build` (which also runs `prisma
@@ -106,12 +129,12 @@ that means `DATABASE_URL` isn't set correctly for the Production
 environment specifically — double-check it's there and that you used the
 pooled URL if on Neon.
 
-**6. Push the schema to the hosted database.** Vercel doesn't run
-`prisma db push` automatically — do this once from your local machine,
+**6. Push the schema to the hosted database and seed it.** Vercel
+doesn't run this automatically — do it once from your local machine,
 pointed at the hosted database:
 ```
 DATABASE_URL="<the hosted connection string>" npx prisma db push
-DATABASE_URL="<the hosted connection string>" npm run prisma:seed
+DATABASE_URL="<the hosted connection string>" ADMIN_EMAIL="..." ADMIN_PASSWORD="..." npm run prisma:seed
 ```
 
 **7. Visit the deployed URL and repeat the same first-run steps as

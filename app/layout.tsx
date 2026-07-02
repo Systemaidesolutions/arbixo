@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AppHeader } from "@/components/AppHeader";
 
 // Every page in this app reads live database state (accounts, ledger
 // entries, reports) — none of it should ever be statically generated at
@@ -8,8 +7,7 @@ import { AppHeader } from "@/components/AppHeader";
 // during `next build`, which runs Prisma queries inside the build
 // container where DATABASE_URL either isn't set or the database isn't
 // reachable, causing the build to fail entirely. Setting this here, on
-// the root layout, applies to every nested page — one line instead of
-// repeating `export const dynamic` in 16+ individual page.tsx files.
+// the root layout, applies to every nested page.
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -20,10 +18,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <AppHeader />
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
