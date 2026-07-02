@@ -1,8 +1,8 @@
-import { prisma } from "@/lib/prisma";
+import { getCurrentCompany } from "@/lib/currentUser";
 import { VatReturnClient } from "./VatReturnClient";
 
 export default async function VatReturnPage() {
-  const company = await prisma.company.findFirst();
+  const company = await getCurrentCompany();
 
   if (!company) {
     return (

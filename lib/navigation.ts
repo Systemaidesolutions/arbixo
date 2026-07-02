@@ -1,10 +1,12 @@
 export type NavLink = { href: string; label: string };
 export type NavSection = {
   title: string;
-  icon: "settings" | "transactions" | "reports";
+  icon: "settings" | "transactions" | "reports" | "admin";
   links: NavLink[];
 };
 
+// Shown to subscriber (USER role) accounts — each is scoped to their
+// own company via lib/currentUser.ts.
 export const NAV_SECTIONS: NavSection[] = [
   {
     title: "Setup",
@@ -37,6 +39,20 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/reports/income-statement", label: "Income statement" },
       { href: "/reports/balance-sheet", label: "Balance sheet" },
       { href: "/reports/bir/vat-return", label: "Monthly VAT return (BIR 2550M)" },
+    ],
+  },
+];
+
+// Shown to ADMIN (Arbixo staff) accounts instead of NAV_SECTIONS —
+// admins manage the platform, not any single company's books.
+export const ADMIN_NAV_SECTIONS: NavSection[] = [
+  {
+    title: "Admin",
+    icon: "admin",
+    links: [
+      { href: "/admin", label: "Dashboard" },
+      { href: "/admin/users", label: "User list" },
+      { href: "/admin/companies", label: "Company list" },
     ],
   },
 ];

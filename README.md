@@ -272,14 +272,62 @@ Receipts, Sales on Account, Purchases on Account, General Journal.
 - **`middleware.ts`** redirects any request without a valid session to
   `/login`, for everything except `/login`, `/register`, `/verify`, and
   `/api/auth/*`.
-- **Known consideration, not yet addressed**: `/register` is open —
-  anyone who finds the URL can create an account and, once verified, see
-  this company's full financial data. That's fine for solo testing but
-  worth revisiting before handing this to anyone else: either gate
-  registration behind an admin invite, or add a `role`-based check
-  (`User.role` already exists) restricting which pages a `USER` vs
-  `ADMIN` can reach. Neither is built yet — every logged-in user
-  currently has identical access.
+- **Email delivery bug, found and fixed**: verification emails weren't
+  arriving. The near-certain cause is Resend's sandbox restriction — on
+  the default `onboarding@resend.dev` sender with no verified domain,
+  Resend only delivers to the email address that owns the Resend
+  account itself; every other recipient gets silently rejected with a
+  403. Fixed two ways: (1) `lib/mail.ts` now always logs the code to the
+  server console *in addition to* attempting to send, regardless of
+  outcome, so a code is never unrecoverable — check Vercel's function
+  logs; (2) a failed send no longer breaks registration itself, since
+  the code is still retrievable from logs. The real fix on your end:
+  verify a real sending domain at resend.com/domains.
+
+## Multi-tenancy — Arbixo admins vs. subscriber companies
+
+This shifted from single-tenant (one company, full stop) to multi-tenant
+(many subscriber companies, each fully isolated), matching how Business
+Central itself separates companies within one tenant:
+
+- **`User.role`**: `ADMIN` (Arbixo staff — no company, manages the
+  platform) or `USER` (a subscriber, belongs to exactly one company via
+  `User.companyId`). Admins are never created through `/register` —
+  only through `prisma/seed.ts` via `ADMIN_EMAIL`/`ADMIN_PASSWORD`, since
+  self-service signup should never be able to grant platform-admin
+  access to your own data.
+- **`lib/currentUser.ts`** is now the single choke point every
+  company-scoped page goes through: `getCurrentCompany()` resolves the
+  signed-in subscriber's own company (or `null` for admins, or `null`
+  for a subscriber who hasn't set one up yet). Every page that used to
+  call `prisma.company.findFirst()` — all 16 of them — now calls this
+  instead. There's no code path left that can show one subscriber
+  another's data by accident, because there's no longer a "the only
+  company" query anywhere to accidentally reuse.
+- **This also resolves the previous "open registration" security
+  concern**: with true multi-tenancy, self-registration is the correct,
+  expected SaaS behavior — each new subscriber gets their *own* isolated
+  company via `/company/setup`, not shared access to someone else's
+  books. The `User.role` distinction still matters for a different
+  reason: keeping platform administration separate from any one
+  subscriber's data.
+- **`requireAdmin()`** (`lib/currentUser.ts`) is the authorization
+  boundary for `/admin/*` — middleware only checks "is there a valid
+  session," not role, so this is what actually stops a subscriber from
+  viewing platform-wide data by guessing the URL.
+- **New pages**: `/admin` (dashboard — counts of companies/subscribers),
+  `/admin/users` (every account, admin and subscriber), `/admin/companies`
+  (every subscriber company and who belongs to it). The sidebar shows an
+  "Admin" section instead of Setup/Transactions/Reports when the signed-in
+  user is `ADMIN` (`lib/navigation.ts` now has `ADMIN_NAV_SECTIONS`
+  alongside the original `NAV_SECTIONS`) — an admin has no company to
+  transact against, so those sections would only ever show "no company
+  set up" if left visible.
+- **Not built yet**: admin "impersonation" (an admin looking into a
+  specific subscriber's books for support purposes) and any equivalent
+  of BC's per-company user permissions within a single company (every
+  `USER` on a company currently has identical access to everything in
+  that company).
 
 ## Navigation redesign
 
@@ -306,6 +354,13 @@ Receipts, Sales on Account, Purchases on Account, General Journal.
   an overlay/drawer — it's a real flex sibling of the content area, so
   collapsing it reflows the page rather than covering it, closer to how
   a docked desktop nav pane behaves than a mobile hamburger drawer.
+  Section links use `text-[14px]` and section headers `text-[16px]` —
+  explicit pixel values rather than Tailwind's named scale, sized to be
+  a clear step up from the original `text-xs`/`text-sm` (12px/14px), not
+  just a token swap. The active page gets a left border accent plus a
+  tinted background (`border-brand-navy bg-brand-navy/10`) rather than
+  just a color change on the text, so it's readable at a glance rather
+  than something you have to look for.
 
 ## Database and deployment
 

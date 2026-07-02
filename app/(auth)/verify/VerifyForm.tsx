@@ -7,6 +7,7 @@ export function VerifyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailFromQuery = searchParams.get("email") ?? "";
+  const hadEmailIssue = searchParams.get("emailIssue") === "1";
   const [email, setEmail] = useState(emailFromQuery);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +43,12 @@ export function VerifyForm() {
     <div>
       <h1 className="text-lg font-medium text-neutral-900">Verify your email</h1>
       <p className="mt-1 text-sm text-neutral-500">Enter the 6-digit code we emailed you.</p>
+      {hadEmailIssue && (
+        <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          We couldn't confirm the email sent — if it doesn't arrive in a minute, ask an admin to
+          check the server logs for your code.
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-3">
         <label className={label}>

@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentCompany } from "@/lib/currentUser";
 import { AgentsClient } from "./AgentsClient";
 
 export default async function AgentsPage() {
-  const company = await prisma.company.findFirst();
+  const company = await getCurrentCompany();
 
   if (!company) {
     return (

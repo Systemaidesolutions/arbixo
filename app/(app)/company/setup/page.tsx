@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/prisma";
+import { getCurrentCompany } from "@/lib/currentUser";
 import { CompanySetupClient } from "./CompanySetupClient";
 
 export default async function CompanySetupPage() {
-  const company = await prisma.company.findFirst();
+  const company = await getCurrentCompany();
   return <CompanySetupClient initialCompany={company} />;
 }

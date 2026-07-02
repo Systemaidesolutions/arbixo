@@ -38,6 +38,14 @@ model User {
   verificationExpiresAt DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+
+  // ADMIN users are Arbixo staff — platform-wide, no single company.
+  // USER (subscriber) accounts belong to exactly one company. This is
+  // the multi-tenant boundary: every company-scoped query in the app
+  // resolves "which company" from this field via lib/currentUser.ts,
+  // never from a global "the only company" lookup.
+  company   Company? @relation(fields: [companyId], references: [id])
+  companyId String?
 }
 
 // ------------------------------------------------------------
@@ -76,6 +84,7 @@ model Company {
   ledgerEntries LedgerEntry[]
   auditLogs     AuditLog[]
   taxPostingSetup TaxPostingSetup?
+  users         User[]
 }
 
 // 3.4 Setup Location — branches. Reports stay consolidated by

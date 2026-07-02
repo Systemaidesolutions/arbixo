@@ -28,9 +28,14 @@ export function RegisterForm() {
     });
     setLoading(false);
 
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Something went wrong registering.");
+      return;
+    }
+
+    if (data.emailSent === false) {
+      router.push(`/verify?email=${encodeURIComponent(email)}&emailIssue=1`);
       return;
     }
 

@@ -1,8 +1,14 @@
 import Image from "next/image";
-import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
+import { getCurrentCompany, getCurrentUserRecord } from "@/lib/currentUser";
 
 export default async function HomePage() {
-  const company = await prisma.company.findFirst();
+  const user = await getCurrentUserRecord();
+  if (user?.role === "ADMIN") {
+    redirect("/admin");
+  }
+
+  const company = await getCurrentCompany();
 
   return (
     <main className="mx-auto max-w-2xl px-8 py-12">

@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentCompany } from "@/lib/currentUser";
 import { toPlain } from "@/lib/serialize";
 import { GeneralLedgerClient } from "./GeneralLedgerClient";
 
 export default async function GeneralLedgerPage() {
-  const company = await prisma.company.findFirst();
+  const company = await getCurrentCompany();
 
   if (!company) {
     return (

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentCompany } from "@/lib/currentUser";
 import { toPlain } from "@/lib/serialize";
 import { AccountsClient } from "./AccountsClient";
 
@@ -7,7 +8,7 @@ export default async function AccountsPage() {
   // wired up (see the earlier learning-path notes on Clerk/Auth.js). For
   // now this assumes the single-company setup from the manual's "Setup
   // Company" step.
-  const company = await prisma.company.findFirst();
+  const company = await getCurrentCompany();
 
   if (!company) {
     return (

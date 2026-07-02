@@ -1,8 +1,8 @@
-import { prisma } from "@/lib/prisma";
+import { getCurrentCompany } from "@/lib/currentUser";
 import { BalanceSheetClient } from "./BalanceSheetClient";
 
 export default async function BalanceSheetPage() {
-  const company = await prisma.company.findFirst();
+  const company = await getCurrentCompany();
 
   if (!company) {
     return (

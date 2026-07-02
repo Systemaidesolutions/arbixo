@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentCompany } from "@/lib/currentUser";
 import { toPlain } from "@/lib/serialize";
 import { suggestNextDocumentNo } from "@/lib/ledgerPosting";
 import { PurchasesForm } from "./PurchasesForm";
 
 export default async function PurchasesPage() {
-  const company = await prisma.company.findFirst();
+  const company = await getCurrentCompany();
 
   if (!company) {
     return (

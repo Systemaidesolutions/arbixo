@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     update: { passwordHash, verificationCode, verificationExpiresAt },
   });
 
-  await sendVerificationEmail(email, verificationCode);
+  const { sent } = await sendVerificationEmail(email, verificationCode);
 
-  return NextResponse.json({ ok: true, email });
+  return NextResponse.json({ ok: true, email, emailSent: sent });
 }

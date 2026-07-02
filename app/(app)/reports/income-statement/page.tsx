@@ -1,8 +1,8 @@
-import { prisma } from "@/lib/prisma";
+import { getCurrentCompany } from "@/lib/currentUser";
 import { IncomeStatementClient } from "./IncomeStatementClient";
 
 export default async function IncomeStatementPage() {
-  const company = await prisma.company.findFirst();
+  const company = await getCurrentCompany();
 
   if (!company) {
     return (

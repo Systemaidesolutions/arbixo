@@ -1,8 +1,8 @@
-import { prisma } from "@/lib/prisma";
+import { getCurrentCompany } from "@/lib/currentUser";
 import { TrialBalanceClient } from "./TrialBalanceClient";
 
 export default async function TrialBalancePage() {
-  const company = await prisma.company.findFirst();
+  const company = await getCurrentCompany();
 
   if (!company) {
     return (
