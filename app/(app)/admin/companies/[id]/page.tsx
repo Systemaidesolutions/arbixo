@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { AdminCompanyForm } from "../AdminCompanyForm";
+import { AuditToggle } from "../AuditToggle";
 
 export default async function EditCompanyPage({ params }: { params: { id: string } }) {
   await requireAdmin();
@@ -46,6 +47,11 @@ export default async function EditCompanyPage({ params }: { params: { id: string
             ))}
           </ul>
         )}
+      </section>
+
+      {/* Settings — audit logging on/off */}
+      <section className="mt-6 rounded-lg border border-neutral-200 p-4">
+        <AuditToggle companyId={company.id} initialEnabled={company.auditLogEnabled} />
       </section>
 
       <h2 className="mt-8 text-sm font-medium text-neutral-700">Update details</h2>

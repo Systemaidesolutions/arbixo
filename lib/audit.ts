@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { companyAuditEnabled } from "@/lib/auditSettings";
 import type { NextRequest } from "next/server";
 
 /** Best-effort client IP from the usual proxy headers (Vercel sets these). */
@@ -19,6 +20,12 @@ export async function logAudit(params: {
   ipAddress?: string | null;
 }): Promise<void> {
   try {
+    const enabled = await companyAuditEnabled(
+      (id) => prisma.company.findUnique({ where: { id }, select: { auditLogEnabled: true } }),
+      params.companyId
+    );
+    if (!enabled) return;
+
     await prisma.auditLog.create({
       data: {
         companyId: params.companyId,
@@ -35,7 +42,7 @@ export async function logAudit(params: {
 export type AuditRow = {
   id: string;
   createdAt: string;
-  companyId: string;
+  companyId: string | null;
   companyName: string | null;
   username: string;
   ipAddress: string | null;

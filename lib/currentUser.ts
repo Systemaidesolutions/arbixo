@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/session";
 import { redirect } from "next/navigation";
 import type { Company, User } from "@prisma/client";
 import { capabilitiesFor, type Capability } from "@/lib/permissions";
+import { setAuditActor } from "@/lib/auditContext";
 
 /**
  * The JWT session payload only carries id/email/role — enough for
@@ -14,7 +15,11 @@ import { capabilitiesFor, type Capability } from "@/lib/permissions";
 export async function getCurrentUserRecord(): Promise<User | null> {
   const session = await getCurrentUser();
   if (!session) return null;
-  return prisma.user.findUnique({ where: { id: session.sub } });
+  const user = await prisma.user.findUnique({ where: { id: session.sub } });
+  // Record who's acting so the audit extension (lib/prisma.ts) can attribute
+  // any writes made later in this request.
+  if (user) setAuditActor({ userId: user.id, email: user.email, companyId: user.companyId });
+  return user;
 }
 
 /**

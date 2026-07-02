@@ -100,6 +100,11 @@ model Company {
   faxNo                String?
   authorizedRep        String?
   authorizedRepPosition String?
+
+  // When off, no audit-trail entries are recorded for this company —
+  // an admin control to cap log growth / database size.
+  auditLogEnabled      Boolean  @default(true)
+
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -546,11 +551,20 @@ model LedgerEntry {
 // ------------------------------------------------------------
 model AuditLog {
   id        String   @id @default(cuid())
-  company   Company  @relation(fields: [companyId], references: [id])
-  companyId String
+  // Optional: platform-level actions (e.g. an admin editing users) aren't
+  // scoped to a single company.
+  company   Company? @relation(fields: [companyId], references: [id])
+  companyId String?
   username  String
   ipAddress String?
   action    String
+
+  // Populated for automatic create/update/delete logging (see the Prisma
+  // extension in lib/prisma.ts). Null for hand-written entries like logins.
+  entityType String?
+  entityId   String?
+  operation  String? // CREATE | UPDATE | DELETE
+
   createdAt DateTime @default(now())
 
   @@index([companyId, createdAt])
