@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import type { Company, User } from "@prisma/client";
 import { capabilitiesFor, type Capability } from "@/lib/permissions";
 import { setAuditActor } from "@/lib/auditContext";
+import { hasActiveSubscription } from "@/lib/subscription";
 
 /**
  * The JWT session payload only carries id/email/role — enough for
@@ -82,7 +83,12 @@ export async function requirePostingCompany(): Promise<Company | null> {
   const capability = capabilitiesFor(user.role, user.subscriberSubtype);
   if (!capability.canPost) redirect("/");
   if (!user.companyId) return null;
-  return prisma.company.findUnique({ where: { id: user.companyId } });
+  const company = await prisma.company.findUnique({ where: { id: user.companyId } });
+  // No active subscription -> bounce to the dashboard (which explains why).
+  if (company && !hasActiveSubscription(company.subscriptionEndsAt)) {
+    redirect("/");
+  }
+  return company;
 }
 
 export type PosterResult =
@@ -120,5 +126,23 @@ export async function resolvePoster(
           : "Your account is read-only and can't post transactions.";
     return { ok: false, status: 403, error: reason };
   }
+
+  // Posting new transactions requires an active subscription (viewing and
+  // managing existing entries does not).
+  if (need === "canPost") {
+    const company = await prisma.company.findUnique({
+      where: { id: user.companyId },
+      select: { subscriptionEndsAt: true },
+    });
+    if (!hasActiveSubscription(company?.subscriptionEndsAt)) {
+      return {
+        ok: false,
+        status: 403,
+        error:
+          "Your company doesn't have an active subscription. Contact your administrator to subscribe before posting transactions.",
+      };
+    }
+  }
+
   return { ok: true, user, capability };
 }

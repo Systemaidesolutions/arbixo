@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { formatPeso } from "@/lib/format";
 import type {
   Account,
   AtcCode,
@@ -327,7 +328,7 @@ export function GeneralJournalForm({
                         onClick={() => updateLine(line.key, { debitAmount: line.vatComputed!.netAmount, creditAmount: 0 })}
                         className="rounded border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-50"
                       >
-                        Use net ({line.vatComputed.netAmount.toFixed(2)}) → Debit
+                        Use net ({formatPeso(line.vatComputed.netAmount)}) → Debit
                       </button>
                       <button
                         type="button"
@@ -345,7 +346,7 @@ export function GeneralJournalForm({
                             }
                             className="rounded border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-50"
                           >
-                            Use VAT ({line.vatComputed.vatAmount.toFixed(2)}) → Debit
+                            Use VAT ({formatPeso(line.vatComputed.vatAmount)}) → Debit
                           </button>
                           <button
                             type="button"
@@ -369,16 +370,16 @@ export function GeneralJournalForm({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg bg-neutral-50 p-4 text-sm">
           <div>
             <div className="text-xs text-neutral-400">Total debit</div>
-            <div className="font-mono">{totals.totalDebit.toFixed(2)}</div>
+            <div className="font-mono">{formatPeso(totals.totalDebit)}</div>
           </div>
           <div>
             <div className="text-xs text-neutral-400">Total credit</div>
-            <div className="font-mono">{totals.totalCredit.toFixed(2)}</div>
+            <div className="font-mono">{formatPeso(totals.totalCredit)}</div>
           </div>
           <div>
             <div className="text-xs text-neutral-400">Difference</div>
             <div className={`font-mono font-medium ${totals.diff !== 0 ? "text-red-600" : "text-green-600"}`}>
-              {totals.diff.toFixed(2)}
+              {formatPeso(totals.diff)}
             </div>
           </div>
         </div>

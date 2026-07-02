@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { formatPeso } from "@/lib/format";
 import type { BalanceSheet } from "@/lib/reports";
 
 function fiscalYearStartFor(asOfDate: string, fiscalMonthEnd: number): string {
@@ -85,12 +86,12 @@ export function BalanceSheetClient({
                   <span>
                     <span className="font-mono text-neutral-400">{l.code}</span> {l.title}
                   </span>
-                  <span className="font-mono">{l.amount.toFixed(2)}</span>
+                  <span className="font-mono">{formatPeso(l.amount)}</span>
                 </div>
               ))}
               <div className="flex justify-between bg-neutral-50 px-3 py-2 text-sm font-medium">
                 <span>Total assets</span>
-                <span className="font-mono">{sheet.totalAssets.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(sheet.totalAssets)}</span>
               </div>
             </div>
           </section>
@@ -106,13 +107,13 @@ export function BalanceSheetClient({
                     <span>
                       <span className="font-mono text-neutral-400">{l.code}</span> {l.title}
                     </span>
-                    <span className="font-mono">{l.amount.toFixed(2)}</span>
+                    <span className="font-mono">{formatPeso(l.amount)}</span>
                   </div>
                 ))
               )}
               <div className="flex justify-between bg-neutral-50 px-3 py-2 text-sm font-medium">
                 <span>Total liabilities</span>
-                <span className="font-mono">{sheet.totalLiabilities.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(sheet.totalLiabilities)}</span>
               </div>
             </div>
           </section>
@@ -125,22 +126,22 @@ export function BalanceSheetClient({
                   <span>
                     <span className="font-mono text-neutral-400">{l.code}</span> {l.title}
                   </span>
-                  <span className="font-mono">{l.amount.toFixed(2)}</span>
+                  <span className="font-mono">{formatPeso(l.amount)}</span>
                 </div>
               ))}
               <div className="flex justify-between px-3 py-2 text-sm">
                 <span>Current period earnings</span>
-                <span className="font-mono">{sheet.currentPeriodEarnings.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(sheet.currentPeriodEarnings)}</span>
               </div>
               {Math.abs(sheet.priorUnclosedEarnings) > 0.005 && (
                 <div className="flex justify-between px-3 py-2 text-sm text-amber-700">
                   <span>Prior years' unclosed earnings</span>
-                  <span className="font-mono">{sheet.priorUnclosedEarnings.toFixed(2)}</span>
+                  <span className="font-mono">{formatPeso(sheet.priorUnclosedEarnings)}</span>
                 </div>
               )}
               <div className="flex justify-between bg-neutral-50 px-3 py-2 text-sm font-medium">
                 <span>Total equity</span>
-                <span className="font-mono">{sheet.totalEquityAndEarnings.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(sheet.totalEquityAndEarnings)}</span>
               </div>
             </div>
             {Math.abs(sheet.priorUnclosedEarnings) > 0.005 && (
@@ -154,7 +155,7 @@ export function BalanceSheetClient({
 
           <div className="flex justify-between rounded-lg bg-neutral-50 px-4 py-3 text-base font-medium">
             <span>Total liabilities and equity</span>
-            <span className="font-mono">{sheet.totalLiabilitiesAndEquity.toFixed(2)}</span>
+            <span className="font-mono">{formatPeso(sheet.totalLiabilitiesAndEquity)}</span>
           </div>
 
           <p className={`text-sm ${isBalanced ? "text-green-600" : "text-red-600"}`}>

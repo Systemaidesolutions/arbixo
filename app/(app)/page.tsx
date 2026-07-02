@@ -133,12 +133,12 @@ export default async function HomePage() {
         />
       </div>
 
-      {(sub.state === "expiring" || sub.state === "expired") && (
+      {(sub.state === "expiring" || sub.state === "expired" || sub.state === "none") && (
         <div
           className={`mt-6 rounded-lg border p-4 text-sm ${
-            sub.state === "expired"
-              ? "border-red-200 bg-red-50 text-red-800"
-              : "border-amber-200 bg-amber-50 text-amber-900"
+            sub.state === "expiring"
+              ? "border-amber-200 bg-amber-50 text-amber-900"
+              : "border-red-200 bg-red-50 text-red-800"
           }`}
         >
           {sub.state === "expiring" ? (
@@ -146,10 +146,16 @@ export default async function HomePage() {
               Your subscription ends on <strong>{subEndsOn}</strong> ({sub.daysLeft} day
               {sub.daysLeft === 1 ? "" : "s"} left). Please contact your administrator to renew.
             </>
+          ) : sub.state === "expired" ? (
+            <>
+              Your subscription expired on <strong>{subEndsOn}</strong>. You can still view your data,
+              but new transactions can&apos;t be posted until it&apos;s renewed — contact your
+              administrator.
+            </>
           ) : (
             <>
-              Your subscription expired on <strong>{subEndsOn}</strong>. Please contact your
-              administrator to renew — you can still view your data in the meantime.
+              Your company doesn&apos;t have an active subscription. You can view your data, but new
+              transactions can&apos;t be posted until an administrator subscribes.
             </>
           )}
         </div>

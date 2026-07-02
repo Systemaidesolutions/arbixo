@@ -5,16 +5,10 @@ import { AdminUsersTable, type AdminUserRow } from "./AdminUsersTable";
 export default async function AdminUsersPage() {
   const admin = await requireAdmin();
 
-  const [users, companies] = await Promise.all([
-    prisma.user.findMany({
-      include: { company: { select: { tradeName: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.company.findMany({
-      select: { id: true, tradeName: true },
-      orderBy: { tradeName: "asc" },
-    }),
-  ]);
+  const users = await prisma.user.findMany({
+    include: { company: { select: { tradeName: true } } },
+    orderBy: { createdAt: "desc" },
+  });
 
   // Count posted transactions per company so the table can decide which
   // users are safe to delete (deletion is blocked once a company has any).
@@ -62,7 +56,7 @@ export default async function AdminUsersPage() {
         </a>
       </div>
 
-      <AdminUsersTable users={rows} companies={companies} />
+      <AdminUsersTable users={rows} />
     </main>
   );
 }

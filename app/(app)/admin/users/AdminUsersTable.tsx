@@ -19,15 +19,7 @@ export type AdminUserRow = {
   isSelf: boolean;
 };
 
-type CompanyOption = { id: string; tradeName: string };
-
-export function AdminUsersTable({
-  users,
-  companies,
-}: {
-  users: AdminUserRow[];
-  companies: CompanyOption[];
-}) {
+export function AdminUsersTable({ users }: { users: AdminUserRow[] }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -154,26 +146,7 @@ export function AdminUsersTable({
                       SUBTYPE_LABELS[u.subscriberSubtype]
                     )}
                   </td>
-                  <td className="px-3 py-2">
-                    {u.role === "ADMIN" ? (
-                      <span className="text-neutral-400">—</span>
-                    ) : (
-                      <select
-                        value={u.companyId ?? ""}
-                        disabled={busy}
-                        onChange={(e) => patch(u.id, { companyId: e.target.value || null })}
-                        className="max-w-[190px] rounded border border-neutral-300 px-1.5 py-1 text-xs disabled:opacity-50"
-                        title="Assign this user to a company"
-                      >
-                        <option value="">— Unassigned —</option>
-                        {companies.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.tradeName}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </td>
+                  <td className="px-3 py-2 text-neutral-500">{u.companyName ?? "—"}</td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1">
                       {u.isDisabled ? (

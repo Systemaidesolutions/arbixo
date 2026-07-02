@@ -12,6 +12,7 @@ type SettingsPayload = {
   subscriptionStartedAt?: string | null;
   subscriptionEndsAt?: string | null;
   renewMonths?: number;
+  cancelSubscription?: boolean;
 };
 
 const SETTINGS_KEYS: (keyof SettingsPayload)[] = [
@@ -21,6 +22,7 @@ const SETTINGS_KEYS: (keyof SettingsPayload)[] = [
   "subscriptionStartedAt",
   "subscriptionEndsAt",
   "renewMonths",
+  "cancelSubscription",
 ];
 
 // Admin edits an existing company. Subscribers get a read-only view of
@@ -55,6 +57,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       data.subscriptionEndsAt = raw.subscriptionEndsAt ? new Date(raw.subscriptionEndsAt) : null;
       data.subscriptionReminderSentAt = null; // new period -> reminder can fire again
     }
+    // Cancel: clear the subscription entirely (company then has none).
+    if (raw.cancelSubscription === true) {
+      data.subscriptionEndsAt = null;
+      data.subscriptionStartedAt = null;
+      data.subscriptionReminderSentAt = null;
+    }
+
     // Renew: extend from the later of "now" and the current end date.
     if (raw.renewMonths && raw.renewMonths > 0) {
       const now = new Date();

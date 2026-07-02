@@ -20,6 +20,14 @@ export function subscriptionStatus(
   return { state: "active", daysLeft };
 }
 
+/** True when the company currently has a paid, non-expired subscription. */
+export function hasActiveSubscription(
+  endsAt: Date | string | null | undefined,
+  now: Date = new Date()
+): boolean {
+  return !!endsAt && new Date(endsAt).getTime() >= now.getTime();
+}
+
 /** yyyy-mm-dd for <input type="date"> / display. */
 export function toDateInput(d: Date | string | null | undefined): string {
   if (!d) return "";

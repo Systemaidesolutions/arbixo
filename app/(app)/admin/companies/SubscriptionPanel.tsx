@@ -63,6 +63,12 @@ export function SubscriptionPanel({
     if (data?.company?.subscriptionEndsAt) setEndsAt(toDateInput(data.company.subscriptionEndsAt));
   }
 
+  async function cancel() {
+    if (!confirm("Cancel this subscription? The company will have no subscription and its users won't be able to post transactions.")) return;
+    const data = await patch({ cancelSubscription: true }, "Subscription cancelled.");
+    if (data) setEndsAt("");
+  }
+
   async function toggleActive() {
     const next = !isActive;
     const data = await patch(
@@ -121,6 +127,13 @@ export function SubscriptionPanel({
           className="rounded border border-brand-green px-4 py-2 text-sm font-medium text-brand-green hover:bg-green-50 disabled:opacity-50"
         >
           Renew 1 month
+        </button>
+        <button
+          onClick={cancel}
+          disabled={busy || status.state === "none"}
+          className="rounded border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-40"
+        >
+          Cancel subscription
         </button>
         {msg && <span className="text-xs text-green-600">{msg}</span>}
         {error && <span className="text-xs text-red-600">{error}</span>}

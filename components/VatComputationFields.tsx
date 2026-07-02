@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
+import { formatPeso } from "@/lib/format";
 import type { AtcCode, VatType } from "@prisma/client";
 import { computeVat, computeWithholding } from "@/lib/vat";
 
@@ -132,15 +133,15 @@ export function VatComputationFields({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded bg-neutral-50 p-3 text-sm">
         <div>
           <div className="text-xs text-neutral-400">Gross</div>
-          <div className="font-mono">{vatResult.grossAmount.toFixed(2)}</div>
+          <div className="font-mono">{formatPeso(vatResult.grossAmount)}</div>
         </div>
         <div>
           <div className="text-xs text-neutral-400">Net</div>
-          <div className="font-mono">{vatResult.netAmount.toFixed(2)}</div>
+          <div className="font-mono">{formatPeso(vatResult.netAmount)}</div>
         </div>
         <div>
           <div className="text-xs text-neutral-400">{vatType === "VAT_12" ? "VAT" : "VAT"}</div>
-          <div className="font-mono">{vatResult.vatAmount.toFixed(2)}</div>
+          <div className="font-mono">{formatPeso(vatResult.vatAmount)}</div>
         </div>
       </div>
 
@@ -163,7 +164,7 @@ export function VatComputationFields({
       {selectedAtc && (
         <div className="rounded bg-neutral-50 p-3 text-sm">
           <div className="text-xs text-neutral-400">Withholding amount</div>
-          <div className="font-mono">{withholdingAmt.toFixed(2)}</div>
+          <div className="font-mono">{formatPeso(withholdingAmt)}</div>
         </div>
       )}
     </div>

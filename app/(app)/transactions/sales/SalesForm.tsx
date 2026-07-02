@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { formatPeso } from "@/lib/format";
 import type { Account, AtcCode, Customer, Location, VatType } from "@prisma/client";
 import { VatComputationFields, type VatComputationValue } from "@/components/VatComputationFields";
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
@@ -282,15 +283,15 @@ export function SalesForm({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg bg-neutral-50 p-4 text-sm">
           <div>
             <div className="text-xs text-neutral-400">Total credit</div>
-            <div className="font-mono">{totals.totalCredit.toFixed(2)}</div>
+            <div className="font-mono">{formatPeso(totals.totalCredit)}</div>
           </div>
           <div>
             <div className="text-xs text-neutral-400">Withholding</div>
-            <div className="font-mono">{totals.totalWithholding.toFixed(2)}</div>
+            <div className="font-mono">{formatPeso(totals.totalWithholding)}</div>
           </div>
           <div>
             <div className="text-xs text-neutral-400">Receivable (debit)</div>
-            <div className="font-mono font-medium">{totals.receivableAmount.toFixed(2)}</div>
+            <div className="font-mono font-medium">{formatPeso(totals.receivableAmount)}</div>
           </div>
         </div>
 

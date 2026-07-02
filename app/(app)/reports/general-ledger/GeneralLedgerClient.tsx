@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatPeso } from "@/lib/format";
 import type { Account } from "@prisma/client";
 
 type GeneralLedgerRow = {
@@ -16,7 +17,7 @@ type GeneralLedgerRow = {
 };
 
 function formatBalance(n: number) {
-  return `${Math.abs(n).toFixed(2)} ${n >= 0 ? "Dr" : "Cr"}`;
+  return `${formatPeso(Math.abs(n))} ${n >= 0 ? "Dr" : "Cr"}`;
 }
 
 export function GeneralLedgerClient({ companyId, accounts }: { companyId: string; accounts: Account[] }) {
@@ -140,8 +141,8 @@ export function GeneralLedgerClient({ companyId, accounts }: { companyId: string
                   <td className="px-3 py-2 text-neutral-500">{row.journalType.replaceAll("_", " ")}</td>
                   <td className="px-3 py-2 font-mono">{row.documentNo}</td>
                   <td className="px-3 py-2 text-neutral-500">{row.description ?? "—"}</td>
-                  <td className="px-3 py-2 text-right font-mono">{row.debit > 0 ? row.debit.toFixed(2) : ""}</td>
-                  <td className="px-3 py-2 text-right font-mono">{row.credit > 0 ? row.credit.toFixed(2) : ""}</td>
+                  <td className="px-3 py-2 text-right font-mono">{row.debit > 0 ? formatPeso(row.debit) : ""}</td>
+                  <td className="px-3 py-2 text-right font-mono">{row.credit > 0 ? formatPeso(row.credit) : ""}</td>
                   <td className="px-3 py-2 text-right font-mono">{formatBalance(row.runningBalance)}</td>
                 </tr>
               ))

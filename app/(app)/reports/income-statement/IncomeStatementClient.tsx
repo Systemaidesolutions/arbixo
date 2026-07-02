@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatPeso } from "@/lib/format";
 import type { IncomeStatement } from "@/lib/reports";
 
 export function IncomeStatementClient({ companyId }: { companyId: string }) {
@@ -68,13 +69,13 @@ export function IncomeStatementClient({ companyId }: { companyId: string }) {
                     <span>
                       <span className="font-mono text-neutral-400">{l.code}</span> {l.title}
                     </span>
-                    <span className="font-mono">{l.amount.toFixed(2)}</span>
+                    <span className="font-mono">{formatPeso(l.amount)}</span>
                   </div>
                 ))
               )}
               <div className="flex justify-between bg-neutral-50 px-3 py-2 text-sm font-medium">
                 <span>Total revenue</span>
-                <span className="font-mono">{statement.totalRevenue.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(statement.totalRevenue)}</span>
               </div>
             </div>
           </section>
@@ -90,13 +91,13 @@ export function IncomeStatementClient({ companyId }: { companyId: string }) {
                     <span>
                       <span className="font-mono text-neutral-400">{l.code}</span> {l.title}
                     </span>
-                    <span className="font-mono">{l.amount.toFixed(2)}</span>
+                    <span className="font-mono">{formatPeso(l.amount)}</span>
                   </div>
                 ))
               )}
               <div className="flex justify-between bg-neutral-50 px-3 py-2 text-sm font-medium">
                 <span>Total expenses</span>
-                <span className="font-mono">{statement.totalExpense.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(statement.totalExpense)}</span>
               </div>
             </div>
           </section>
@@ -109,7 +110,7 @@ export function IncomeStatementClient({ companyId }: { companyId: string }) {
             }`}
           >
             <span>Net {statement.netIncome >= 0 ? "income" : "loss"}</span>
-            <span className="font-mono">{Math.abs(statement.netIncome).toFixed(2)}</span>
+            <span className="font-mono">{formatPeso(Math.abs(statement.netIncome))}</span>
           </div>
         </div>
       )}

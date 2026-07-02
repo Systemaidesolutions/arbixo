@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatPeso } from "@/lib/format";
 import type { JournalType } from "@prisma/client";
 import type { DocumentSummary } from "@/app/api/ledger-entries/route";
 
@@ -113,8 +114,8 @@ export function TransactionSummary({
                   <td className="px-3 py-2">{new Date(doc.postingDate).toLocaleDateString()}</td>
                   <td className="px-3 py-2">{doc.counterpartyName ?? "—"}</td>
                   <td className="px-3 py-2 text-neutral-500">{doc.particulars ?? "—"}</td>
-                  <td className="px-3 py-2 text-right font-mono">{doc.totalDebit.toFixed(2)}</td>
-                  <td className="px-3 py-2 text-right font-mono">{doc.totalCredit.toFixed(2)}</td>
+                  <td className="px-3 py-2 text-right font-mono">{formatPeso(doc.totalDebit)}</td>
+                  <td className="px-3 py-2 text-right font-mono">{formatPeso(doc.totalCredit)}</td>
                   <td className="px-3 py-2 text-right">
                     <button
                       onClick={() => toggleCancel(doc)}

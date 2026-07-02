@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
+import { formatPeso } from "@/lib/format";
 import { CLASSIFICATION_LABELS } from "@/lib/accounts";
 import type { TrialBalanceRow } from "@/lib/reports";
 import type { AccountClassification } from "@prisma/client";
@@ -150,10 +151,10 @@ export function TrialBalanceClient({ companyId }: { companyId: string }) {
                       <td className="px-3 py-2 font-mono text-neutral-500">{row.code}</td>
                       <td className="px-3 py-2">{row.title}</td>
                       <td className="px-3 py-2 text-right font-mono">
-                        {row.debit > 0 ? row.debit.toFixed(2) : ""}
+                        {row.debit > 0 ? formatPeso(row.debit) : ""}
                       </td>
                       <td className="px-3 py-2 text-right font-mono">
-                        {row.credit > 0 ? row.credit.toFixed(2) : ""}
+                        {row.credit > 0 ? formatPeso(row.credit) : ""}
                       </td>
                     </tr>
                   ))}
@@ -166,8 +167,8 @@ export function TrialBalanceClient({ companyId }: { companyId: string }) {
               <td colSpan={2} className="px-3 py-2">
                 Total
               </td>
-              <td className="px-3 py-2 text-right font-mono">{totals.totalDebit.toFixed(2)}</td>
-              <td className="px-3 py-2 text-right font-mono">{totals.totalCredit.toFixed(2)}</td>
+              <td className="px-3 py-2 text-right font-mono">{formatPeso(totals.totalDebit)}</td>
+              <td className="px-3 py-2 text-right font-mono">{formatPeso(totals.totalCredit)}</td>
             </tr>
           </tfoot>
         </table>

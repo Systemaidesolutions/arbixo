@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatPeso } from "@/lib/format";
 import type { VatReturn } from "@/lib/bir";
 
 const MONTHS = [
@@ -94,27 +95,27 @@ export function VatReturnClient({
             <div className="divide-y divide-neutral-100 rounded-lg border border-neutral-200">
               <div className={row}>
                 <span>12A. Vatable sales/receipts — Private</span>
-                <span className="font-mono">{data.vatableSalesPrivate.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(data.vatableSalesPrivate)}</span>
               </div>
               <div className={row}>
                 <span>13. Sales to Government</span>
-                <span className="font-mono">{data.salesToGovernment.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(data.salesToGovernment)}</span>
               </div>
               <div className={row}>
                 <span>14. Zero-rated sales/receipts</span>
-                <span className="font-mono">{data.zeroRatedSales.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(data.zeroRatedSales)}</span>
               </div>
               <div className={row}>
                 <span>15. Exempt sales/receipts</span>
-                <span className="font-mono">{data.exemptSales.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(data.exemptSales)}</span>
               </div>
               <div className={`${row} bg-neutral-50 font-medium`}>
                 <span>16A. Total sales/receipts</span>
-                <span className="font-mono">{data.totalSales.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(data.totalSales)}</span>
               </div>
               <div className={`${row} bg-neutral-50 font-medium`}>
                 <span>16B. Output tax due</span>
-                <span className="font-mono">{data.outputTax.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(data.outputTax)}</span>
               </div>
             </div>
           </section>
@@ -127,18 +128,18 @@ export function VatReturnClient({
               <div className={row}>
                 <span>18A/B. Purchase of capital goods (net / input tax)</span>
                 <span className="font-mono">
-                  {data.capitalGoodsPurchases.toFixed(2)} / {data.capitalGoodsInputTax.toFixed(2)}
+                  {formatPeso(data.capitalGoodsPurchases)} / {formatPeso(data.capitalGoodsInputTax)}
                 </span>
               </div>
               <div className={row}>
                 <span>19A/B. Other purchases (net / input tax)</span>
                 <span className="font-mono">
-                  {data.otherPurchases.toFixed(2)} / {data.otherInputTax.toFixed(2)}
+                  {formatPeso(data.otherPurchases)} / {formatPeso(data.otherInputTax)}
                 </span>
               </div>
               <div className={`${row} bg-neutral-50 font-medium`}>
                 <span>Total current input tax</span>
-                <span className="font-mono">{data.totalCurrentInputTax.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(data.totalCurrentInputTax)}</span>
               </div>
               <div className="flex items-center justify-between px-3 py-2 text-sm">
                 <label htmlFor="carryover">17A. Input tax carried over from previous period</label>
@@ -153,7 +154,7 @@ export function VatReturnClient({
               </div>
               <div className={`${row} bg-neutral-50 font-medium`}>
                 <span>17F. Total allowable input tax</span>
-                <span className="font-mono">{totalAllowableInputTax.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(totalAllowableInputTax)}</span>
               </div>
             </div>
             <p className="mt-2 text-xs text-neutral-400">
@@ -173,12 +174,12 @@ export function VatReturnClient({
             {vatPayable > 0 ? (
               <>
                 <span>VAT payable</span>
-                <span className="font-mono">{vatPayable.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(vatPayable)}</span>
               </>
             ) : (
               <>
                 <span>Excess input tax (carry to next period)</span>
-                <span className="font-mono">{excessInputTax.toFixed(2)}</span>
+                <span className="font-mono">{formatPeso(excessInputTax)}</span>
               </>
             )}
           </div>
