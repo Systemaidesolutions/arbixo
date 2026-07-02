@@ -261,6 +261,15 @@ Receipts, Sales on Account, Purchases on Account, General Journal.
   very first commit, since this project didn't have a real deployment
   target yet. Fixed now, before this goes anywhere near a real Git repo;
   double-check `git status` never shows `.env` before your first commit.
+- **A third gap, found from the deployed screenshot itself**: the root
+  URL `/` 404'd even after a successful deployment, because every stage
+  built a feature page under a subpath (`/accounts`, `/transactions/...`,
+  `/reports/...`) and none of them created `app/page.tsx` — there was
+  simply no page registered for `/` at all. Added a home page
+  (`app/page.tsx`) that checks whether a company exists yet and links out
+  to every section. Doubles as a quick smoke test after any deploy: if it
+  loads and correctly shows either "no company set up" or the company's
+  trade name, `DATABASE_URL` is working end to end in production.
 
 ## BIR compliance reports
 
