@@ -7,6 +7,7 @@ export type AdminUserRow = {
   id: string;
   email: string;
   role: "ADMIN" | "USER";
+  companyId: string | null;
   companyName: string | null;
   isVerified: boolean;
   isDisabled: boolean;
@@ -15,7 +16,15 @@ export type AdminUserRow = {
   isSelf: boolean;
 };
 
-export function AdminUsersTable({ users }: { users: AdminUserRow[] }) {
+type CompanyOption = { id: string; tradeName: string };
+
+export function AdminUsersTable({
+  users,
+  companies,
+}: {
+  users: AdminUserRow[];
+  companies: CompanyOption[];
+}) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -134,7 +143,26 @@ export function AdminUsersTable({ users }: { users: AdminUserRow[] }) {
                       {u.role === "ADMIN" ? "Arbixo admin" : "Subscriber"}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-neutral-500">{u.companyName ?? "—"}</td>
+                  <td className="px-3 py-2">
+                    {u.role === "ADMIN" ? (
+                      <span className="text-neutral-400">—</span>
+                    ) : (
+                      <select
+                        value={u.companyId ?? ""}
+                        disabled={busy}
+                        onChange={(e) => patch(u.id, { companyId: e.target.value || null })}
+                        className="max-w-[190px] rounded border border-neutral-300 px-1.5 py-1 text-xs disabled:opacity-50"
+                        title="Assign this user to a company"
+                      >
+                        <option value="">— Unassigned —</option>
+                        {companies.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.tradeName}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1">
                       {u.isDisabled ? (

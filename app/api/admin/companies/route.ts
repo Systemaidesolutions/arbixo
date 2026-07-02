@@ -3,44 +3,19 @@ import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/currentUser";
 import { validateCompanyPayload, type CompanyFormPayload } from "@/lib/company";
 
-// Admin creates a company and assigns it to exactly one subscriber account.
-// Subscribers can no longer create their own company — this is the only
-// creation path now.
+// Admin creates a company. It's created unassigned — assigning it to one or
+// more subscriber users is a separate step (PATCH /api/admin/users/[id]),
+// because a company can have many users.
 export async function POST(request: NextRequest) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = (await request.json().catch(() => null)) as
-    | (CompanyFormPayload & { userId?: string })
-    | null;
+  const body = (await request.json().catch(() => null)) as CompanyFormPayload | null;
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
 
-  const { userId, ...companyPayload } = body;
-  if (!userId) return NextResponse.json({ error: "A subscriber must be selected" }, { status: 400 });
-
-  const validationError = validateCompanyPayload(companyPayload);
+  const validationError = validateCompanyPayload(body);
   if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
 
-  const target = await prisma.user.findUnique({ where: { id: userId } });
-  if (!target) return NextResponse.json({ error: "Subscriber not found" }, { status: 404 });
-  if (target.role !== "USER") {
-    return NextResponse.json(
-      { error: "Companies can only be assigned to subscriber (USER) accounts." },
-      { status: 400 }
-    );
-  }
-  if (target.companyId) {
-    return NextResponse.json(
-      { error: "That subscriber already has a company assigned." },
-      { status: 409 }
-    );
-  }
-
-  const company = await prisma.$transaction(async (tx) => {
-    const created = await tx.company.create({ data: companyPayload });
-    await tx.user.update({ where: { id: target.id }, data: { companyId: created.id } });
-    return created;
-  });
-
+  const company = await prisma.company.create({ data: body });
   return NextResponse.json({ company }, { status: 201 });
 }
