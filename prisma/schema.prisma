@@ -1,0 +1,484 @@
+// ============================================================
+// EJAS Web — Prisma schema
+// Converted from the "Easy Journal Accounting System" desktop
+// manual, restructured as a single flat ledger-entry table —
+// the same pattern Business Central uses for G/L Entry: one
+// row per debit/credit line, grouped by Document No., instead
+// of a separate header + line split.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------
+// 1.1 Setup Company  (manual section 1.1)
+// ------------------------------------------------------------
+model Company {
+  id                   String   @id @default(cuid())
+  tin                  String
+  taxClassification    TaxClassification
+  registeredName       String?
+  taxpayerLastName     String?
+  taxpayerFirstName    String?
+  taxpayerMiddleName   String?
+  tradeName            String
+  businessAddress      String
+  zipCode              String
+  rdoCode              String
+  periodType           PeriodType @default(CALENDAR)
+  fiscalMonthEnd       Int?
+  businessType         String?
+  registrationType     RegistrationType
+  lineOfBusiness       String?
+  telNo                String?
+  faxNo                String?
+  authorizedRep        String?
+  authorizedRepPosition String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  locations     Location[]
+  accounts      Account[]
+  customers     Customer[]
+  vendors       Vendor[]
+  employees     Employee[]
+  contacts      Contact[]
+  ledgerEntries LedgerEntry[]
+  auditLogs     AuditLog[]
+  taxPostingSetup TaxPostingSetup?
+}
+
+// 3.4 Setup Location — branches. Reports stay consolidated by
+// default; Location just tags where an entry originated.
+model Location {
+  id          String   @id @default(cuid())
+  company     Company  @relation(fields: [companyId], references: [id])
+  companyId   String
+  name        String
+  address     String?
+  tin         String?
+  machineIdNo String?
+  branchClass String?
+  isDefault   Boolean  @default(false)
+
+  ledgerEntries LedgerEntry[]
+
+  @@unique([companyId, name])
+}
+
+// ------------------------------------------------------------
+// Tax Posting Setup — tells the posting engine which GL accounts
+// to hit for Input VAT, Output VAT, and Withholding Tax Payable.
+// The manual does this invisibly/hardcoded; we make it explicit
+// and configurable, the same idea as BC's VAT Posting Setup /
+// General Posting Setup. One row per company.
+// ------------------------------------------------------------
+model TaxPostingSetup {
+  id        String  @id @default(cuid())
+  company   Company @relation(fields: [companyId], references: [id])
+  companyId String  @unique
+
+  inputVatAccount   Account? @relation("InputVatPostingAccount", fields: [inputVatAccountId], references: [id])
+  inputVatAccountId String?
+
+  outputVatAccount   Account? @relation("OutputVatPostingAccount", fields: [outputVatAccountId], references: [id])
+  outputVatAccountId String?
+
+  withholdingTaxPayableAccount   Account? @relation("WithholdingTaxPayablePostingAccount", fields: [withholdingTaxPayableAccountId], references: [id])
+  withholdingTaxPayableAccountId String?
+
+  updatedAt DateTime @updatedAt
+}
+
+// ------------------------------------------------------------
+// 1.2 Chart of Accounts (manual section 1.2)
+// Stage 1 target — see the note at the bottom of this file for
+// the robustness upgrades planned on top of this base model.
+// ------------------------------------------------------------
+enum AccountClassification {
+  CASH_IN_BANK
+  CASH_ON_HAND
+  ACCOUNTS_RECEIVABLE
+  OTHER_CURRENT_ASSET
+  INVENTORY
+  FIXED_ASSET
+  ACCUMULATED_DEPRECIATION
+  OTHER_ASSET
+  ACCOUNTS_PAYABLE
+  OTHER_CURRENT_LIABILITY
+  LONG_TERM_PAYABLE
+  EQUITY_DOES_NOT_CLOSE
+  EQUITY_GETS_CLOSED
+  REVENUE
+  EXPENSE
+}
+
+enum NormalBalance {
+  DEBIT
+  CREDIT
+}
+
+model Account {
+  id             String                @id @default(cuid())
+  company        Company               @relation(fields: [companyId], references: [id])
+  companyId      String
+  code           String
+  title          String
+  classification AccountClassification
+  isActive       Boolean               @default(true)
+
+  // Hierarchy — lets "Cash in Bank" be a parent of "Cash in Bank - BPI",
+  // "Cash in Bank - EIB", etc. (the manual's per-bank sub-accounts).
+  parent         Account?  @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
+  parentAccountId String?
+  children        Account[] @relation("AccountHierarchy")
+
+  // Explicit rather than derived from classification, because contra
+  // accounts break the simple mapping — e.g. Accumulated Depreciation
+  // is classified as an asset-side account but carries a CREDIT normal
+  // balance.
+  normalBalance      NormalBalance
+  openingBalance      Decimal?  @db.Decimal(18, 2) @default(0)
+  openingBalanceDate DateTime?
+
+  ledgerEntries  LedgerEntry[]
+  inputVatPostingFor         TaxPostingSetup[] @relation("InputVatPostingAccount")
+  outputVatPostingFor        TaxPostingSetup[] @relation("OutputVatPostingAccount")
+  withholdingTaxPostingFor   TaxPostingSetup[] @relation("WithholdingTaxPayablePostingAccount")
+
+  @@unique([companyId, code])
+  @@index([parentAccountId])
+}
+
+// ------------------------------------------------------------
+// 1.3 Setup Agent — split BC-style into Customer / Vendor /
+// Employee / Contact instead of the manual's single Agent table
+// with an AgentType discriminator. Each gets its own code
+// sequence (its own @@unique([companyId, code])), matching how
+// BC keeps separate No. Series for Customer vs. Vendor vs.
+// Employee.
+//
+// Mapping from the manual's AgentType values:
+//   Customer-Private, Customer-Gov't → Customer (customerType)
+//   Supplier, Government Agency      → Vendor   (vendorType)
+//   Employee                         → Employee
+//   Other Contact                    → Contact
+// ------------------------------------------------------------
+enum TaxClassification {
+  INDIVIDUAL
+  NON_INDIVIDUAL
+}
+
+enum RegistrationType {
+  VAT
+  NON_VAT
+}
+
+enum PeriodType {
+  CALENDAR
+  FISCAL
+}
+
+enum CustomerType {
+  PRIVATE
+  GOVERNMENT // triggers the multiple-withholding-tax flow in the manual
+}
+
+enum VendorType {
+  SUPPLIER
+  GOVERNMENT_AGENCY // e.g. BIR/SSS/PhilHealth/Pag-IBIG remittance payees
+}
+
+model Customer {
+  id                String   @id @default(cuid())
+  company           Company  @relation(fields: [companyId], references: [id])
+  companyId         String
+  code              String
+  tin               String?
+  taxClassification TaxClassification
+  registeredName    String?
+  lastName          String?
+  firstName         String?
+  middleName        String?
+  tradeName         String
+  customerType      CustomerType
+  registrationType  RegistrationType
+  authorizedRep     String?
+  address           String?
+  telNo             String?
+  faxNo             String?
+  cellNo            String?
+  email             String?
+  website           String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  ledgerEntries LedgerEntry[]
+
+  @@unique([companyId, code])
+}
+
+model Vendor {
+  id                String   @id @default(cuid())
+  company           Company  @relation(fields: [companyId], references: [id])
+  companyId         String
+  code              String
+  tin               String?
+  taxClassification TaxClassification
+  registeredName    String?
+  lastName          String?
+  firstName         String?
+  middleName        String?
+  tradeName         String
+  vendorType        VendorType
+  registrationType  RegistrationType
+  authorizedRep     String?
+  address           String?
+  telNo             String?
+  faxNo             String?
+  cellNo            String?
+  email             String?
+  website           String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  ledgerEntries LedgerEntry[]
+
+  @@unique([companyId, code])
+}
+
+model Employee {
+  id         String   @id @default(cuid())
+  company    Company  @relation(fields: [companyId], references: [id])
+  companyId  String
+  code       String
+  tin        String?
+  lastName   String
+  firstName  String
+  middleName String?
+  position   String?
+  address    String?
+  telNo      String?
+  cellNo     String?
+  email      String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  ledgerEntries LedgerEntry[]
+
+  @@unique([companyId, code])
+}
+
+// Catch-all for parties that are neither customer, vendor, nor employee
+// but still show up on a transaction — e.g. a lender on a loan payable,
+// an owner on an equity drawdown. Same role as BC's Contact table.
+model Contact {
+  id                String   @id @default(cuid())
+  company           Company  @relation(fields: [companyId], references: [id])
+  companyId         String
+  code              String
+  tin               String?
+  taxClassification TaxClassification
+  registeredName    String?
+  lastName          String?
+  firstName         String?
+  middleName        String?
+  tradeName         String
+  registrationType  RegistrationType
+  address           String?
+  telNo             String?
+  cellNo            String?
+  email             String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  ledgerEntries LedgerEntry[]
+
+  @@unique([companyId, code])
+}
+
+// ------------------------------------------------------------
+// ATC (Alphanumeric Tax Code) reference table — deliberately NOT
+// hardcoded into application logic. BIR revises these rates
+// periodically (e.g. RR No. 5-2025 and RR No. 24-2025 both
+// changed creditable withholding tax rates within the same
+// year), so this is editable reference data, not a fixed enum.
+// Seed data should be treated as a starting point and verified
+// against the BIR's current Alphanumeric Tax Code table before
+// relying on it: https://www.bir.gov.ph/WithHoldingTax
+// ------------------------------------------------------------
+enum IncomePaymentType {
+  GOODS
+  SERVICES
+  BOTH
+}
+
+model AtcCode {
+  id                String            @id @default(cuid())
+  code              String            @unique // e.g. "WC160"
+  description       String
+  ratePercent       Decimal           @db.Decimal(5, 2) // e.g. 2.00 for 2%
+  incomePaymentType IncomePaymentType @default(BOTH)
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+}
+
+// ------------------------------------------------------------
+// The five journals/portals — now a single flat ledger table.
+//
+// Business Central parallel:
+//   - journalType   ≈ Source Code   (which journal posted this)
+//   - documentType  ≈ Document Type (Payment/Receipt/Invoice/...)
+//   - documentNo    ≈ Document No.  (groups every line of one
+//                                    transaction — e.g. all rows
+//                                    of one CV, one Invoice)
+//   - lineNo        ≈ Line No.      (order within the document)
+//   - entryNo       ≈ Entry No.     (immutable ledger sequence)
+// ------------------------------------------------------------
+enum JournalType {
+  CASH_DISBURSEMENT
+  CASH_RECEIPT
+  SALES_ON_ACCOUNT
+  PURCHASE_ON_ACCOUNT
+  GENERAL_JOURNAL
+}
+
+enum DocumentType {
+  PAYMENT       // Cash Disbursement (CV)
+  RECEIPT       // Cash Receipts (OR)
+  INVOICE       // Sales on Account
+  CREDIT_MEMO   // Sales/Purchase Return
+  PURCHASE      // Purchase on Account (PV)
+  JOURNAL       // General Journal (JV)
+}
+
+enum VatType {
+  VAT_12
+  ZERO_RATED
+  VAT_EXEMPT
+  NON_VAT
+  IMPORTATION
+}
+
+enum TaxSource {
+  GOODS
+  SERVICE
+  CAPITAL_GOODS
+}
+
+enum CounterpartyType {
+  CUSTOMER
+  VENDOR
+  EMPLOYEE
+  CONTACT
+}
+
+model LedgerEntry {
+  id         String   @id @default(cuid())
+  entryNo    Int      @default(autoincrement()) // permanent ledger sequence, never reused/edited
+
+  company    Company  @relation(fields: [companyId], references: [id])
+  companyId  String
+  location   Location? @relation(fields: [locationId], references: [id])
+  locationId String?
+
+  journalType  JournalType
+  documentType DocumentType?
+  documentNo   String        // CV no. / OR no. / Invoice no. / PV no. / JV no. — groups related lines
+  lineNo       Int           // display order within the document
+  isReturn     Boolean       @default(false)
+  postingDate  DateTime
+
+  account   Account @relation(fields: [accountId], references: [id])
+  accountId String
+
+  // Exactly zero or one of these four should be set per entry — enforced
+  // at the API layer (Prisma has no native "exactly one of" constraint).
+  // counterpartyType mirrors whichever FK is populated, so reports can
+  // filter/group without four separate null-checks.
+  counterpartyType CounterpartyType?
+  customer         Customer? @relation(fields: [customerId], references: [id])
+  customerId       String?
+  vendor           Vendor?   @relation(fields: [vendorId], references: [id])
+  vendorId         String?
+  employee         Employee? @relation(fields: [employeeId], references: [id])
+  employeeId       String?
+  contact          Contact?  @relation(fields: [contactId], references: [id])
+  contactId        String?
+
+  debitAmount  Decimal @db.Decimal(18, 2) @default(0)
+  creditAmount Decimal @db.Decimal(18, 2) @default(0)
+
+  description  String? // Particulars / Nature
+  checkNo      String? // Cash Disbursement only
+  isCancelled  Boolean @default(false)
+
+  // --- VAT computation (VAT Computation popup in the manual) ---
+  vatType     VatType?
+  grossAmount Decimal? @db.Decimal(18, 2)
+  netAmount   Decimal? @db.Decimal(18, 2)
+  vatAmount   Decimal? @db.Decimal(18, 2) // Input Tax or Output Tax
+  taxSource   TaxSource?
+
+  // --- Withholding tax ---
+  atcCode        String?
+  atcDescription String?
+  withholdingAmt Decimal? @db.Decimal(18, 2)
+
+  // --- Importation / capital goods (manual 1.10) ---
+  importSellerName    String?
+  importAssessDate    DateTime?
+  importDate          DateTime?
+  importCountryOrigin String?
+  importEntryNo       String?
+  importDutiableValue Decimal? @db.Decimal(18, 2)
+  importLandedCost    Decimal? @db.Decimal(18, 2)
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // One line number per document — mirrors how you'd never have
+  // two "line 1"s under the same CV/Invoice/JV number.
+  @@unique([companyId, journalType, documentNo, lineNo])
+  @@index([companyId, journalType, postingDate])
+  @@index([companyId, documentNo])
+  @@index([accountId])
+  @@index([customerId])
+  @@index([vendorId])
+  @@index([employeeId])
+  @@index([contactId])
+}
+
+// ------------------------------------------------------------
+// 4.1 Audit Trail
+// ------------------------------------------------------------
+model AuditLog {
+  id        String   @id @default(cuid())
+  company   Company  @relation(fields: [companyId], references: [id])
+  companyId String
+  username  String
+  ipAddress String?
+  action    String
+  createdAt DateTime @default(now())
+
+  @@index([companyId, createdAt])
+}
+
+// ============================================================
+// Deferred for a later stage (not selected for this pass):
+//   accountType (Posting vs. Heading/Total, non-postable subtotal
+//   rows) and isDirectPostingAllowed. Revisit if you want subtotal
+//   rows in the Chart of Accounts tree.
+// ============================================================
