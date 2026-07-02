@@ -98,9 +98,13 @@ environments.
 **5. Deploy.** Vercel will run `npm install` (triggers `postinstall` →
 `prisma generate`) then `npm run build` (which also runs `prisma
 generate` again, redundant but harmless — see the note on why this
-matters below). If the build succeeds but pages error at runtime with a
-database connection error, double-check the connection string and that
-you used the pooled URL if on Neon.
+matters below). The build itself doesn't need `DATABASE_URL` — every
+page is forced to render dynamically at request time (see the note
+below), so no database queries run during the build. If the build
+succeeds but pages error at runtime with a database connection error,
+that means `DATABASE_URL` isn't set correctly for the Production
+environment specifically — double-check it's there and that you used the
+pooled URL if on Neon.
 
 **6. Push the schema to the hosted database.** Vercel doesn't run
 `prisma db push` automatically — do this once from your local machine,
@@ -113,6 +117,19 @@ DATABASE_URL="<the hosted connection string>" npm run prisma:seed
 **7. Visit the deployed URL and repeat the same first-run steps as
 Path A** (company setup → accounts → tax posting setup → agents → post a
 transaction → check trial balance).
+
+## Why every page is forced to render dynamically
+
+`app/layout.tsx` sets `export const dynamic = "force-dynamic"`, which
+applies to every page nested under it — the whole app. Without this,
+Next.js tries to statically pre-render pages at build time by default,
+which means running Prisma queries *inside the Vercel build container*.
+That container doesn't have reliable database access, so the build fails
+with `Environment variable not found: DATABASE_URL` even if you've set it
+correctly for runtime. Since every page here reflects live database
+state (account balances, ledger entries, reports), none of it should
+ever be cached as static HTML anyway — this setting is both the fix and
+the architecturally correct choice.
 
 ## Why `prisma generate` is in both `postinstall` and `build`
 

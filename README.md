@@ -243,6 +243,20 @@ Receipts, Sales on Account, Purchases on Account, General Journal.
   500s on the first database call — Vercel caches `node_modules`, and if
   `generate` only ran once and the cache hits, the generated client can
   go stale against schema changes.
+- **A second real gotcha, hit during actual deployment testing**: every
+  page in this app is a Server Component that queries Prisma directly,
+  with no route segment config. Next.js's default behavior is to try to
+  *statically pre-render* pages like that at build time — which means
+  running real database queries inside the Vercel build container, where
+  `DATABASE_URL` either isn't set or the database isn't reachable. The
+  build failed with `Environment variable not found: DATABASE_URL` on
+  every single page that touches Prisma (16 of them). Fixed with one line
+  on the root layout (`export const dynamic = "force-dynamic"`) rather
+  than repeating it in every page file — this app is entirely live
+  database state, so nothing in it should ever be statically generated in
+  the first place. Setting `DATABASE_URL` in Vercel is still required —
+  this fix only moves when it's needed from "during the build" to "when a
+  real request comes in," which is the correct time for a live app.
 - **`.gitignore` was missing** until this stage — an oversight from the
   very first commit, since this project didn't have a real deployment
   target yet. Fixed now, before this goes anywhere near a real Git repo;
