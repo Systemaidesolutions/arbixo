@@ -23,10 +23,18 @@ import {
   FileText,
   LayoutDashboard,
   ClipboardCheck,
+  ScrollText,
+  Database,
   type LucideIcon,
 } from "lucide-react";
 import type { SubscriberSubtype } from "@prisma/client";
-import { NAV_SECTIONS, ADMIN_NAV_SECTIONS, type NavIcon, type NavSection } from "@/lib/navigation";
+import {
+  NAV_SECTIONS,
+  ADMIN_NAV_SECTIONS,
+  UTILITY_SECTION,
+  type NavIcon,
+  type NavSection,
+} from "@/lib/navigation";
 import { capabilitiesFor } from "@/lib/permissions";
 
 const REVIEW_SECTION: NavSection = {
@@ -45,7 +53,8 @@ function sectionsFor(role: "ADMIN" | "USER", subtype: SubscriberSubtype | null):
     sections = sections.filter((s) => s.title !== "Transactions");
   }
   if (cap.canApprove) {
-    sections = [...sections, REVIEW_SECTION];
+    // Managers get approvals + the utility tools (audit trail, backup).
+    sections = [...sections, REVIEW_SECTION, UTILITY_SECTION];
   }
   return sections;
 }
@@ -70,6 +79,8 @@ const LINK_ICONS: Record<NavIcon, LucideIcon> = {
   users: Users,
   companies: Building2,
   approvals: ClipboardCheck,
+  audit: ScrollText,
+  backup: Database,
 };
 
 function NavList({

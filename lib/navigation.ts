@@ -17,7 +17,9 @@ export type NavIcon =
   | "dashboard"
   | "users"
   | "companies"
-  | "approvals";
+  | "approvals"
+  | "audit"
+  | "backup";
 
 export type NavLink = { href: string; label: string; icon: NavIcon };
 export type NavSection = {
@@ -64,6 +66,18 @@ export const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
+// Utility tools — shown to admins (full) and, in the sidebar, to Managers
+// (audit + per-company backup). The backup page itself adapts what it
+// offers based on the viewer's role.
+export const UTILITY_SECTION: NavSection = {
+  title: "Utility",
+  icon: "admin",
+  links: [
+    { href: "/utility/audit-trail", label: "Audit trail", icon: "audit" },
+    { href: "/utility/backup", label: "Data backup", icon: "backup" },
+  ],
+};
+
 // Shown to ADMIN (Arbixo staff) accounts instead of NAV_SECTIONS —
 // admins manage the platform, not any single company's books.
 export const ADMIN_NAV_SECTIONS: NavSection[] = [
@@ -76,4 +90,5 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
       { href: "/admin/companies", label: "Company list", icon: "companies" },
     ],
   },
+  UTILITY_SECTION,
 ];

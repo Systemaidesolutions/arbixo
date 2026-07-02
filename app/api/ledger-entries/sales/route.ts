@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { postDocument, DuplicateDocumentError, UnbalancedEntryError } from "@/lib/ledgerPosting";
 import { resolvePoster } from "@/lib/currentUser";
+import { logAudit, getClientIp } from "@/lib/audit";
 import {
   expandVatLines,
   counterpartyFields,
@@ -90,6 +91,12 @@ export async function POST(request: NextRequest) {
       lines: finalLines,
       createdById: auth.user.id,
       isApproved: auth.capability.canApprove,
+    });
+    await logAudit({
+      companyId,
+      username: auth.user.email,
+      action: `Posted ${body.isReturn ? "Sales Return" : "Sales"} ${documentNo}`,
+      ipAddress: getClientIp(request),
     });
     return NextResponse.json({ entries: created, receivableAmount }, { status: 201 });
   } catch (err) {

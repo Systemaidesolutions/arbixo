@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { computeWithholding } from "@/lib/vat";
 import { postDocument, DuplicateDocumentError, UnbalancedEntryError, type LedgerLineInput } from "@/lib/ledgerPosting";
 import { resolvePoster } from "@/lib/currentUser";
+import { logAudit, getClientIp } from "@/lib/audit";
 import { counterpartyFields } from "@/lib/vatLineExpansion";
 import type { CounterpartyType, VatType } from "@prisma/client";
 
@@ -107,6 +108,12 @@ export async function POST(request: NextRequest) {
       lines: glLines,
       createdById: auth.user.id,
       isApproved: auth.capability.canApprove,
+    });
+    await logAudit({
+      companyId,
+      username: auth.user.email,
+      action: `Posted General Journal ${documentNo}`,
+      ipAddress: getClientIp(request),
     });
     return NextResponse.json({ entries: created }, { status: 201 });
   } catch (err) {

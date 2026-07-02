@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { verifyPassword } from "@/lib/password";
+import { logAudit, getClientIp } from "@/lib/audit";
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
@@ -35,6 +36,17 @@ export async function POST(request: NextRequest) {
       { error: "This account hasn't been verified yet. Check your email for the code, or register again to get a new one." },
       { status: 403 }
     );
+  }
+
+  // Audit the login against the user's company (subscribers only — admins
+  // aren't scoped to a company).
+  if (user.companyId) {
+    await logAudit({
+      companyId: user.companyId,
+      username: user.email,
+      action: "Logged in",
+      ipAddress: getClientIp(request),
+    });
   }
 
   const token = await createSessionToken({ sub: user.id, email: user.email, role: user.role });

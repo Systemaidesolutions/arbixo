@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolvePoster } from "@/lib/currentUser";
+import { logAudit, getClientIp } from "@/lib/audit";
 import type { JournalType } from "@prisma/client";
 
 // Voiding/cancelling a posted document is a Manager-only "edit" power.
@@ -26,6 +27,13 @@ export async function PATCH(request: NextRequest) {
   if (result.count === 0) {
     return NextResponse.json({ error: "No matching document found" }, { status: 404 });
   }
+
+  await logAudit({
+    companyId,
+    username: auth.user.email,
+    action: `${isCancelled ? "Voided" : "Restored"} ${journalType} ${documentNo}`,
+    ipAddress: getClientIp(request),
+  });
 
   return NextResponse.json({ ok: true, linesUpdated: result.count });
 }

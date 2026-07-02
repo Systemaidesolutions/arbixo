@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolvePoster } from "@/lib/currentUser";
+import { logAudit, getClientIp } from "@/lib/audit";
 import type { JournalType } from "@prisma/client";
 
 // A Manager approves a pending document (all its lines), identified by
@@ -30,6 +31,13 @@ export async function POST(request: NextRequest) {
       { status: 404 }
     );
   }
+
+  await logAudit({
+    companyId,
+    username: auth.user.email,
+    action: `Approved ${journalType} ${documentNo}`,
+    ipAddress: getClientIp(request),
+  });
 
   return NextResponse.json({ ok: true, linesApproved: result.count });
 }
