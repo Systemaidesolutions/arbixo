@@ -1,89 +1,100 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Settings,
-  Repeat,
-  BarChart3,
-  ShieldCheck,
+  Headphones,
   X,
+  Building2,
+  ReceiptText,
+  ListTree,
+  Users,
+  ArrowDownToLine,
+  ArrowUpToLine,
+  ShoppingCart,
+  ShoppingBag,
+  NotebookPen,
+  Scale,
+  BookText,
+  BookUser,
+  LineChart,
+  FileBarChart2,
+  FileText,
+  LayoutDashboard,
   type LucideIcon,
 } from "lucide-react";
-import { NAV_SECTIONS, ADMIN_NAV_SECTIONS, type NavSection } from "@/lib/navigation";
+import { NAV_SECTIONS, ADMIN_NAV_SECTIONS, type NavIcon, type NavSection } from "@/lib/navigation";
 
-const ICONS: Record<NavSection["icon"], LucideIcon> = {
-  settings: Settings,
-  transactions: Repeat,
-  reports: BarChart3,
-  admin: ShieldCheck,
+const LINK_ICONS: Record<NavIcon, LucideIcon> = {
+  company: Building2,
+  tax: ReceiptText,
+  accounts: ListTree,
+  parties: Users,
+  cashOut: ArrowDownToLine,
+  cashIn: ArrowUpToLine,
+  sales: ShoppingCart,
+  purchases: ShoppingBag,
+  journal: NotebookPen,
+  trialBalance: Scale,
+  generalLedger: BookText,
+  subsidiary: BookUser,
+  income: LineChart,
+  balance: FileBarChart2,
+  vat: FileText,
+  dashboard: LayoutDashboard,
+  users: Users,
+  companies: Building2,
 };
 
-const COLLAPSE_KEY = "arbixo:sidebar-collapsed";
-
-/**
- * The scrollable list of nav sections/links, shared by the desktop docked
- * sidebar and the mobile drawer. `collapsed` only applies on desktop; the
- * mobile drawer always renders fully expanded.
- */
 function NavList({
   sections,
   pathname,
-  collapsed,
   openSections,
   toggleSection,
 }: {
   sections: NavSection[];
   pathname: string;
-  collapsed: boolean;
   openSections: Record<string, boolean>;
   toggleSection: (title: string) => void;
 }) {
   return (
-    <nav className="flex-1 overflow-y-auto py-2">
+    <nav className="flex-1 overflow-y-auto px-3 py-4">
       {sections.map((section) => {
-        const Icon = ICONS[section.icon];
         const isOpen = openSections[section.title];
-        const sectionHasActiveLink = section.links.some((l) => l.href === pathname);
         return (
-          <div key={section.title} className="px-2">
+          <div key={section.title} className="mb-2">
             <button
-              onClick={() => !collapsed && toggleSection(section.title)}
-              className={`flex w-full items-center gap-2 rounded px-2 py-2 text-[16px] font-medium hover:bg-neutral-50 ${
-                collapsed ? "justify-center" : "justify-between"
-              } ${sectionHasActiveLink ? "text-brand-navy" : "text-neutral-700"}`}
-              title={section.title}
+              onClick={() => toggleSection(section.title)}
+              className="flex w-full items-center justify-between px-2 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#8ea6c8] hover:text-white"
             >
-              <span className="flex items-center gap-2">
-                <Icon size={18} className="shrink-0 text-brand-navy" />
-                {!collapsed && section.title}
-              </span>
-              {!collapsed && (
-                <ChevronDown
-                  size={15}
-                  className={`shrink-0 text-neutral-400 transition-transform ${isOpen ? "" : "-rotate-90"}`}
-                />
-              )}
+              {section.title}
+              <ChevronDown
+                size={14}
+                className={`transition-transform ${isOpen ? "" : "-rotate-90"}`}
+              />
             </button>
 
-            {!collapsed && isOpen && (
-              <ul className="mb-1 ml-6 space-y-0.5 border-l border-neutral-100 pl-2">
+            {isOpen && (
+              <ul className="mt-1 space-y-0.5">
                 {section.links.map((link) => {
+                  const Icon = LINK_ICONS[link.icon];
                   const active = pathname === link.href;
                   return (
                     <li key={link.href}>
                       <a
                         href={link.href}
-                        className={`block rounded border-l-[3px] px-2 py-1.5 text-[14px] transition-colors ${
+                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
                           active
-                            ? "border-brand-navy bg-brand-navy/10 font-semibold text-brand-navy"
-                            : "border-transparent text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900"
+                            ? "bg-gradient-to-r from-brand-blue to-[#1668c9] font-medium text-white shadow-sm"
+                            : "text-[#c9d6ea] hover:bg-white/5 hover:text-white"
                         }`}
                       >
-                        {link.label}
+                        <Icon
+                          size={17}
+                          className={`shrink-0 ${active ? "text-white" : "text-brand-blue"}`}
+                        />
+                        <span className="min-w-0">{link.label}</span>
                       </a>
                     </li>
                   );
@@ -94,6 +105,24 @@ function NavList({
         );
       })}
     </nav>
+  );
+}
+
+function HelpCard() {
+  return (
+    <div className="m-3 rounded-xl bg-white/5 p-4 text-center ring-1 ring-white/10">
+      <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-brand-blue/20">
+        <Headphones size={18} className="text-brand-blue" />
+      </div>
+      <p className="mt-2 text-sm font-medium text-white">Need help?</p>
+      <p className="text-xs text-white/60">We're here to assist you.</p>
+      <a
+        href="mailto:info.systemaidesolutions@gmail.com"
+        className="mt-3 inline-block rounded-lg bg-brand-green px-3 py-1.5 text-xs font-medium text-white hover:brightness-110"
+      >
+        Contact Support
+      </a>
+    </div>
   );
 }
 
@@ -108,24 +137,9 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const sections = role === "ADMIN" ? ADMIN_NAV_SECTIONS : NAV_SECTIONS;
-  const [collapsed, setCollapsed] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(sections.map((s) => [s.title, true]))
   );
-
-  // Remember the collapsed state across visits, same as a real desktop
-  // app's docked navigation pane would.
-  useEffect(() => {
-    const stored = localStorage.getItem(COLLAPSE_KEY);
-    if (stored) setCollapsed(stored === "1");
-  }, []);
-
-  function toggleCollapsed() {
-    setCollapsed((prev) => {
-      localStorage.setItem(COLLAPSE_KEY, prev ? "0" : "1");
-      return !prev;
-    });
-  }
 
   function toggleSection(title: string) {
     setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }));
@@ -133,51 +147,28 @@ export function Sidebar({
 
   return (
     <>
-      {/* Desktop: docked, collapsible pane. Hidden below lg. */}
-      <aside
-        className={`sticky top-4 ml-4 mt-4 hidden h-[calc(100vh-2rem)] shrink-0 flex-col rounded-xl border border-neutral-200 bg-white shadow-sm transition-all lg:flex ${
-          collapsed ? "w-14" : "w-72"
-        }`}
-      >
-        <button
-          onClick={toggleCollapsed}
-          className="flex items-center justify-center gap-2 border-b border-neutral-100 py-3 text-neutral-400 hover:text-neutral-700"
-          title={collapsed ? "Expand menu" : "Collapse menu"}
-        >
-          {collapsed ? (
-            <ChevronRight size={16} />
-          ) : (
-            <>
-              <ChevronLeft size={16} />
-              <span className="text-[14px]">Collapse</span>
-            </>
-          )}
-        </button>
-
+      {/* Desktop: docked, flush, full-height dark pane. Hidden below lg. */}
+      <aside className="hidden w-64 shrink-0 flex-col bg-brand-navy lg:flex">
         <NavList
           sections={sections}
           pathname={pathname}
-          collapsed={collapsed}
           openSections={openSections}
           toggleSection={toggleSection}
         />
+        <HelpCard />
       </aside>
 
-      {/* Mobile/tablet: off-canvas drawer over a backdrop. */}
+      {/* Mobile/tablet: off-canvas dark drawer over a backdrop. */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/30"
-            onClick={onCloseMobile}
-            aria-hidden
-          />
-          <aside className="absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-neutral-100 px-3 py-3">
-              <span className="text-sm font-medium text-neutral-700">Menu</span>
+          <div className="absolute inset-0 bg-black/40" onClick={onCloseMobile} aria-hidden />
+          <aside className="absolute left-0 top-0 flex h-full w-64 max-w-[85vw] flex-col bg-brand-navy shadow-xl">
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+              <span className="text-sm font-medium text-white">Menu</span>
               <button
                 onClick={onCloseMobile}
                 aria-label="Close menu"
-                className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+                className="rounded p-1 text-white/70 hover:bg-white/10 hover:text-white"
               >
                 <X size={18} />
               </button>
@@ -185,10 +176,10 @@ export function Sidebar({
             <NavList
               sections={sections}
               pathname={pathname}
-              collapsed={false}
               openSections={openSections}
               toggleSection={toggleSection}
             />
+            <HelpCard />
           </aside>
         </div>
       )}

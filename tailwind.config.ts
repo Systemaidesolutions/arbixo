@@ -12,6 +12,7 @@ const config: Config = {
         brand: {
           navy: "#0B2A5E",
           navyLight: "#123A73",
+          navyDark: "#071d40",
           blue: "#1C9AD6",
           green: "#35B07A",
         },
