@@ -58,6 +58,7 @@ export function SalesForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [customerList, setCustomerList] = useState(customers);
 
   function updateLine(key: string, patch: Partial<LineState>) {
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
@@ -193,9 +194,14 @@ export function SalesForm({
               vendors={[]}
               employees={[]}
               contacts={[]}
-              customers={customers}
+              customers={customerList}
               types={["CUSTOMER"]}
               label="Customer"
+              companyId={companyId}
+              onCreated={(_t, record) => {
+                setCustomerList((l) => [...l, record as (typeof customerList)[number]]);
+                setCustomerId(record.id);
+              }}
             />
           </div>
 

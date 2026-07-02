@@ -58,6 +58,7 @@ export function PurchasesForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [vendorList, setVendorList] = useState(vendors);
 
   function updateLine(key: string, patch: Partial<LineState>) {
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
@@ -190,12 +191,17 @@ export function PurchasesForm({
               counterpartyId={vendorId}
               onTypeChange={() => {}}
               onIdChange={setVendorId}
-              vendors={vendors}
+              vendors={vendorList}
               employees={[]}
               contacts={[]}
               customers={[]}
               types={["VENDOR"]}
               label="Supplier"
+              companyId={companyId}
+              onCreated={(_t, record) => {
+                setVendorList((l) => [...l, record as (typeof vendorList)[number]]);
+                setVendorId(record.id);
+              }}
             />
           </div>
 

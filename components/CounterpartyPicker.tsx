@@ -1,11 +1,23 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Contact, CounterpartyType, Customer, Employee, Vendor } from "@prisma/client";
+import { QuickCreateModal, NewPartyForm } from "@/components/QuickCreate";
+
+type AnyParty = Customer | Vendor | Employee | Contact;
 
 function displayName(party: { tradeName?: string | null; firstName?: string | null; lastName?: string | null }) {
   return party.tradeName || `${party.firstName ?? ""} ${party.lastName ?? ""}`.trim();
 }
+
+const TYPE_LABELS: Record<CounterpartyType, string> = {
+  VENDOR: "Vendor",
+  EMPLOYEE: "Employee",
+  CONTACT: "Contact",
+  CUSTOMER: "Customer",
+};
+
+const NEW = "__new__";
 
 export function CounterpartyPicker({
   counterpartyType,
@@ -18,6 +30,8 @@ export function CounterpartyPicker({
   customers,
   types = ["VENDOR", "EMPLOYEE", "CONTACT", "CUSTOMER"],
   label = "Payee",
+  companyId,
+  onCreated,
 }: {
   counterpartyType: CounterpartyType | null;
   counterpartyId: string | null;
@@ -29,7 +43,13 @@ export function CounterpartyPicker({
   customers: Customer[];
   types?: CounterpartyType[];
   label?: string;
+  // When provided, the party dropdown offers "＋ New …" which opens a modal
+  // and, on success, calls onCreated so the parent form can append + select.
+  companyId?: string;
+  onCreated?: (type: CounterpartyType, record: AnyParty) => void;
 }) {
+  const [showNew, setShowNew] = useState(false);
+
   const options =
     counterpartyType === "VENDOR"
       ? vendors
@@ -41,48 +61,70 @@ export function CounterpartyPicker({
             ? customers
             : [];
 
+  const canCreate = !!companyId && !!onCreated && !!counterpartyType;
+
   const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const label_ = "block text-xs text-neutral-500";
-  const TYPE_LABELS: Record<CounterpartyType, string> = {
-    VENDOR: "Vendor",
-    EMPLOYEE: "Employee",
-    CONTACT: "Contact",
-    CUSTOMER: "Customer",
-  };
 
-  // Single allowed type (e.g. Sales on Account only deals with
-  // Customers) — skip the type dropdown entirely and show one picker.
   const singleType = types.length === 1 ? types[0] : null;
 
   useEffect(() => {
-    if (singleType && counterpartyType !== singleType) {
-      onTypeChange(singleType);
-    }
+    if (singleType && counterpartyType !== singleType) onTypeChange(singleType);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [singleType, counterpartyType]);
+
+  function handleSelect(value: string) {
+    if (value === NEW) {
+      setShowNew(true);
+      return;
+    }
+    onIdChange(value || null);
+  }
+
+  const partySelect = (disabled = false) => (
+    <select
+      value={counterpartyId ?? ""}
+      onChange={(e) => handleSelect(e.target.value)}
+      disabled={disabled}
+      className={`${field} disabled:bg-neutral-100`}
+    >
+      <option value="">Select…</option>
+      {canCreate && <option value={NEW}>＋ New {TYPE_LABELS[counterpartyType!].toLowerCase()}…</option>}
+      {options.map((o) => (
+        <option key={o.id} value={o.id}>
+          {o.code} — {displayName(o)}
+        </option>
+      ))}
+    </select>
+  );
+
+  const modal =
+    showNew && canCreate ? (
+      <QuickCreateModal title={`New ${TYPE_LABELS[counterpartyType!].toLowerCase()}`} onClose={() => setShowNew(false)}>
+        <NewPartyForm
+          companyId={companyId!}
+          type={counterpartyType!}
+          onCancel={() => setShowNew(false)}
+          onCreated={(record) => {
+            onCreated!(counterpartyType!, record);
+            setShowNew(false);
+          }}
+        />
+      </QuickCreateModal>
+    ) : null;
 
   if (singleType) {
     return (
       <label className={label_}>
         {label}
-        <select
-          value={counterpartyId ?? ""}
-          onChange={(e) => onIdChange(e.target.value || null)}
-          className={field}
-        >
-          <option value="">Select…</option>
-          {options.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.code} — {displayName(o)}
-            </option>
-          ))}
-        </select>
+        {partySelect(false)}
+        {modal}
       </label>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <label className={label_}>
         {label} type
         <select
@@ -104,20 +146,9 @@ export function CounterpartyPicker({
 
       <label className={label_}>
         {label}
-        <select
-          value={counterpartyId ?? ""}
-          onChange={(e) => onIdChange(e.target.value || null)}
-          disabled={!counterpartyType}
-          className={`${field} disabled:bg-neutral-100`}
-        >
-          <option value="">Select…</option>
-          {options.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.code} — {displayName(o)}
-            </option>
-          ))}
-        </select>
+        {partySelect(!counterpartyType)}
       </label>
+      {modal}
     </div>
   );
 }

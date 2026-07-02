@@ -75,6 +75,18 @@ export function CashDisbursementForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [vendorList, setVendorList] = useState(vendors);
+  const [employeeList, setEmployeeList] = useState(employees);
+  const [contactList, setContactList] = useState(contacts);
+  const [customerList, setCustomerList] = useState(customers);
+
+  function onPartyCreated(type: CounterpartyType, record: Vendor | Employee | Contact | Customer) {
+    if (type === "VENDOR") setVendorList((l) => [...l, record as Vendor]);
+    else if (type === "EMPLOYEE") setEmployeeList((l) => [...l, record as Employee]);
+    else if (type === "CONTACT") setContactList((l) => [...l, record as Contact]);
+    else setCustomerList((l) => [...l, record as Customer]);
+    setCounterpartyId(record.id);
+  }
 
   function updateLine(key: string, patch: Partial<LineState>) {
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
@@ -208,10 +220,12 @@ export function CashDisbursementForm({
               counterpartyId={counterpartyId}
               onTypeChange={setCounterpartyType}
               onIdChange={setCounterpartyId}
-              vendors={vendors}
-              employees={employees}
-              contacts={contacts}
-              customers={customers}
+              vendors={vendorList}
+              employees={employeeList}
+              contacts={contactList}
+              customers={customerList}
+              companyId={companyId}
+              onCreated={onPartyCreated}
             />
           </div>
 
