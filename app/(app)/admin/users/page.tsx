@@ -34,6 +34,7 @@ export default async function AdminUsersPage() {
     id: u.id,
     email: u.email,
     role: u.role,
+    subscriberSubtype: u.subscriberSubtype,
     companyId: u.companyId,
     companyName: u.company?.tradeName ?? null,
     isVerified: u.isVerified,
@@ -44,12 +45,22 @@ export default async function AdminUsersPage() {
   }));
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-12">
-      <h1 className="text-xl font-medium text-neutral-900">Users</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        Every account on this Arbixo instance. Disable an account to block sign-in without losing
-        its data; deletion is only allowed while the user's company has no posted transactions.
-      </p>
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-12">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-medium text-neutral-900">Users</h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            Every account on this Arbixo instance. Disable an account to block sign-in without losing
+            its data; deletion is only allowed while the user's company has no posted transactions.
+          </p>
+        </div>
+        <a
+          href="/admin/users/new"
+          className="rounded bg-brand-navy px-4 py-2 text-sm text-white hover:bg-brand-navyLight"
+        >
+          + Create user
+        </a>
+      </div>
 
       <AdminUsersTable users={rows} companies={companies} />
     </main>

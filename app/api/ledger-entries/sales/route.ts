@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { postDocument, DuplicateDocumentError, UnbalancedEntryError } from "@/lib/ledgerPosting";
+import { resolvePoster } from "@/lib/currentUser";
 import {
   expandVatLines,
   counterpartyFields,
@@ -36,6 +37,9 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+
+  const auth = await resolvePoster(companyId, "canPost");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const counterparty = counterpartyFields(body.counterpartyType ?? "CUSTOMER", body.counterpartyId);
   let glLines, receivableAmount: number;
@@ -84,6 +88,8 @@ export async function POST(request: NextRequest) {
       postingDate: new Date(postingDate),
       isReturn: body.isReturn ?? false,
       lines: finalLines,
+      createdById: auth.user.id,
+      isApproved: auth.capability.canApprove,
     });
     return NextResponse.json({ entries: created, receivableAmount }, { status: 201 });
   } catch (err) {

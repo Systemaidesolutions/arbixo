@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { getCurrentCompany } from "@/lib/currentUser";
+import { requirePostingCompany } from "@/lib/currentUser";
 import { toPlain } from "@/lib/serialize";
 import { suggestNextDocumentNo } from "@/lib/ledgerPosting";
 import { GeneralJournalForm } from "./GeneralJournalForm";
 
 export default async function GeneralJournalPage() {
-  const company = await getCurrentCompany();
+  const company = await requirePostingCompany();
 
   if (!company) {
     return (

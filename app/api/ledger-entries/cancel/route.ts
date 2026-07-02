@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { resolvePoster } from "@/lib/currentUser";
 import type { JournalType } from "@prisma/client";
 
+// Voiding/cancelling a posted document is a Manager-only "edit" power.
 export async function PATCH(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const { companyId, journalType, documentNo, isCancelled } = body ?? {};
@@ -12,6 +14,9 @@ export async function PATCH(request: NextRequest) {
       { status: 400 }
     );
   }
+
+  const auth = await resolvePoster(companyId, "canCancel");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const result = await prisma.ledgerEntry.updateMany({
     where: { companyId, journalType: journalType as JournalType, documentNo },

@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { SubscriberSubtype } from "@prisma/client";
+import { SUBTYPE_LABELS } from "@/lib/permissions";
 
 export type AdminUserRow = {
   id: string;
   email: string;
   role: "ADMIN" | "USER";
+  subscriberSubtype: SubscriberSubtype | null;
   companyId: string | null;
   companyName: string | null;
   isVerified: boolean;
@@ -116,6 +119,7 @@ export function AdminUsersTable({
             <tr>
               <th className="px-3 py-2 text-left">Email</th>
               <th className="px-3 py-2 text-left">Type</th>
+              <th className="px-3 py-2 text-left">Subtype</th>
               <th className="px-3 py-2 text-left">Company</th>
               <th className="px-3 py-2 text-left">Status</th>
               <th className="px-3 py-2 text-left">Txns</th>
@@ -142,6 +146,13 @@ export function AdminUsersTable({
                     >
                       {u.role === "ADMIN" ? "Arbixo admin" : "Subscriber"}
                     </span>
+                  </td>
+                  <td className="px-3 py-2 text-neutral-600">
+                    {u.role === "ADMIN" || !u.subscriberSubtype ? (
+                      <span className="text-neutral-400">—</span>
+                    ) : (
+                      SUBTYPE_LABELS[u.subscriberSubtype]
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     {u.role === "ADMIN" ? (
@@ -184,6 +195,12 @@ export function AdminUsersTable({
                   <td className="px-3 py-2 text-neutral-500">{u.createdAt.slice(0, 10)}</td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap justify-end gap-1.5">
+                      <a
+                        href={`/admin/users/${u.id}/edit`}
+                        className={`${btn} border-neutral-300 text-neutral-700 hover:bg-neutral-50`}
+                      >
+                        Edit
+                      </a>
                       {!u.isVerified && (
                         <button
                           onClick={() => patch(u.id, { isVerified: true })}

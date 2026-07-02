@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { computeWithholding } from "@/lib/vat";
 import { postDocument, DuplicateDocumentError, UnbalancedEntryError, type LedgerLineInput } from "@/lib/ledgerPosting";
+import { resolvePoster } from "@/lib/currentUser";
 import { counterpartyFields } from "@/lib/vatLineExpansion";
 import type { CounterpartyType, VatType } from "@prisma/client";
 
@@ -47,6 +48,9 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+
+  const auth = await resolvePoster(companyId, "canPost");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   for (const line of lines) {
     if (!line.accountId) {
@@ -101,6 +105,8 @@ export async function POST(request: NextRequest) {
       documentNo,
       postingDate: new Date(postingDate),
       lines: glLines,
+      createdById: auth.user.id,
+      isApproved: auth.capability.canApprove,
     });
     return NextResponse.json({ entries: created }, { status: 201 });
   } catch (err) {

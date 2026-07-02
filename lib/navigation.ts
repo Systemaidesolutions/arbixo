@@ -16,7 +16,8 @@ export type NavIcon =
   | "vat"
   | "dashboard"
   | "users"
-  | "companies";
+  | "companies"
+  | "approvals";
 
 export type NavLink = { href: string; label: string; icon: NavIcon };
 export type NavSection = {

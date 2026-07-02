@@ -28,11 +28,27 @@ enum UserRole {
   USER
 }
 
+// Subscriber (USER role) accounts have a subtype that determines what
+// they can do. Not applicable to ADMIN accounts (stays null).
+//   MANAGER        — everything a User can do, plus edit/void and approve
+//   USER           — encode and post transactions, generate BIR reports
+//   REPORT_CREATOR — view transactions and generate BIR reports only (read-only)
+enum SubscriberSubtype {
+  MANAGER
+  USER
+  REPORT_CREATOR
+}
+
 model User {
   id                    String    @id @default(cuid())
   email                 String    @unique
   passwordHash          String
   role                  UserRole  @default(USER)
+
+  // Only meaningful for subscriber (USER role) accounts; null for admins.
+  // Determines transaction/approval permissions — see SubscriberSubtype.
+  subscriberSubtype     SubscriberSubtype?
+
   isVerified            Boolean   @default(false)
   verificationCode      String?
   verificationExpiresAt DateTime?
@@ -479,6 +495,14 @@ model LedgerEntry {
   description  String? // Particulars / Nature
   checkNo      String? // Cash Disbursement only
   isCancelled  Boolean @default(false)
+
+  // Maker-checker review. A document posted by a subscriber "User" starts
+  // unapproved (pending a Manager's review); one posted by a Manager is
+  // auto-approved. This is an oversight stamp — it does NOT hide entries
+  // from reports. Defaults to true so pre-existing entries stay approved.
+  isApproved   Boolean   @default(true)
+  approvedById String?
+  approvedAt   DateTime?
 
   // --- VAT computation (VAT Computation popup in the manual) ---
   vatType     VatType?

@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/currentUser";
+import type { Prisma, SubscriberSubtype, UserRole } from "@prisma/client";
+
+const SUBTYPES: SubscriberSubtype[] = ["MANAGER", "USER", "REPORT_CREATOR"];
 
 // Admin actions on a single user: toggle disabled, bypass email
-// verification, and/or (re)assign the company the user belongs to.
+// verification, change user type / subtype, and/or (re)assign the company.
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = (await request.json().catch(() => null)) as
-    | { isDisabled?: boolean; isVerified?: boolean; companyId?: string | null }
+    | {
+        isDisabled?: boolean;
+        isVerified?: boolean;
+        companyId?: string | null;
+        role?: UserRole;
+        subscriberSubtype?: SubscriberSubtype | null;
+      }
     | null;
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
 
@@ -21,13 +30,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     return NextResponse.json({ error: "You can't disable your own account." }, { status: 400 });
   }
 
-  const data: {
-    isDisabled?: boolean;
-    isVerified?: boolean;
-    verificationCode?: null;
-    verificationExpiresAt?: null;
-    companyId?: string | null;
-  } = {};
+  const data: Prisma.UserUpdateInput = {};
 
   if (typeof body.isDisabled === "boolean") data.isDisabled = body.isDisabled;
   if (body.isVerified === true) {
@@ -36,10 +39,48 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     data.verificationExpiresAt = null;
   }
 
+  // User Type change. Switching to ADMIN clears the (subscriber-only)
+  // subtype and company; switching to USER requires a subtype.
+  let finalRole: UserRole = target.role;
+  if (body.role !== undefined) {
+    if (body.role !== "ADMIN" && body.role !== "USER") {
+      return NextResponse.json({ error: "Invalid user type." }, { status: 400 });
+    }
+    if (target.id === admin.id && body.role !== "ADMIN") {
+      return NextResponse.json({ error: "You can't change your own account type." }, { status: 400 });
+    }
+    finalRole = body.role;
+    data.role = body.role;
+    if (body.role === "ADMIN") {
+      data.subscriberSubtype = null;
+      data.company = { disconnect: true };
+    }
+  }
+
+  // Subscriber subtype.
+  if (finalRole === "USER" && body.subscriberSubtype !== undefined && body.subscriberSubtype !== null) {
+    if (!SUBTYPES.includes(body.subscriberSubtype)) {
+      return NextResponse.json({ error: "Invalid subscriber subtype." }, { status: 400 });
+    }
+    data.subscriberSubtype = body.subscriberSubtype;
+  }
+
+  // If the account is (or becomes) a subscriber, it must end up with a subtype.
+  if (finalRole === "USER") {
+    const resultingSubtype =
+      (data.subscriberSubtype as SubscriberSubtype | null | undefined) ?? target.subscriberSubtype;
+    if (!resultingSubtype) {
+      return NextResponse.json(
+        { error: "A subscriber must have a subtype (Manager, User, or Report Creator)." },
+        { status: 400 }
+      );
+    }
+  }
+
   // Company assignment. A user belongs to at most one company; a company
   // can have many users. Passing companyId:null unassigns.
-  if (body.companyId !== undefined) {
-    if (target.role !== "USER") {
+  if (body.companyId !== undefined && data.role !== "ADMIN") {
+    if (finalRole !== "USER") {
       return NextResponse.json(
         { error: "Only subscriber (USER) accounts can be assigned to a company." },
         { status: 400 }
@@ -48,9 +89,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (body.companyId) {
       const company = await prisma.company.findUnique({ where: { id: body.companyId } });
       if (!company) return NextResponse.json({ error: "Company not found" }, { status: 404 });
-      data.companyId = company.id;
+      data.company = { connect: { id: company.id } };
     } else {
-      data.companyId = null;
+      data.company = { disconnect: true };
     }
   }
 
@@ -62,6 +103,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   return NextResponse.json({
     user: {
       id: user.id,
+      role: user.role,
+      subscriberSubtype: user.subscriberSubtype,
       isDisabled: user.isDisabled,
       isVerified: user.isVerified,
       companyId: user.companyId,

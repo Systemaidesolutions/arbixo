@@ -22,9 +22,33 @@ import {
   FileBarChart2,
   FileText,
   LayoutDashboard,
+  ClipboardCheck,
   type LucideIcon,
 } from "lucide-react";
+import type { SubscriberSubtype } from "@prisma/client";
 import { NAV_SECTIONS, ADMIN_NAV_SECTIONS, type NavIcon, type NavSection } from "@/lib/navigation";
+import { capabilitiesFor } from "@/lib/permissions";
+
+const REVIEW_SECTION: NavSection = {
+  title: "Review",
+  icon: "admin",
+  links: [{ href: "/approvals", label: "Pending approvals", icon: "approvals" }],
+};
+
+// Builds the nav a subscriber sees based on their subtype: Report Creator
+// (read-only) loses the Transactions section; a Manager gains Approvals.
+function sectionsFor(role: "ADMIN" | "USER", subtype: SubscriberSubtype | null): NavSection[] {
+  if (role === "ADMIN") return ADMIN_NAV_SECTIONS;
+  const cap = capabilitiesFor(role, subtype);
+  let sections = NAV_SECTIONS;
+  if (!cap.canPost) {
+    sections = sections.filter((s) => s.title !== "Transactions");
+  }
+  if (cap.canApprove) {
+    sections = [...sections, REVIEW_SECTION];
+  }
+  return sections;
+}
 
 const LINK_ICONS: Record<NavIcon, LucideIcon> = {
   company: Building2,
@@ -45,6 +69,7 @@ const LINK_ICONS: Record<NavIcon, LucideIcon> = {
   dashboard: LayoutDashboard,
   users: Users,
   companies: Building2,
+  approvals: ClipboardCheck,
 };
 
 function NavList({
@@ -128,15 +153,17 @@ function HelpCard() {
 
 export function Sidebar({
   role,
+  subtype = null,
   mobileOpen = false,
   onCloseMobile,
 }: {
   role: "ADMIN" | "USER";
+  subtype?: SubscriberSubtype | null;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
 }) {
   const pathname = usePathname();
-  const sections = role === "ADMIN" ? ADMIN_NAV_SECTIONS : NAV_SECTIONS;
+  const sections = sectionsFor(role, subtype);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(sections.map((s) => [s.title, true]))
   );

@@ -30,6 +30,10 @@ export type PostDocumentInput = {
   postingDate: Date;
   isReturn?: boolean;
   lines: LedgerLineInput[];
+  // Who posted it, and whether it lands approved. A Manager's own posts
+  // are approved on the spot; a User's posts are pending a Manager review.
+  createdById?: string | null;
+  isApproved?: boolean;
 };
 
 export class UnbalancedEntryError extends Error {}
@@ -73,6 +77,8 @@ export async function postDocument(input: PostDocumentInput) {
     );
   }
 
+  const isApproved = input.isApproved ?? true;
+
   return prisma.$transaction(
     input.lines.map((line, index) =>
       prisma.ledgerEntry.create({
@@ -85,6 +91,10 @@ export async function postDocument(input: PostDocumentInput) {
           lineNo: index + 1,
           postingDate: input.postingDate,
           isReturn: input.isReturn ?? false,
+          createdById: input.createdById ?? null,
+          isApproved,
+          approvedById: isApproved ? input.createdById ?? null : null,
+          approvedAt: isApproved ? new Date() : null,
           accountId: line.accountId,
           debitAmount: line.debitAmount ?? 0,
           creditAmount: line.creditAmount ?? 0,

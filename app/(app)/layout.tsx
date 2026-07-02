@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user: SessionPayload = { sub: record.id, email: record.email, role: record.role };
 
   return (
-    <AppShell user={user} role={record.role}>
+    <AppShell user={user} role={record.role} subtype={record.subscriberSubtype}>
       {children}
     </AppShell>
   );

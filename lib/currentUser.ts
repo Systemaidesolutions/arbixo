@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { redirect } from "next/navigation";
 import type { Company, User } from "@prisma/client";
+import { capabilitiesFor, type Capability } from "@/lib/permissions";
 
 /**
  * The JWT session payload only carries id/email/role — enough for
@@ -55,4 +56,64 @@ export async function requireAdmin(): Promise<User> {
 export async function getAdminUser(): Promise<User | null> {
   const user = await getCurrentUserRecord();
   return user && user.role === "ADMIN" ? user : null;
+}
+
+/** Capabilities of the current user, derived from role + subscriber subtype. */
+export async function getCurrentCapability(): Promise<Capability | null> {
+  const user = await getCurrentUserRecord();
+  if (!user) return null;
+  return capabilitiesFor(user.role, user.subscriberSubtype);
+}
+
+/**
+ * Like getCurrentCompany, but for the transaction-posting screens: a user
+ * who can't post (Report Creator, or an admin) is redirected away rather
+ * than shown a form they can't submit. Returns null only when the poster
+ * has no company set up yet.
+ */
+export async function requirePostingCompany(): Promise<Company | null> {
+  const user = await getCurrentUserRecord();
+  if (!user) redirect("/login");
+  const capability = capabilitiesFor(user.role, user.subscriberSubtype);
+  if (!capability.canPost) redirect("/");
+  if (!user.companyId) return null;
+  return prisma.company.findUnique({ where: { id: user.companyId } });
+}
+
+export type PosterResult =
+  | { ok: true; user: User; capability: Capability }
+  | { ok: false; status: number; error: string };
+
+/**
+ * Authorizes a transaction-mutating request against the signed-in user.
+ * Also closes a gap where routes trusted companyId from the request body:
+ * a subscriber can only act on their OWN company. `need` selects which
+ * capability the action requires (post / cancel / approve).
+ */
+export async function resolvePoster(
+  companyId: string,
+  need: "canPost" | "canCancel" | "canApprove" = "canPost"
+): Promise<PosterResult> {
+  const user = await getCurrentUserRecord();
+  if (!user) return { ok: false, status: 401, error: "Not signed in." };
+  if (user.role !== "USER") {
+    return { ok: false, status: 403, error: "Only subscriber accounts can work on a company's books." };
+  }
+  if (!user.companyId) {
+    return { ok: false, status: 403, error: "Your account isn't assigned to a company yet." };
+  }
+  if (user.companyId !== companyId) {
+    return { ok: false, status: 403, error: "You can only act on your own company's records." };
+  }
+  const capability = capabilitiesFor(user.role, user.subscriberSubtype);
+  if (!capability[need]) {
+    const reason =
+      need === "canApprove"
+        ? "Only a Manager can approve transactions."
+        : need === "canCancel"
+          ? "Only a Manager can void transactions."
+          : "Your account is read-only and can't post transactions.";
+    return { ok: false, status: 403, error: reason };
+  }
+  return { ok: true, user, capability };
 }

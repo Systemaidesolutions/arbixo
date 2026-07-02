@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Sidebar } from "@/components/Sidebar";
 import { Footer } from "@/components/Footer";
 import type { SessionPayload } from "@/lib/auth";
+import type { SubscriberSubtype } from "@prisma/client";
 
 /**
  * App shell: fixed-height layout with a dark header on top, a dark docked
@@ -14,10 +15,12 @@ import type { SessionPayload } from "@/lib/auth";
 export function AppShell({
   user,
   role,
+  subtype = null,
   children,
 }: {
   user: SessionPayload | null;
   role: "ADMIN" | "USER";
+  subtype?: SubscriberSubtype | null;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -27,7 +30,12 @@ export function AppShell({
       <AppHeader user={user} onMenu={() => setMobileOpen(true)} />
 
       <div className="flex min-h-0 flex-1">
-        <Sidebar role={role} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
+        <Sidebar
+          role={role}
+          subtype={subtype}
+          mobileOpen={mobileOpen}
+          onCloseMobile={() => setMobileOpen(false)}
+        />
 
         <main className="relative flex-1 overflow-y-auto bg-gradient-to-b from-[#eef4fb] to-[#f7fafd]">
           {/* Faint brand watermark behind the content */}
