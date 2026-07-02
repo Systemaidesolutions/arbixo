@@ -114,3 +114,54 @@ export async function sendPasswordResetEmail(
 
   return { sent: true };
 }
+
+/**
+ * Subscription renewal reminder, sent ~1 week before a company's
+ * subscription ends. `to` is the combined recipient list (admins + the
+ * company's registered/billing emails). Always logged; sent via Resend
+ * when configured.
+ */
+export async function sendSubscriptionReminderEmail(
+  to: string[],
+  companyName: string,
+  endsOn: string,
+  daysLeft: number
+): Promise<{ sent: boolean }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM ?? "Arbixo <onboarding@resend.dev>";
+
+  console.log(
+    `[mail] Subscription reminder for "${companyName}" (ends ${endsOn}, ${daysLeft}d) -> ${to.join(", ")}`
+  );
+
+  if (!apiKey || to.length === 0) {
+    if (!apiKey) console.warn("[mail] RESEND_API_KEY not set — reminder not sent, only logged.");
+    return { sent: false };
+  }
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from,
+      to,
+      subject: `Arbixo subscription for ${companyName} renews soon`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 460px; margin: 0 auto;">
+          <h2 style="color: #0B2A5E;">Subscription renewal reminder</h2>
+          <p>The Arbixo subscription for <strong>${companyName}</strong> ends on
+          <strong>${endsOn}</strong> (${daysLeft} day${daysLeft === 1 ? "" : "s"} left).</p>
+          <p>Please renew to avoid interruption. Access continues even if it lapses, until an
+          administrator disables the account.</p>
+        </div>
+      `,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error(`[mail] Resend rejected the reminder (${res.status}): ${body}`);
+    return { sent: false };
+  }
+  return { sent: true };
+}

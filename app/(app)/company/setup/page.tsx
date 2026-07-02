@@ -52,6 +52,12 @@ export default async function CompanyDetailsPage() {
     ["Fax", company.faxNo],
     ["Authorized representative", company.authorizedRep],
     ["Position", company.authorizedRepPosition],
+    [
+      "Subscription",
+      company.subscriptionEndsAt
+        ? `Ends ${new Date(company.subscriptionEndsAt).toISOString().slice(0, 10)}`
+        : "—",
+    ],
   ];
 
   return (

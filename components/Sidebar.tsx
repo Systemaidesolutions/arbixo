@@ -88,14 +88,30 @@ function NavList({
   pathname,
   openSections,
   toggleSection,
+  dashboardHref,
 }: {
   sections: NavSection[];
   pathname: string;
   openSections: Record<string, boolean>;
   toggleSection: (title: string) => void;
+  dashboardHref: string;
 }) {
+  const dashActive = pathname === dashboardHref;
   return (
     <nav className="flex-1 overflow-y-auto px-3 py-4">
+      {/* Prominent Dashboard button at the top of the nav pane. */}
+      <a
+        href={dashboardHref}
+        className={`mb-3 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+          dashActive
+            ? "bg-gradient-to-r from-brand-blue to-[#1668c9] text-white shadow-sm"
+            : "bg-white/5 text-white hover:bg-white/10"
+        }`}
+      >
+        <LayoutDashboard size={17} className={dashActive ? "text-white" : "text-brand-blue"} />
+        Dashboard
+      </a>
+
       {sections.map((section) => {
         const isOpen = openSections[section.title];
         return (
@@ -175,6 +191,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const sections = sectionsFor(role, subtype);
+  const dashboardHref = role === "ADMIN" ? "/admin" : "/";
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(sections.map((s) => [s.title, true]))
   );
@@ -192,6 +209,7 @@ export function Sidebar({
           pathname={pathname}
           openSections={openSections}
           toggleSection={toggleSection}
+          dashboardHref={dashboardHref}
         />
         <HelpCard />
       </aside>
@@ -216,6 +234,7 @@ export function Sidebar({
               pathname={pathname}
               openSections={openSections}
               toggleSection={toggleSection}
+              dashboardHref={dashboardHref}
             />
             <HelpCard />
           </aside>

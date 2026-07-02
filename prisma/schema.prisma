@@ -105,6 +105,18 @@ model Company {
   // an admin control to cap log growth / database size.
   auditLogEnabled      Boolean  @default(true)
 
+  // Company-level sign-in control. When false, NO user of this company can
+  // log in (admin action for unpaid/closed accounts). A lapsed
+  // subscription alone does not set this — only an admin does.
+  isActive             Boolean  @default(true)
+
+  // Monthly subscription (admin-managed). Expiry shows a renew reminder
+  // but never blocks access by itself.
+  billingEmail               String?
+  subscriptionStartedAt      DateTime?
+  subscriptionEndsAt         DateTime?
+  subscriptionReminderSentAt DateTime? // guards against duplicate reminder emails
+
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 

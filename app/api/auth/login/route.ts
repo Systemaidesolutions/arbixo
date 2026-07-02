@@ -38,6 +38,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Company-level disable blocks all its users, regardless of subtype. A
+  // lapsed subscription does NOT reach here — only an admin toggling the
+  // company off does.
+  if (user.role === "USER" && user.companyId) {
+    const company = await prisma.company.findUnique({
+      where: { id: user.companyId },
+      select: { isActive: true },
+    });
+    if (company && !company.isActive) {
+      return NextResponse.json(
+        { error: "This company account has been disabled. Please contact your administrator." },
+        { status: 403 }
+      );
+    }
+  }
+
   // Audit the login against the user's company (subscribers only — admins
   // aren't scoped to a company).
   if (user.companyId) {

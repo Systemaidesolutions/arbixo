@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { AdminCompanyForm } from "../AdminCompanyForm";
 import { AuditToggle } from "../AuditToggle";
+import { SubscriptionPanel } from "../SubscriptionPanel";
 
 export default async function EditCompanyPage({ params }: { params: { id: string } }) {
   await requireAdmin();
@@ -48,6 +49,19 @@ export default async function EditCompanyPage({ params }: { params: { id: string
           </ul>
         )}
       </section>
+
+      {/* Subscription + company access */}
+      <div className="mt-6">
+        <SubscriptionPanel
+          companyId={company.id}
+          initial={{
+            isActive: company.isActive,
+            billingEmail: company.billingEmail,
+            subscriptionStartedAt: company.subscriptionStartedAt?.toISOString() ?? null,
+            subscriptionEndsAt: company.subscriptionEndsAt?.toISOString() ?? null,
+          }}
+        />
+      </div>
 
       {/* Settings — audit logging on/off */}
       <section className="mt-6 rounded-lg border border-neutral-200 p-4">

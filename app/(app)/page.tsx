@@ -17,9 +17,8 @@ import {
 } from "lucide-react";
 import { getCurrentCompany, getCurrentUserRecord } from "@/lib/currentUser";
 import { getDashboardSummary, type DashboardMetric } from "@/lib/reports";
-import {
-  REGISTRATION_TYPE_LABELS,
-} from "@/lib/company";
+import { REGISTRATION_TYPE_LABELS } from "@/lib/company";
+import { subscriptionStatus } from "@/lib/subscription";
 
 function peso(n: number): string {
   const s = Math.abs(n).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -108,6 +107,11 @@ export default async function HomePage() {
 
   const summary = await getDashboardSummary(company.id);
 
+  const sub = subscriptionStatus(company.subscriptionEndsAt);
+  const subEndsOn = company.subscriptionEndsAt
+    ? new Date(company.subscriptionEndsAt).toISOString().slice(0, 10)
+    : null;
+
   const address = [company.businessAddress, company.zipCode].filter(Boolean).join(", ");
   const info: Array<[string, string]> = [
     ["TIN", company.tin],
@@ -128,6 +132,28 @@ export default async function HomePage() {
           className="h-auto w-full max-w-[280px]"
         />
       </div>
+
+      {(sub.state === "expiring" || sub.state === "expired") && (
+        <div
+          className={`mt-6 rounded-lg border p-4 text-sm ${
+            sub.state === "expired"
+              ? "border-red-200 bg-red-50 text-red-800"
+              : "border-amber-200 bg-amber-50 text-amber-900"
+          }`}
+        >
+          {sub.state === "expiring" ? (
+            <>
+              Your subscription ends on <strong>{subEndsOn}</strong> ({sub.daysLeft} day
+              {sub.daysLeft === 1 ? "" : "s"} left). Please contact your administrator to renew.
+            </>
+          ) : (
+            <>
+              Your subscription expired on <strong>{subEndsOn}</strong>. Please contact your
+              administrator to renew — you can still view your data in the meantime.
+            </>
+          )}
+        </div>
+      )}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         {/* Company information */}
