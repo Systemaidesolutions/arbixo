@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { Account } from "@prisma/client";
+import type { Account, AccountClassification } from "@prisma/client";
 
 function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -152,12 +152,14 @@ export async function getIncomeStatement(
   return { revenue, expense, totalRevenue, totalExpense, netIncome: round2(totalRevenue - totalExpense) };
 }
 
-const ASSET_CLASSIFICATIONS = [
+const ASSET_CLASSIFICATIONS: AccountClassification[] = [
   "CASH_IN_BANK", "CASH_ON_HAND", "ACCOUNTS_RECEIVABLE", "OTHER_CURRENT_ASSET",
   "INVENTORY", "FIXED_ASSET", "ACCUMULATED_DEPRECIATION", "OTHER_ASSET",
 ];
-const LIABILITY_CLASSIFICATIONS = ["ACCOUNTS_PAYABLE", "OTHER_CURRENT_LIABILITY", "LONG_TERM_PAYABLE"];
-const EQUITY_CLASSIFICATIONS = ["EQUITY_DOES_NOT_CLOSE", "EQUITY_GETS_CLOSED"];
+const LIABILITY_CLASSIFICATIONS: AccountClassification[] = [
+  "ACCOUNTS_PAYABLE", "OTHER_CURRENT_LIABILITY", "LONG_TERM_PAYABLE",
+];
+const EQUITY_CLASSIFICATIONS: AccountClassification[] = ["EQUITY_DOES_NOT_CLOSE", "EQUITY_GETS_CLOSED"];
 
 export type BalanceSheetLine = { accountId: string; code: string; title: string; amount: number };
 
