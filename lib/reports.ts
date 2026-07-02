@@ -259,6 +259,82 @@ export async function getBalanceSheet(
   };
 }
 
+// ------------------------------------------------------------
+// Dashboard "At a Glance" summary — the headline figures shown on the
+// subscriber home page, each with a month-over-month change.
+// ------------------------------------------------------------
+const CASH_CLASSIFICATIONS: AccountClassification[] = ["CASH_IN_BANK", "CASH_ON_HAND"];
+
+export type DashboardMetric = { value: number; changePct: number | null };
+export type DashboardSummary = {
+  totalCash: DashboardMetric;
+  accountsReceivable: DashboardMetric;
+  accountsPayable: DashboardMetric;
+  grossSales: DashboardMetric; // this month's revenue
+  netProfit: DashboardMetric; // this month's net income
+};
+
+function changePct(current: number, prior: number): number | null {
+  // No meaningful percentage when there was nothing to compare against.
+  if (Math.abs(prior) < 0.005) return null;
+  return round2(((current - prior) / Math.abs(prior)) * 100);
+}
+
+export async function getDashboardSummary(
+  companyId: string,
+  now: Date = new Date()
+): Promise<DashboardSummary> {
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  // Last moment of the previous month.
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+  const accounts = await prisma.account.findMany({
+    where: { companyId },
+    select: { id: true, classification: true, normalBalance: true, openingBalance: true },
+  });
+
+  const [movNow, movPrior, isThisMonth, isLastMonth] = await Promise.all([
+    getAccountNetMovements(companyId, { lte: now }),
+    getAccountNetMovements(companyId, { lte: lastMonthEnd }),
+    getIncomeStatement(companyId, monthStart, now),
+    getIncomeStatement(companyId, lastMonthStart, lastMonthEnd),
+  ]);
+
+  // Debit-positive YTD balance summed across accounts of the given
+  // classifications (opening balance + all movement up to the cutoff).
+  function classSum(classes: AccountClassification[], mov: Map<string, number>): number {
+    let s = 0;
+    for (const a of accounts) {
+      if (!classes.includes(a.classification)) continue;
+      s += (mov.get(a.id) ?? 0) + openingBalanceSigned(a);
+    }
+    return round2(s);
+  }
+
+  const cashNow = classSum(CASH_CLASSIFICATIONS, movNow);
+  const cashPrior = classSum(CASH_CLASSIFICATIONS, movPrior);
+  const arNow = classSum(["ACCOUNTS_RECEIVABLE"], movNow);
+  const arPrior = classSum(["ACCOUNTS_RECEIVABLE"], movPrior);
+  // Payables are credit-normal, so flip the sign to show a positive owed amount.
+  const apNow = round2(-classSum(["ACCOUNTS_PAYABLE"], movNow));
+  const apPrior = round2(-classSum(["ACCOUNTS_PAYABLE"], movPrior));
+
+  return {
+    totalCash: { value: cashNow, changePct: changePct(cashNow, cashPrior) },
+    accountsReceivable: { value: arNow, changePct: changePct(arNow, arPrior) },
+    accountsPayable: { value: apNow, changePct: changePct(apNow, apPrior) },
+    grossSales: {
+      value: isThisMonth.totalRevenue,
+      changePct: changePct(isThisMonth.totalRevenue, isLastMonth.totalRevenue),
+    },
+    netProfit: {
+      value: isThisMonth.netIncome,
+      changePct: changePct(isThisMonth.netIncome, isLastMonth.netIncome),
+    },
+  };
+}
+
 export type SubsidiaryLedgerRow = {
   id: string;
   entryNo: number;
