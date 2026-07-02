@@ -3,6 +3,7 @@ import { postDocument, DuplicateDocumentError, UnbalancedEntryError } from "@/li
 import {
   expandVatLines,
   counterpartyFields,
+  flipLines,
   MissingPostingAccountError,
   type ExpandInputLine,
 } from "@/lib/vatLineExpansion";
@@ -11,12 +12,12 @@ import type { CounterpartyType } from "@prisma/client";
 type RequestBody = {
   companyId: string;
   locationId?: string | null;
-  documentNo: string;
-  checkNo?: string | null;
+  documentNo: string; // PV no., or CM no. when isReturn
   postingDate: string;
-  counterpartyType?: CounterpartyType | null;
+  isReturn?: boolean;
+  counterpartyType?: CounterpartyType | null; // normally VENDOR
   counterpartyId?: string | null;
-  cashAccountId: string;
+  payableAccountId: string;
   particulars?: string | null;
   lines: ExpandInputLine[];
 };
@@ -25,21 +26,23 @@ export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as RequestBody | null;
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
 
-  const { companyId, documentNo, cashAccountId, postingDate, lines } = body;
-  if (!companyId || !documentNo || !cashAccountId || !postingDate || !lines?.length) {
+  const { companyId, documentNo, payableAccountId, postingDate, lines } = body;
+  if (!companyId || !documentNo || !payableAccountId || !postingDate || !lines?.length) {
     return NextResponse.json(
-      { error: "companyId, documentNo, cashAccountId, postingDate, and at least one line are required" },
+      { error: "companyId, documentNo, payableAccountId, postingDate, and at least one line are required" },
       { status: 400 }
     );
   }
 
-  const counterparty = counterpartyFields(body.counterpartyType, body.counterpartyId);
-  let glLines, cashAmount: number;
+  const counterparty = counterpartyFields(body.counterpartyType ?? "VENDOR", body.counterpartyId);
+  let glLines, payableAmount: number;
 
   try {
+    // DEBIT direction: same as Cash Disbursement — Purchases/Input VAT
+    // are debited, withholding companion is a credit (liability).
     const result = await expandVatLines(companyId, lines, "DEBIT", counterparty, body.particulars, documentNo);
     glLines = result.glLines;
-    cashAmount = result.balancingAmount; // total debit minus withholding credited
+    payableAmount = result.balancingAmount;
   } catch (err) {
     if (err instanceof MissingPostingAccountError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
@@ -47,35 +50,38 @@ export async function POST(request: NextRequest) {
     throw err;
   }
 
-  if (cashAmount <= 0) {
+  if (payableAmount <= 0) {
     return NextResponse.json(
-      { error: "Computed cash amount is zero or negative — check the line amounts." },
+      { error: "Computed payable amount is zero or negative — check the line amounts." },
       { status: 400 }
     );
   }
 
-  // Balancing line: whatever's left after withholding is deducted is
-  // what actually leaves the bank/cash account — the manual's "Cash
-  // Amount" auto-computed balancing figure, made explicit.
+  // Balancing line: no cash moves yet — the amount owed (net of any
+  // withholding pre-recorded) becomes a payable, settled later via a
+  // Cash Disbursement entry against this same vendor.
   glLines.push({
-    accountId: cashAccountId,
-    creditAmount: cashAmount,
+    accountId: payableAccountId,
+    creditAmount: payableAmount,
     description: body.particulars ?? null,
-    checkNo: body.checkNo ?? null,
     ...counterparty,
   });
+
+  // A Purchase Return is the same entry, reversed — not a separate rule set.
+  const finalLines = body.isReturn ? flipLines(glLines) : glLines;
 
   try {
     const created = await postDocument({
       companyId,
       locationId: body.locationId ?? null,
-      journalType: "CASH_DISBURSEMENT",
-      documentType: "PAYMENT",
+      journalType: "PURCHASE_ON_ACCOUNT",
+      documentType: body.isReturn ? "CREDIT_MEMO" : "PURCHASE",
       documentNo,
       postingDate: new Date(postingDate),
-      lines: glLines,
+      isReturn: body.isReturn ?? false,
+      lines: finalLines,
     });
-    return NextResponse.json({ entries: created, cashAmount }, { status: 201 });
+    return NextResponse.json({ entries: created, payableAmount }, { status: 201 });
   } catch (err) {
     if (err instanceof UnbalancedEntryError || err instanceof DuplicateDocumentError) {
       return NextResponse.json({ error: err.message }, { status: 400 });

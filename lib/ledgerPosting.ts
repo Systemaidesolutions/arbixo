@@ -28,6 +28,7 @@ export type PostDocumentInput = {
   documentType?: DocumentType | null;
   documentNo: string;
   postingDate: Date;
+  isReturn?: boolean;
   lines: LedgerLineInput[];
 };
 
@@ -83,6 +84,7 @@ export async function postDocument(input: PostDocumentInput) {
           documentNo: input.documentNo,
           lineNo: index + 1,
           postingDate: input.postingDate,
+          isReturn: input.isReturn ?? false,
           accountId: line.accountId,
           debitAmount: line.debitAmount ?? 0,
           creditAmount: line.creditAmount ?? 0,

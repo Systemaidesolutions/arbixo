@@ -93,6 +93,16 @@ model TaxPostingSetup {
   withholdingTaxPayableAccount   Account? @relation("WithholdingTaxPayablePostingAccount", fields: [withholdingTaxPayableAccountId], references: [id])
   withholdingTaxPayableAccountId String?
 
+  // Distinct from the liability above: when a CUSTOMER withholds tax from
+  // paying us (Cash Receipts / Sales), the withheld amount is an ASSET —
+  // Creditable Withholding Tax at Source — that offsets our income tax
+  // due later. It is not the same account as the liability we credit
+  // when WE withhold from a vendor (Cash Disbursement / Purchases). The
+  // manual's own Cash Receipts screenshot labels this column
+  // "WITAX (DEBIT)" versus Cash Disbursement's "W/TAX (CREDIT)".
+  creditableWithholdingTaxAccount   Account? @relation("CreditableWithholdingTaxPostingAccount", fields: [creditableWithholdingTaxAccountId], references: [id])
+  creditableWithholdingTaxAccountId String?
+
   updatedAt DateTime @updatedAt
 }
 
@@ -151,6 +161,7 @@ model Account {
   inputVatPostingFor         TaxPostingSetup[] @relation("InputVatPostingAccount")
   outputVatPostingFor        TaxPostingSetup[] @relation("OutputVatPostingAccount")
   withholdingTaxPostingFor   TaxPostingSetup[] @relation("WithholdingTaxPayablePostingAccount")
+  creditableWithholdingTaxPostingFor TaxPostingSetup[] @relation("CreditableWithholdingTaxPostingAccount")
 
   @@unique([companyId, code])
   @@index([parentAccountId])

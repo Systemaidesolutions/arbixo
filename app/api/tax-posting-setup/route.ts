@@ -22,12 +22,14 @@ export async function PUT(request: NextRequest) {
       inputVatAccountId: body.inputVatAccountId ?? null,
       outputVatAccountId: body.outputVatAccountId ?? null,
       withholdingTaxPayableAccountId: body.withholdingTaxPayableAccountId ?? null,
+      creditableWithholdingTaxAccountId: body.creditableWithholdingTaxAccountId ?? null,
     },
     create: {
       companyId: body.companyId,
       inputVatAccountId: body.inputVatAccountId ?? null,
       outputVatAccountId: body.outputVatAccountId ?? null,
       withholdingTaxPayableAccountId: body.withholdingTaxPayableAccountId ?? null,
+      creditableWithholdingTaxAccountId: body.creditableWithholdingTaxAccountId ?? null,
     },
   });
 

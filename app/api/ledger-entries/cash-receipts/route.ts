@@ -12,7 +12,6 @@ type RequestBody = {
   companyId: string;
   locationId?: string | null;
   documentNo: string;
-  checkNo?: string | null;
   postingDate: string;
   counterpartyType?: CounterpartyType | null;
   counterpartyId?: string | null;
@@ -37,9 +36,9 @@ export async function POST(request: NextRequest) {
   let glLines, cashAmount: number;
 
   try {
-    const result = await expandVatLines(companyId, lines, "DEBIT", counterparty, body.particulars, documentNo);
+    const result = await expandVatLines(companyId, lines, "CREDIT", counterparty, body.particulars, documentNo);
     glLines = result.glLines;
-    cashAmount = result.balancingAmount; // total debit minus withholding credited
+    cashAmount = result.balancingAmount; // total credit minus withholding debited
   } catch (err) {
     if (err instanceof MissingPostingAccountError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
@@ -54,14 +53,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Balancing line: whatever's left after withholding is deducted is
-  // what actually leaves the bank/cash account — the manual's "Cash
-  // Amount" auto-computed balancing figure, made explicit.
+  // Balancing line: cash actually received is what's left after the
+  // customer's withholding is deducted — the mirror of Cash
+  // Disbursement's balancing Cash credit.
   glLines.push({
     accountId: cashAccountId,
-    creditAmount: cashAmount,
+    debitAmount: cashAmount,
     description: body.particulars ?? null,
-    checkNo: body.checkNo ?? null,
     ...counterparty,
   });
 
@@ -69,8 +67,8 @@ export async function POST(request: NextRequest) {
     const created = await postDocument({
       companyId,
       locationId: body.locationId ?? null,
-      journalType: "CASH_DISBURSEMENT",
-      documentType: "PAYMENT",
+      journalType: "CASH_RECEIPT",
+      documentType: "RECEIPT",
       documentNo,
       postingDate: new Date(postingDate),
       lines: glLines,

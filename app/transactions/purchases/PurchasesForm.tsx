@@ -1,17 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type {
-  Account,
-  AtcCode,
-  Contact,
-  CounterpartyType,
-  Customer,
-  Employee,
-  Location,
-  Vendor,
-  VatType,
-} from "@prisma/client";
+import { useMemo, useState } from "react";
+import type { Account, AtcCode, Location, Vendor, VatType } from "@prisma/client";
 import { VatComputationFields, type VatComputationValue } from "@/components/VatComputationFields";
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
 import { TransactionSummary } from "@/components/TransactionSummary";
@@ -38,25 +28,19 @@ function newLine(): LineState {
   };
 }
 
-export function CashDisbursementForm({
+export function PurchasesForm({
   companyId,
   accounts,
-  cashAccounts,
+  payableAccounts,
   vendors,
-  employees,
-  contacts,
-  customers,
   atcCodes,
   locations,
   suggestedDocumentNo,
 }: {
   companyId: string;
   accounts: Account[];
-  cashAccounts: Account[];
+  payableAccounts: Account[];
   vendors: Vendor[];
-  employees: Employee[];
-  contacts: Contact[];
-  customers: Customer[];
   atcCodes: AtcCode[];
   locations: Location[];
   suggestedDocumentNo: string;
@@ -64,10 +48,9 @@ export function CashDisbursementForm({
   const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
   const [locationId, setLocationId] = useState(locations.find((l) => l.isDefault)?.id ?? "");
   const [documentNo, setDocumentNo] = useState(suggestedDocumentNo);
-  const [checkNo, setCheckNo] = useState("");
-  const [counterpartyType, setCounterpartyType] = useState<CounterpartyType | null>("VENDOR");
-  const [counterpartyId, setCounterpartyId] = useState<string | null>(null);
-  const [cashAccountId, setCashAccountId] = useState(cashAccounts[0]?.id ?? "");
+  const [isReturn, setIsReturn] = useState(false);
+  const [vendorId, setVendorId] = useState<string | null>(null);
+  const [payableAccountId, setPayableAccountId] = useState(payableAccounts[0]?.id ?? "");
   const [particulars, setParticulars] = useState("");
   const [lines, setLines] = useState<LineState[]>([newLine()]);
   const [saving, setSaving] = useState(false);
@@ -78,11 +61,9 @@ export function CashDisbursementForm({
   function updateLine(key: string, patch: Partial<LineState>) {
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   }
-
   function addLine() {
     setLines((prev) => [...prev, newLine()]);
   }
-
   function removeLine(key: string) {
     setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.key !== key) : prev));
   }
@@ -95,8 +76,8 @@ export function CashDisbursementForm({
       totalDebit += line.computed.netAmount + line.computed.vatAmount;
       totalWithholding += line.computed.withholdingAmt;
     }
-    const cashAmount = Math.round((totalDebit - totalWithholding) * 100) / 100;
-    return { totalDebit, totalWithholding, cashAmount };
+    const payableAmount = Math.round((totalDebit - totalWithholding) * 100) / 100;
+    return { totalDebit, totalWithholding, payableAmount };
   }, [lines]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -109,11 +90,11 @@ export function CashDisbursementForm({
       companyId,
       locationId: locationId || null,
       documentNo,
-      checkNo: checkNo || null,
       postingDate,
-      counterpartyType,
-      counterpartyId,
-      cashAccountId,
+      isReturn,
+      counterpartyType: "VENDOR" as const,
+      counterpartyId: vendorId,
+      payableAccountId,
       particulars,
       lines: lines.map((l) => ({
         accountId: l.accountId,
@@ -124,7 +105,7 @@ export function CashDisbursementForm({
       })),
     };
 
-    const res = await fetch("/api/ledger-entries/cash-disbursement", {
+    const res = await fetch("/api/ledger-entries/purchases", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -138,18 +119,17 @@ export function CashDisbursementForm({
       return;
     }
 
-    setSuccess(`Posted CV ${documentNo}.`);
+    setSuccess(`Posted ${isReturn ? "CM" : "PV"} ${documentNo}.`);
     setRefreshKey((k) => k + 1);
 
-    // Reset for the next entry, matching the manual's "Save & New" flow.
     const nextRes = await fetch(
-      `/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=CASH_DISBURSEMENT`
+      `/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=PURCHASE_ON_ACCOUNT`
     );
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
-    setCheckNo("");
-    setCounterpartyId(null);
+    setVendorId(null);
     setParticulars("");
+    setIsReturn(false);
     setLines([newLine()]);
   }
 
@@ -158,14 +138,14 @@ export function CashDisbursementForm({
 
   return (
     <main className="mx-auto max-w-4xl p-8">
-      <h1 className="text-xl font-medium text-neutral-900">Cash disbursement</h1>
+      <h1 className="text-xl font-medium text-neutral-900">Purchases on account</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Every peso paid out — check disbursements, cash purchases, expense payments.
+        Invoices billed by a supplier — no cash moves until you pay (recorded separately, as a
+        Cash Disbursement).
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-        {/* Header */}
-        <div className="grid grid-cols-4 gap-3 rounded-lg border border-neutral-200 p-4">
+        <div className="grid grid-cols-3 gap-3 rounded-lg border border-neutral-200 p-4">
           <label className={label}>
             Date
             <input
@@ -177,17 +157,13 @@ export function CashDisbursementForm({
             />
           </label>
           <label className={label}>
-            CV no.
+            {isReturn ? "CM no." : "PV no."}
             <input
               required
               value={documentNo}
               onChange={(e) => setDocumentNo(e.target.value)}
               className={`${field} font-mono`}
             />
-          </label>
-          <label className={label}>
-            Check no. (optional)
-            <input value={checkNo} onChange={(e) => setCheckNo(e.target.value)} className={field} />
           </label>
           <label className={label}>
             Location (optional)
@@ -201,29 +177,37 @@ export function CashDisbursementForm({
             </select>
           </label>
 
-          <div className="col-span-4">
+          <label className="col-span-3 flex items-center gap-2 text-xs text-neutral-500">
+            <input type="checkbox" checked={isReturn} onChange={(e) => setIsReturn(e.target.checked)} />
+            Purchase return (reverses the entry below — goods sent back to supplier or invoice was
+            cancelled)
+          </label>
+
+          <div className="col-span-2">
             <CounterpartyPicker
-              counterpartyType={counterpartyType}
-              counterpartyId={counterpartyId}
-              onTypeChange={setCounterpartyType}
-              onIdChange={setCounterpartyId}
+              counterpartyType="VENDOR"
+              counterpartyId={vendorId}
+              onTypeChange={() => {}}
+              onIdChange={setVendorId}
               vendors={vendors}
-              employees={employees}
-              contacts={contacts}
-              customers={customers}
+              employees={[]}
+              contacts={[]}
+              customers={[]}
+              types={["VENDOR"]}
+              label="Supplier"
             />
           </div>
 
           <label className={label}>
-            Cash account
+            Payable account
             <select
               required
-              value={cashAccountId}
-              onChange={(e) => setCashAccountId(e.target.value)}
+              value={payableAccountId}
+              onChange={(e) => setPayableAccountId(e.target.value)}
               className={field}
             >
-              {cashAccounts.length === 0 && <option value="">No Cash in Bank/On Hand accounts yet</option>}
-              {cashAccounts.map((a) => (
+              {payableAccounts.length === 0 && <option value="">No Accounts Payable accounts yet</option>}
+              {payableAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.code} — {a.title}
                 </option>
@@ -237,7 +221,6 @@ export function CashDisbursementForm({
           </label>
         </div>
 
-        {/* Lines */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-neutral-900">Lines</h2>
@@ -262,7 +245,7 @@ export function CashDisbursementForm({
               </div>
 
               <label className={`${label} mb-3`}>
-                Account
+                Purchase / expense account
                 <select
                   required
                   value={line.accountId}
@@ -294,7 +277,6 @@ export function CashDisbursementForm({
           ))}
         </div>
 
-        {/* Totals */}
         <div className="grid grid-cols-3 gap-3 rounded-lg bg-neutral-50 p-4 text-sm">
           <div>
             <div className="text-xs text-neutral-400">Total debit</div>
@@ -305,8 +287,8 @@ export function CashDisbursementForm({
             <div className="font-mono">{totals.totalWithholding.toFixed(2)}</div>
           </div>
           <div>
-            <div className="text-xs text-neutral-400">Cash (credit)</div>
-            <div className="font-mono font-medium">{totals.cashAmount.toFixed(2)}</div>
+            <div className="text-xs text-neutral-400">Payable (credit)</div>
+            <div className="font-mono font-medium">{totals.payableAmount.toFixed(2)}</div>
           </div>
         </div>
 
@@ -325,9 +307,9 @@ export function CashDisbursementForm({
       <div className="mt-10">
         <TransactionSummary
           companyId={companyId}
-          journalType="CASH_DISBURSEMENT"
-          documentNoLabel="CV no."
-          counterpartyLabel="Payee"
+          journalType="PURCHASE_ON_ACCOUNT"
+          documentNoLabel="PV no."
+          counterpartyLabel="Supplier"
           refreshKey={refreshKey}
         />
       </div>

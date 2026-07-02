@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type {
   Account,
   AtcCode,
@@ -38,7 +38,7 @@ function newLine(): LineState {
   };
 }
 
-export function CashDisbursementForm({
+export function CashReceiptsForm({
   companyId,
   accounts,
   cashAccounts,
@@ -64,8 +64,7 @@ export function CashDisbursementForm({
   const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
   const [locationId, setLocationId] = useState(locations.find((l) => l.isDefault)?.id ?? "");
   const [documentNo, setDocumentNo] = useState(suggestedDocumentNo);
-  const [checkNo, setCheckNo] = useState("");
-  const [counterpartyType, setCounterpartyType] = useState<CounterpartyType | null>("VENDOR");
+  const [counterpartyType, setCounterpartyType] = useState<CounterpartyType | null>("CUSTOMER");
   const [counterpartyId, setCounterpartyId] = useState<string | null>(null);
   const [cashAccountId, setCashAccountId] = useState(cashAccounts[0]?.id ?? "");
   const [particulars, setParticulars] = useState("");
@@ -88,15 +87,15 @@ export function CashDisbursementForm({
   }
 
   const totals = useMemo(() => {
-    let totalDebit = 0;
+    let totalCredit = 0;
     let totalWithholding = 0;
     for (const line of lines) {
       if (!line.computed) continue;
-      totalDebit += line.computed.netAmount + line.computed.vatAmount;
+      totalCredit += line.computed.netAmount + line.computed.vatAmount;
       totalWithholding += line.computed.withholdingAmt;
     }
-    const cashAmount = Math.round((totalDebit - totalWithholding) * 100) / 100;
-    return { totalDebit, totalWithholding, cashAmount };
+    const cashAmount = Math.round((totalCredit - totalWithholding) * 100) / 100;
+    return { totalCredit, totalWithholding, cashAmount };
   }, [lines]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -109,7 +108,6 @@ export function CashDisbursementForm({
       companyId,
       locationId: locationId || null,
       documentNo,
-      checkNo: checkNo || null,
       postingDate,
       counterpartyType,
       counterpartyId,
@@ -124,7 +122,7 @@ export function CashDisbursementForm({
       })),
     };
 
-    const res = await fetch("/api/ledger-entries/cash-disbursement", {
+    const res = await fetch("/api/ledger-entries/cash-receipts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -138,16 +136,14 @@ export function CashDisbursementForm({
       return;
     }
 
-    setSuccess(`Posted CV ${documentNo}.`);
+    setSuccess(`Posted OR ${documentNo}.`);
     setRefreshKey((k) => k + 1);
 
-    // Reset for the next entry, matching the manual's "Save & New" flow.
     const nextRes = await fetch(
-      `/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=CASH_DISBURSEMENT`
+      `/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=CASH_RECEIPT`
     );
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
-    setCheckNo("");
     setCounterpartyId(null);
     setParticulars("");
     setLines([newLine()]);
@@ -158,14 +154,14 @@ export function CashDisbursementForm({
 
   return (
     <main className="mx-auto max-w-4xl p-8">
-      <h1 className="text-xl font-medium text-neutral-900">Cash disbursement</h1>
+      <h1 className="text-xl font-medium text-neutral-900">Cash receipts</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Every peso paid out — check disbursements, cash purchases, expense payments.
+        Every peso received — cash sales, collections on account, other income.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
         {/* Header */}
-        <div className="grid grid-cols-4 gap-3 rounded-lg border border-neutral-200 p-4">
+        <div className="grid grid-cols-3 gap-3 rounded-lg border border-neutral-200 p-4">
           <label className={label}>
             Date
             <input
@@ -177,17 +173,13 @@ export function CashDisbursementForm({
             />
           </label>
           <label className={label}>
-            CV no.
+            OR no.
             <input
               required
               value={documentNo}
               onChange={(e) => setDocumentNo(e.target.value)}
               className={`${field} font-mono`}
             />
-          </label>
-          <label className={label}>
-            Check no. (optional)
-            <input value={checkNo} onChange={(e) => setCheckNo(e.target.value)} className={field} />
           </label>
           <label className={label}>
             Location (optional)
@@ -201,7 +193,7 @@ export function CashDisbursementForm({
             </select>
           </label>
 
-          <div className="col-span-4">
+          <div className="col-span-3">
             <CounterpartyPicker
               counterpartyType={counterpartyType}
               counterpartyId={counterpartyId}
@@ -211,6 +203,8 @@ export function CashDisbursementForm({
               employees={employees}
               contacts={contacts}
               customers={customers}
+              types={["CUSTOMER", "VENDOR", "EMPLOYEE", "CONTACT"]}
+              label="Payor"
             />
           </div>
 
@@ -231,7 +225,7 @@ export function CashDisbursementForm({
             </select>
           </label>
 
-          <label className="col-span-3 block text-xs text-neutral-500">
+          <label className="col-span-2 block text-xs text-neutral-500">
             Particulars
             <input value={particulars} onChange={(e) => setParticulars(e.target.value)} className={field} />
           </label>
@@ -297,15 +291,15 @@ export function CashDisbursementForm({
         {/* Totals */}
         <div className="grid grid-cols-3 gap-3 rounded-lg bg-neutral-50 p-4 text-sm">
           <div>
-            <div className="text-xs text-neutral-400">Total debit</div>
-            <div className="font-mono">{totals.totalDebit.toFixed(2)}</div>
+            <div className="text-xs text-neutral-400">Total credit</div>
+            <div className="font-mono">{totals.totalCredit.toFixed(2)}</div>
           </div>
           <div>
             <div className="text-xs text-neutral-400">Withholding</div>
             <div className="font-mono">{totals.totalWithholding.toFixed(2)}</div>
           </div>
           <div>
-            <div className="text-xs text-neutral-400">Cash (credit)</div>
+            <div className="text-xs text-neutral-400">Cash (debit)</div>
             <div className="font-mono font-medium">{totals.cashAmount.toFixed(2)}</div>
           </div>
         </div>
@@ -325,9 +319,9 @@ export function CashDisbursementForm({
       <div className="mt-10">
         <TransactionSummary
           companyId={companyId}
-          journalType="CASH_DISBURSEMENT"
-          documentNoLabel="CV no."
-          counterpartyLabel="Payee"
+          journalType="CASH_RECEIPT"
+          documentNoLabel="OR no."
+          counterpartyLabel="Payor"
           refreshKey={refreshKey}
         />
       </div>

@@ -1,4 +1,3 @@
-.vercel
 # dependencies
 node_modules/
 
@@ -6,23 +5,18 @@ node_modules/
 .next/
 out/
 
-# Production
-build/
-
-# Environment variables
+# environment variables — NEVER commit real database credentials
 .env
-.env.local
-.env.production
-.env.development
+.env*.local
 
-# Vercel
-.vercel/
+# Prisma
+prisma/*.db
 
-# Logs
-npm-debug.log*
-yarn-debug.log*
-pnpm-debug.log*
-
-# OS
+# misc
 .DS_Store
-Thumbs.db
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/

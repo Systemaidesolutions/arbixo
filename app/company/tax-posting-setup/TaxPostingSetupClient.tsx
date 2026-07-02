@@ -17,6 +17,9 @@ export function TaxPostingSetupClient({
   const [withholdingTaxPayableAccountId, setWithholdingTaxPayableAccountId] = useState(
     initialSetup?.withholdingTaxPayableAccountId ?? ""
   );
+  const [creditableWithholdingTaxAccountId, setCreditableWithholdingTaxAccountId] = useState(
+    initialSetup?.creditableWithholdingTaxAccountId ?? ""
+  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -32,6 +35,7 @@ export function TaxPostingSetupClient({
         inputVatAccountId: inputVatAccountId || null,
         outputVatAccountId: outputVatAccountId || null,
         withholdingTaxPayableAccountId: withholdingTaxPayableAccountId || null,
+        creditableWithholdingTaxAccountId: creditableWithholdingTaxAccountId || null,
       }),
     });
     setSaving(false);
@@ -89,7 +93,20 @@ export function TaxPostingSetupClient({
             onChange={setWithholdingTaxPayableAccountId}
           />
           <span className="mt-1 block text-xs text-neutral-400">
-            Other Current Liability — tax withheld from vendors, remitted to BIR later.
+            Other Current Liability — tax YOU withhold from vendors (Cash Disbursement,
+            Purchases), remitted to BIR later.
+          </span>
+        </label>
+
+        <label className={label}>
+          Creditable withholding tax account
+          <AccountSelect
+            value={creditableWithholdingTaxAccountId}
+            onChange={setCreditableWithholdingTaxAccountId}
+          />
+          <span className="mt-1 block text-xs text-neutral-400">
+            Other Current Asset — tax a CUSTOMER withholds from paying you (Cash Receipts, Sales).
+            Offsets your income tax due; not the same account as the liability above.
           </span>
         </label>
 
