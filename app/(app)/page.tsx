@@ -21,8 +21,7 @@ import { REGISTRATION_TYPE_LABELS } from "@/lib/company";
 import { subscriptionStatus } from "@/lib/subscription";
 
 function peso(n: number): string {
-  const s = Math.abs(n).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return `${n < 0 ? "-₱" : "₱"}${s}`;
+  return n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function ChangeBadge({ pct }: { pct: number | null }) {
@@ -123,14 +122,23 @@ export default async function HomePage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
       <div className="flex flex-col items-center">
-        <Image
-          src="/arbixo-logo.jpg"
-          alt="Arbixo — Accounting Intelligence. Business Excellence."
-          width={480}
-          height={269}
-          priority
-          className="h-auto w-full max-w-[280px]"
-        />
+        {company.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={company.logoUrl}
+            alt={company.tradeName}
+            className="h-auto max-h-28 w-auto max-w-[280px] object-contain"
+          />
+        ) : (
+          <Image
+            src="/arbixo-logo.jpg"
+            alt="Arbixo — Accounting Intelligence. Business Excellence."
+            width={480}
+            height={269}
+            priority
+            className="h-auto w-full max-w-[280px]"
+          />
+        )}
       </div>
 
       {(sub.state === "expiring" || sub.state === "expired" || sub.state === "none") && (

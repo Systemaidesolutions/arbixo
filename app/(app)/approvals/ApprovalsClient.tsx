@@ -22,7 +22,7 @@ const JOURNAL_LABELS: Record<JournalType, string> = {
 };
 
 function peso(n: number): string {
-  return `₱${n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function ApprovalsClient({ companyId, docs }: { companyId: string; docs: PendingDoc[] }) {

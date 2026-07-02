@@ -9,6 +9,7 @@ type SettingsPayload = {
   auditLogEnabled?: boolean;
   isActive?: boolean;
   billingEmail?: string | null;
+  logoUrl?: string | null;
   subscriptionStartedAt?: string | null;
   subscriptionEndsAt?: string | null;
   renewMonths?: number;
@@ -19,6 +20,7 @@ const SETTINGS_KEYS: (keyof SettingsPayload)[] = [
   "auditLogEnabled",
   "isActive",
   "billingEmail",
+  "logoUrl",
   "subscriptionStartedAt",
   "subscriptionEndsAt",
   "renewMonths",
@@ -50,6 +52,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (typeof raw.auditLogEnabled === "boolean") data.auditLogEnabled = raw.auditLogEnabled;
     if (typeof raw.isActive === "boolean") data.isActive = raw.isActive;
     if ("billingEmail" in raw) data.billingEmail = raw.billingEmail?.trim() || null;
+    if ("logoUrl" in raw) data.logoUrl = raw.logoUrl?.trim() || null;
     if ("subscriptionStartedAt" in raw) {
       data.subscriptionStartedAt = raw.subscriptionStartedAt ? new Date(raw.subscriptionStartedAt) : null;
     }

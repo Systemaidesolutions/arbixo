@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Menu, User, ChevronDown } from "lucide-react";
 import { LogoutButton } from "@/components/LogoutButton";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import type { SessionPayload } from "@/lib/auth";
 
 export function AppHeader({
@@ -45,7 +46,8 @@ export function AppHeader({
 
         {user && (
           <div className="ml-auto flex items-center gap-2 sm:gap-4">
-            <span className="hidden max-w-[40vw] truncate text-sm text-white/80 sm:inline">
+            <GlobalSearch />
+            <span className="hidden max-w-[24vw] truncate text-sm text-white/80 lg:inline">
               {user.email}
             </span>
             <LogoutButton />

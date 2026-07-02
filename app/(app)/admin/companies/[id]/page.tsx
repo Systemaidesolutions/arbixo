@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { AdminCompanyForm } from "../AdminCompanyForm";
 import { AuditToggle } from "../AuditToggle";
 import { SubscriptionPanel } from "../SubscriptionPanel";
+import { LogoField } from "../LogoField";
 
 export default async function EditCompanyPage({ params }: { params: { id: string } }) {
   await requireAdmin();
@@ -61,6 +62,11 @@ export default async function EditCompanyPage({ params }: { params: { id: string
             subscriptionEndsAt: company.subscriptionEndsAt?.toISOString() ?? null,
           }}
         />
+      </div>
+
+      {/* Company logo */}
+      <div className="mt-6">
+        <LogoField companyId={company.id} initial={company.logoUrl} />
       </div>
 
       {/* Settings — audit logging on/off */}
