@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AppHeader } from "@/components/AppHeader";
 
 // Every page in this app reads live database state (accounts, ledger
 // entries, reports) — none of it should ever be statically generated at
@@ -12,14 +13,17 @@ import "./globals.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "EJAS Web",
-  description: "Accounting system",
+  title: "Arbixo",
+  description: "Accounting Intelligence. Business Excellence. — powered by Systemaide Solutions Inc.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AppHeader />
+        {children}
+      </body>
     </html>
   );
 }

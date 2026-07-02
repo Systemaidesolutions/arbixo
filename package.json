@@ -1,5 +1,5 @@
 {
-  "name": "ejas-web",
+  "name": "arbixo",
   "private": true,
   "scripts": {
     "dev": "next dev",

@@ -1,8 +1,33 @@
-# EJAS Web — conversion notes
+# Arbixo — conversion notes
 
 This maps the "Easy Journal Accounting System" desktop manual onto the
 Next.js + Prisma + Postgres stack, following Business Central conventions
-where they diverge from the manual.
+where they diverge from the manual. The web product itself is branded
+**Arbixo** ("Accounting Intelligence. Business Excellence." — powered by
+Systemaide Solutions Inc.) — the manual is the source material being
+converted, not the product name.
+
+## Branding
+
+- `public/arbixo-logo.jpg` — the full logo (icon + wordmark + tagline +
+  "Powered by" line), used as-is on the home page hero rather than
+  re-typeset, so it stays pixel-faithful to the brand asset.
+- `public/arbixo-icon.png` — a cropped icon-only version (just the AR
+  mark) for the compact header, generated once via ImageMagick rather
+  than re-drawn.
+- `tailwind.config.ts` — `brand.navy` / `brand.blue` / `brand.green`,
+  colors picked directly off the logo (navy from the "A" and wordmark,
+  blue from the "R" gradient, green from the arrow/globe), not a
+  freely-chosen palette.
+- `components/AppHeader.tsx` — included once in `app/layout.tsx`, so
+  every page gets the branded header automatically rather than needing
+  it added per-page.
+- Primary buttons across every form use `bg-[#0B2A5E]` (brand navy)
+  instead of the generic `neutral-900` black used during earlier stages.
+  Body text and headings deliberately stay neutral gray — the brand
+  color is spent on the header and calls-to-action, not on every
+  heading, so dense data tables (the majority of this app) stay
+  readable rather than competing with color everywhere.
 
 ## What `prisma/schema.prisma` captures
 

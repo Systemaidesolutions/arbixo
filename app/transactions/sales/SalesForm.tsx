@@ -300,7 +300,7 @@ export function SalesForm({
         <button
           type="submit"
           disabled={saving}
-          className="rounded bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+          className="rounded bg-[#0B2A5E] hover:bg-[#123A73] px-4 py-2 text-sm text-white disabled:opacity-50"
         >
           {saving ? "Posting…" : "Save & new"}
         </button>

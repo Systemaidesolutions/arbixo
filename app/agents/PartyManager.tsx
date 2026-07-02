@@ -488,7 +488,7 @@ export function PartyManager({
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+                className="rounded bg-[#0B2A5E] hover:bg-[#123A73] px-3 py-1.5 text-sm text-white disabled:opacity-50"
               >
                 {saving ? "Saving…" : form.mode === "create" ? "Create" : "Save changes"}
               </button>
