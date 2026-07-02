@@ -49,18 +49,18 @@ export function AppShell({
           style={
             branding?.background
               ? {
+                  // A quarter-page decoration pinned to the bottom-right,
+                  // not a full-cover background.
                   backgroundImage: "url(/api/branding/background)",
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right bottom",
+                  backgroundSize: "min(40%, 480px) auto",
                   backgroundAttachment: "fixed",
                 }
               : undefined
           }
         >
-          {/* A custom background gets a soft white scrim so content stays readable. */}
-          {branding?.background ? (
-            <div aria-hidden className="pointer-events-none absolute inset-0 bg-white/70" />
-          ) : (
+          {!branding?.background && (
             <div
               aria-hidden
               className="pointer-events-none absolute inset-x-0 top-0 flex justify-center overflow-hidden"
