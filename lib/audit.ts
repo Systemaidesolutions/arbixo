@@ -14,7 +14,7 @@ export function getClientIp(request: NextRequest): string | null {
  * own errors — auditing must never break the action it's recording.
  */
 export async function logAudit(params: {
-  companyId: string;
+  companyId: string | null;
   username: string;
   action: string;
   ipAddress?: string | null;

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { capabilitiesFor } from "@/lib/permissions";
 import { BackupClient } from "./BackupClient";
+import { RestoreClient } from "./RestoreClient";
 
 export default async function BackupPage() {
   const user = await getCurrentUserRecord();
@@ -21,11 +22,14 @@ export default async function BackupPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-12">
-      <h1 className="text-xl font-medium text-neutral-900">Data backup</h1>
+      <h1 className="text-xl font-medium text-neutral-900">Data backup &amp; restore</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Download a JSON snapshot of your data. (Credentials are never included.)
+        Download a JSON snapshot of your data, or restore from one. (Credentials are never included.)
       </p>
       <BackupClient isAdmin={isAdmin} companies={companies} ownCompany={ownCompany} />
+      <div className="mt-6">
+        <RestoreClient isAdmin={isAdmin} />
+      </div>
     </main>
   );
 }

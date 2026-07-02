@@ -51,6 +51,8 @@ function makePrismaClient() {
           if (!type) return query(args);
 
           const result = await query(args);
+          // Skip auto-logging while a restore is running.
+          if (getAuditActor()?.suppress) return result;
           try {
             const record =
               result && typeof result === "object" && !Array.isArray(result)
