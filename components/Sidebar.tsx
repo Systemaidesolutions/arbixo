@@ -26,6 +26,7 @@ import {
   ScrollText,
   Database,
   Palette,
+  Link2,
   type LucideIcon,
 } from "lucide-react";
 import type { SubscriberSubtype } from "@prisma/client";
@@ -83,6 +84,7 @@ const LINK_ICONS: Record<NavIcon, LucideIcon> = {
   audit: ScrollText,
   backup: Database,
   branding: Palette,
+  links: Link2,
 };
 
 function NavList({

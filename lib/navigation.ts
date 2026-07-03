@@ -20,7 +20,8 @@ export type NavIcon =
   | "approvals"
   | "audit"
   | "backup"
-  | "branding";
+  | "branding"
+  | "links";
 
 export type NavLink = { href: string; label: string; icon: NavIcon };
 export type NavSection = {
@@ -90,6 +91,7 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
       { href: "/admin/users", label: "User list", icon: "users" },
       { href: "/admin/companies", label: "Company list", icon: "companies" },
       { href: "/admin/branding", label: "Branding", icon: "branding" },
+      { href: "/admin/related-links", label: "Related links", icon: "links" },
     ],
   },
   UTILITY_SECTION,

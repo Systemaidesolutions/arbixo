@@ -51,6 +51,19 @@ model AppSettings {
   updatedAt       DateTime @updatedAt
 }
 
+// Admin-curated shortcuts shown on every subscriber's dashboard — e.g. the
+// BIR site, an online tax calculator, SSS/PhilHealth. Platform-wide (not
+// company-scoped); the logo is an optional base64 data URL.
+model RelatedLink {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  logoUrl   String?  @db.Text
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model User {
   id                    String    @id @default(cuid())
   email                 String    @unique

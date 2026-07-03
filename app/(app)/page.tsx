@@ -12,12 +12,12 @@ import {
   CreditCard,
   TrendingUp,
   PiggyBank,
-  ArrowRight,
+  Link2,
   type LucideIcon,
 } from "lucide-react";
 import { getCurrentCompany, getCurrentUserRecord } from "@/lib/currentUser";
 import { getDashboardSummary, type DashboardMetric } from "@/lib/reports";
-import { REGISTRATION_TYPE_LABELS } from "@/lib/company";
+import { getDisplayLinks } from "@/lib/relatedLinks";
 import { subscriptionStatus } from "@/lib/subscription";
 
 function peso(n: number): string {
@@ -108,6 +108,7 @@ export default async function HomePage() {
   }
 
   const summary = await getDashboardSummary(company.id);
+  const relatedLinks = await getDisplayLinks();
 
   // Time-of-day greeting, Philippine time (UTC+8, no DST).
   const phHour = (new Date().getUTCHours() + 8) % 24;
@@ -123,14 +124,6 @@ export default async function HomePage() {
   const subEndsOn = company.subscriptionEndsAt
     ? new Date(company.subscriptionEndsAt).toISOString().slice(0, 10)
     : null;
-
-  const address = [company.businessAddress, company.zipCode].filter(Boolean).join(", ");
-  const info: Array<[string, string]> = [
-    ["TIN", company.tin],
-    ["Registration", REGISTRATION_TYPE_LABELS[company.registrationType]],
-    ["Address", address],
-    ["RDO", company.rdoCode],
-  ];
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
@@ -257,26 +250,43 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Company information */}
+        {/* Related links */}
         <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
           <div className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-            Company Information
+            Related Links
           </div>
-          <h2 className="mt-1 text-xl font-semibold text-brand-navy">{company.tradeName}</h2>
-          <dl className="mt-4 space-y-2.5 text-sm">
-            {info.map(([label, value]) => (
-              <div key={label} className="grid grid-cols-[92px_1fr] gap-2">
-                <dt className="text-neutral-400">{label}</dt>
-                <dd className="text-neutral-800">{value || "—"}</dd>
-              </div>
-            ))}
-          </dl>
-          <a
-            href="/company/setup"
-            className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand-blue hover:underline"
-          >
-            View company details <ArrowRight size={14} />
-          </a>
+          {relatedLinks.length === 0 ? (
+            <p className="mt-4 text-sm text-neutral-400">
+              No links yet. Your administrator can add helpful links (BIR, tax calculators, etc.)
+              here.
+            </p>
+          ) : (
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {relatedLinks.map((l) => (
+                <a
+                  key={l.id}
+                  href={l.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center justify-center gap-2 rounded-lg border border-neutral-200 p-4 text-center transition-colors hover:border-brand-blue/40 hover:bg-neutral-50"
+                >
+                  {l.hasLogo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/related-links/${l.id}/logo`}
+                      alt=""
+                      className="h-8 w-8 object-contain"
+                    />
+                  ) : (
+                    <Link2 size={22} className="text-brand-blue" />
+                  )}
+                  <span className="w-full truncate text-xs font-medium text-neutral-600">
+                    {l.name}
+                  </span>
+                </a>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </main>

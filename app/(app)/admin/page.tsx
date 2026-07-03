@@ -176,6 +176,12 @@ export default async function AdminDashboardPage() {
         >
           Audit trail →
         </a>
+        <a
+          href="/admin/related-links"
+          className="rounded border border-neutral-200 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+        >
+          Related links setup →
+        </a>
       </div>
     </main>
   );
