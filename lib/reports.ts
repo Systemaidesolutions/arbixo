@@ -335,6 +335,62 @@ export async function getDashboardSummary(
   };
 }
 
+// Per-account (or per-line) detail behind each dashboard tile, so clicking a
+// tile can reveal exactly what makes up the figure. Each metric's lines sum to
+// that tile's value.
+export type DashboardBreakdownLine = { code: string | null; title: string; amount: number };
+export type DashboardBreakdowns = {
+  totalCash: DashboardBreakdownLine[];
+  accountsReceivable: DashboardBreakdownLine[];
+  accountsPayable: DashboardBreakdownLine[];
+  grossSales: DashboardBreakdownLine[];
+  netProfit: DashboardBreakdownLine[];
+};
+
+export async function getDashboardBreakdowns(
+  companyId: string,
+  now: Date = new Date()
+): Promise<DashboardBreakdowns> {
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [accounts, movNow, isThisMonth] = await Promise.all([
+    prisma.account.findMany({
+      where: { companyId },
+      select: { id: true, code: true, title: true, classification: true, normalBalance: true, openingBalance: true },
+    }),
+    getAccountNetMovements(companyId, { lte: now }),
+    getIncomeStatement(companyId, monthStart, now),
+  ]);
+
+  // Debit-positive YTD balance per account of the given classifications,
+  // dropping accounts with a zero balance.
+  function perAccount(classes: AccountClassification[], sign: 1 | -1): DashboardBreakdownLine[] {
+    return accounts
+      .filter((a) => classes.includes(a.classification))
+      .map((a) => ({
+        code: a.code,
+        title: a.title,
+        amount: round2(sign * ((movNow.get(a.id) ?? 0) + openingBalanceSigned(a))),
+      }))
+      .filter((l) => Math.abs(l.amount) >= 0.005)
+      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+  }
+
+  return {
+    totalCash: perAccount(CASH_CLASSIFICATIONS, 1),
+    accountsReceivable: perAccount(["ACCOUNTS_RECEIVABLE"], 1),
+    // Payables are credit-normal — flip the sign so lines show as positive owed.
+    accountsPayable: perAccount(["ACCOUNTS_PAYABLE"], -1),
+    grossSales: isThisMonth.revenue.map((l) => ({ code: l.code, title: l.title, amount: l.amount })),
+    // Net profit = revenue (positive) less expenses (shown negative); the
+    // lines sum to the tile's net figure.
+    netProfit: [
+      ...isThisMonth.revenue.map((l) => ({ code: l.code, title: l.title, amount: l.amount })),
+      ...isThisMonth.expense.map((l) => ({ code: l.code, title: l.title, amount: round2(-l.amount) })),
+    ],
+  };
+}
+
 export type SubsidiaryLedgerRow = {
   id: string;
   entryNo: number;

@@ -7,62 +7,14 @@ import {
   ArrowUpToLine,
   NotebookPen,
   BarChart3,
-  Wallet,
-  Landmark,
-  CreditCard,
-  TrendingUp,
-  PiggyBank,
   Link2,
   type LucideIcon,
 } from "lucide-react";
 import { getCurrentCompany, getCurrentUserRecord } from "@/lib/currentUser";
-import { getDashboardSummary, type DashboardMetric } from "@/lib/reports";
+import { getDashboardSummary, getDashboardBreakdowns } from "@/lib/reports";
 import { getDisplayLinks } from "@/lib/relatedLinks";
 import { subscriptionStatus } from "@/lib/subscription";
-
-function peso(n: number): string {
-  return n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function ChangeBadge({ pct }: { pct: number | null }) {
-  if (pct === null) {
-    return <span className="text-xs text-white/40">— vs last month</span>;
-  }
-  const up = pct >= 0;
-  return (
-    <span className={`text-xs font-medium ${up ? "text-emerald-300" : "text-red-300"}`}>
-      {up ? "↑" : "↓"} {Math.abs(pct).toFixed(1)}% vs last month
-    </span>
-  );
-}
-
-function StatTile({
-  icon: Icon,
-  iconClass,
-  label,
-  metric,
-  sub,
-}: {
-  icon: LucideIcon;
-  iconClass: string;
-  label: string;
-  metric: DashboardMetric;
-  sub: string;
-}) {
-  return (
-    <div className="rounded-xl bg-white/5 p-4 ring-1 ring-white/10">
-      <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconClass}`}>
-        <Icon size={18} />
-      </div>
-      <div className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-white/60">{label}</div>
-      <div className="mt-0.5 text-xl font-semibold text-white">{peso(metric.value)}</div>
-      <div className="text-xs text-white/50">{sub}</div>
-      <div className="mt-1">
-        <ChangeBadge pct={metric.changePct} />
-      </div>
-    </div>
-  );
-}
+import { SnapshotTiles } from "@/components/SnapshotTiles";
 
 const QUICK_ACTIONS: Array<{ href: string; label: string; icon: LucideIcon; iconClass: string }> = [
   { href: "/transactions/sales", label: "New Sale", icon: ShoppingCart, iconClass: "text-brand-green" },
@@ -107,7 +59,10 @@ export default async function HomePage() {
     );
   }
 
-  const summary = await getDashboardSummary(company.id);
+  const [summary, breakdowns] = await Promise.all([
+    getDashboardSummary(company.id),
+    getDashboardBreakdowns(company.id),
+  ]);
   const relatedLinks = await getDisplayLinks();
 
   // Time-of-day greeting, Philippine time (UTC+8, no DST).
@@ -170,43 +125,7 @@ export default async function HomePage() {
             Financial Snapshot
           </span>
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <StatTile
-            icon={Wallet}
-            iconClass="bg-emerald-500/20 text-emerald-300"
-            label="Total Cash"
-            metric={summary.totalCash}
-            sub="Current Balance"
-          />
-          <StatTile
-            icon={Landmark}
-            iconClass="bg-sky-500/20 text-sky-300"
-            label="Accounts Receivable"
-            metric={summary.accountsReceivable}
-            sub="Total Outstanding"
-          />
-          <StatTile
-            icon={CreditCard}
-            iconClass="bg-purple-500/20 text-purple-300"
-            label="Accounts Payable"
-            metric={summary.accountsPayable}
-            sub="Total Payables"
-          />
-          <StatTile
-            icon={TrendingUp}
-            iconClass="bg-brand-green/20 text-emerald-300"
-            label="Gross Sales"
-            metric={summary.grossSales}
-            sub="This Month"
-          />
-          <StatTile
-            icon={PiggyBank}
-            iconClass="bg-amber-500/20 text-amber-300"
-            label="Net Profit"
-            metric={summary.netProfit}
-            sub="This Month"
-          />
-        </div>
+        <SnapshotTiles summary={summary} breakdowns={breakdowns} periodLabel={monthLabel} />
       </section>
 
       {/* Quick actions (below the snapshot) + company information */}
