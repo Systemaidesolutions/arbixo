@@ -18,7 +18,7 @@ export default async function GeneralJournalPage() {
 
   const [accounts, vendors, employees, contacts, customers, atcCodes, locations, suggestedDocumentNo] =
     await Promise.all([
-      prisma.account.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
+      prisma.account.findMany({ where: { companyId: company.id, isActive: true, accountType: "POSTING" }, orderBy: { code: "asc" } }),
       prisma.vendor.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
       prisma.employee.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
       prisma.contact.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),

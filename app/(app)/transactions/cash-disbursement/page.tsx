@@ -18,9 +18,9 @@ export default async function CashDisbursementPage() {
 
   const [accounts, cashAccounts, vendors, employees, contacts, customers, atcCodes, locations, suggestedDocumentNo] =
     await Promise.all([
-      prisma.account.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
+      prisma.account.findMany({ where: { companyId: company.id, isActive: true, accountType: "POSTING" }, orderBy: { code: "asc" } }),
       prisma.account.findMany({
-        where: { companyId: company.id, isActive: true, classification: { in: ["CASH_IN_BANK", "CASH_ON_HAND"] } },
+        where: { companyId: company.id, isActive: true, accountType: "POSTING", classification: { in: ["CASH_IN_BANK", "CASH_ON_HAND"] } },
         orderBy: { code: "asc" },
       }),
       prisma.vendor.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),

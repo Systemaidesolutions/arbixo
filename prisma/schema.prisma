@@ -250,6 +250,13 @@ enum NormalBalance {
   CREDIT
 }
 
+// Heading = a non-postable grouping row that subtotals the posting accounts
+// nested beneath it. Posting = a leaf you can actually post transactions to.
+enum AccountType {
+  HEADING
+  POSTING
+}
+
 model Account {
   id             String                @id @default(cuid())
   company        Company               @relation(fields: [companyId], references: [id])
@@ -257,6 +264,10 @@ model Account {
   code           String
   title          String
   classification AccountClassification
+  accountType    AccountType           @default(POSTING)
+  // Explicit display order within a parent — the imported chart's row order,
+  // which account codes alone don't always reproduce.
+  sortOrder      Int                   @default(0)
   isActive       Boolean               @default(true)
 
   // Hierarchy — lets "Cash in Bank" be a parent of "Cash in Bank - BPI",

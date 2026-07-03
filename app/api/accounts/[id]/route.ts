@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import type { AccountClassification, NormalBalance } from "@prisma/client";
+import type { AccountClassification, AccountType, NormalBalance } from "@prisma/client";
 
 // Walks upward from candidateParentId toward the root, looking for
 // accountId. Used to block reparenting an account under one of its own
@@ -38,6 +38,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     title,
     classification,
     normalBalance,
+    accountType,
+    sortOrder,
     isActive,
     parentAccountId,
     openingBalance,
@@ -78,6 +80,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       title: title ?? undefined,
       classification: (classification as AccountClassification) ?? undefined,
       normalBalance: (normalBalance as NormalBalance) ?? undefined,
+      accountType: (accountType as AccountType) ?? undefined,
+      sortOrder: typeof sortOrder === "number" ? sortOrder : undefined,
       isActive: typeof isActive === "boolean" ? isActive : undefined,
       parentAccountId: parentAccountId === undefined ? undefined : parentAccountId,
       openingBalance: openingBalance ?? undefined,

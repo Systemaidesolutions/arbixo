@@ -1,1065 +1,424 @@
-// AUTO-GENERATED from the client's "Chart of Accounts.xlsx" — the default
-// chart seeded into every newly created company. Editable afterwards in the
-// Chart of Accounts screen. Section headers (all-caps groupings) are omitted;
-// classification/normal balance are derived from the account code + title.
-import type { AccountClassification, NormalBalance } from "@prisma/client";
+// AUTO-GENERATED from the client's approved "Chart of Accounts (V.2 cleaned).csv".
+// The default chart seeded into every new company: a nested tree of Heading
+// accounts (non-postable). Posting accounts are added afterward in the Chart
+// of Accounts screen. classification/normalBalance are carried for schema
+// completeness; they only drive behavior on Posting accounts.
+import type { AccountClassification, AccountType, NormalBalance } from "@prisma/client";
 
 export type DefaultAccount = {
   code: string;
   title: string;
+  accountType: AccountType;
   classification: AccountClassification;
   normalBalance: NormalBalance;
+  parentCode: string | null;
+  sortOrder: number;
 };
 
 export const DEFAULT_CHART_OF_ACCOUNTS: DefaultAccount[] = [
   {
+    "code": "10000",
+    "title": "ASSETS",
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_ASSET",
+    "normalBalance": "DEBIT",
+    "parentCode": null,
+    "sortOrder": 0
+  },
+  {
     "code": "11000",
-    "title": "Cash and Cash Equivalents",
-    "classification": "CASH_ON_HAND",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11010",
-    "title": "Cash on Hand",
-    "classification": "CASH_ON_HAND",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11011",
-    "title": "Petty Cash Fund",
-    "classification": "CASH_ON_HAND",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11012",
-    "title": "Revolving Fund",
-    "classification": "CASH_ON_HAND",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11020",
-    "title": "Cash in Bank",
-    "classification": "CASH_IN_BANK",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11021",
-    "title": "BDO Checking",
-    "classification": "CASH_IN_BANK",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11022",
-    "title": "BDO Savings",
-    "classification": "CASH_IN_BANK",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11023",
-    "title": "BPI Checking",
-    "classification": "CASH_IN_BANK",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11024",
-    "title": "BPI Savings",
-    "classification": "CASH_IN_BANK",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11025",
-    "title": "Metrobank",
-    "classification": "CASH_IN_BANK",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11026",
-    "title": "LandBank",
-    "classification": "CASH_IN_BANK",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11027",
-    "title": "UnionBank",
-    "classification": "CASH_IN_BANK",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11028",
-    "title": "GCash Business",
-    "classification": "CASH_IN_BANK",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11029",
-    "title": "Maya Business",
-    "classification": "CASH_IN_BANK",
-    "normalBalance": "DEBIT"
+    "title": "CURRENT ASSETS",
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_ASSET",
+    "normalBalance": "DEBIT",
+    "parentCode": "10000",
+    "sortOrder": 1
   },
   {
     "code": "11100",
-    "title": "Accounts Receivable",
-    "classification": "ACCOUNTS_RECEIVABLE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11110",
-    "title": "Trade Receivables",
-    "classification": "ACCOUNTS_RECEIVABLE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11120",
-    "title": "Customer Advances",
-    "classification": "ACCOUNTS_RECEIVABLE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11130",
-    "title": "Employee Receivables",
-    "classification": "ACCOUNTS_RECEIVABLE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11140",
-    "title": "Receivable - Officers",
-    "classification": "ACCOUNTS_RECEIVABLE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11150",
-    "title": "Receivable - Stockholders",
-    "classification": "ACCOUNTS_RECEIVABLE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11160",
-    "title": "Affiliate Receivables",
-    "classification": "ACCOUNTS_RECEIVABLE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11190",
-    "title": "Allowance for Doubtful Accounts (-)",
-    "classification": "ACCOUNTS_RECEIVABLE",
-    "normalBalance": "CREDIT"
+    "title": "Cash and Cash Equivalents",
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_ASSET",
+    "normalBalance": "DEBIT",
+    "parentCode": "11000",
+    "sortOrder": 2
   },
   {
     "code": "11200",
-    "title": "Merchandise Inventory",
-    "classification": "INVENTORY",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11210",
-    "title": "Raw Materials",
-    "classification": "INVENTORY",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11220",
-    "title": "Work in Process",
-    "classification": "INVENTORY",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11230",
-    "title": "Finished Goods",
-    "classification": "INVENTORY",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11240",
-    "title": "Office Supplies Inventory",
-    "classification": "INVENTORY",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11250",
-    "title": "Shop Supplies",
-    "classification": "INVENTORY",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11260",
-    "title": "Spare Parts",
-    "classification": "INVENTORY",
-    "normalBalance": "DEBIT"
+    "title": "Accounts Receivable",
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_ASSET",
+    "normalBalance": "DEBIT",
+    "parentCode": "11000",
+    "sortOrder": 3
   },
   {
     "code": "11300",
-    "title": "Prepayments",
+    "title": "Merchandise Inventory",
+    "accountType": "HEADING",
     "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11310",
-    "title": "Prepaid Rent",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11320",
-    "title": "Prepaid Insurance",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11330",
-    "title": "Prepaid Taxes",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11340",
-    "title": "Prepaid Licenses",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11350",
-    "title": "Prepaid Software",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11390",
-    "title": "Other Prepaid Expenses",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT"
+    "normalBalance": "DEBIT",
+    "parentCode": "11000",
+    "sortOrder": 4
   },
   {
     "code": "11400",
-    "title": "Input VAT",
+    "title": "Prepayments",
+    "accountType": "HEADING",
     "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11410",
-    "title": "Input VAT - Goods",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11420",
-    "title": "Input VAT - Services",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11430",
-    "title": "Input VAT - Capital Goods",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11440",
-    "title": "Creditable Withholding Tax",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "11450",
-    "title": "Deferred Input VAT",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT"
+    "normalBalance": "DEBIT",
+    "parentCode": "11000",
+    "sortOrder": 5
   },
   {
     "code": "11500",
-    "title": "Other Current Assets",
+    "title": "Input VAT",
+    "accountType": "HEADING",
     "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT"
+    "normalBalance": "DEBIT",
+    "parentCode": "11000",
+    "sortOrder": 6
+  },
+  {
+    "code": "11600",
+    "title": "Other Current Assets",
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_ASSET",
+    "normalBalance": "DEBIT",
+    "parentCode": "11000",
+    "sortOrder": 7
+  },
+  {
+    "code": "12200",
+    "title": "NON-CURRENT ASSETS",
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_ASSET",
+    "normalBalance": "DEBIT",
+    "parentCode": "10000",
+    "sortOrder": 8
   },
   {
     "code": "12010",
     "title": "Land",
-    "classification": "FIXED_ASSET",
-    "normalBalance": "DEBIT"
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_ASSET",
+    "normalBalance": "DEBIT",
+    "parentCode": "12200",
+    "sortOrder": 9
   },
   {
     "code": "12020",
-    "title": "Land Improvements",
-    "classification": "FIXED_ASSET",
-    "normalBalance": "DEBIT"
+    "title": "Fixed Asset",
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_ASSET",
+    "normalBalance": "DEBIT",
+    "parentCode": "12200",
+    "sortOrder": 10
   },
   {
     "code": "12030",
-    "title": "Building",
-    "classification": "FIXED_ASSET",
-    "normalBalance": "DEBIT"
+    "title": "Goodwill",
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_ASSET",
+    "normalBalance": "DEBIT",
+    "parentCode": "12200",
+    "sortOrder": 11
   },
   {
     "code": "12040",
-    "title": "Building Improvements",
-    "classification": "FIXED_ASSET",
-    "normalBalance": "DEBIT"
+    "title": "Accumulated Depreciation",
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_ASSET",
+    "normalBalance": "DEBIT",
+    "parentCode": "12200",
+    "sortOrder": 12
   },
   {
-    "code": "12050",
-    "title": "Furniture and Fixtures",
-    "classification": "FIXED_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "12060",
-    "title": "Office Equipment",
-    "classification": "FIXED_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "12070",
-    "title": "Computer Equipment",
-    "classification": "FIXED_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "12080",
-    "title": "Transportation Equipment",
-    "classification": "FIXED_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "12090",
-    "title": "Machinery",
-    "classification": "FIXED_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "12100",
-    "title": "Leasehold Improvements",
-    "classification": "FIXED_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "12110",
-    "title": "Construction in Progress",
-    "classification": "FIXED_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "12150",
-    "title": "Software",
-    "classification": "OTHER_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "12160",
-    "title": "Website Development",
-    "classification": "OTHER_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "12170",
-    "title": "Trademark",
-    "classification": "OTHER_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "12180",
-    "title": "Patent",
-    "classification": "OTHER_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "12190",
-    "title": "Goodwill",
-    "classification": "OTHER_ASSET",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "12910",
-    "title": "Accumulated Depreciation - Building",
-    "classification": "ACCUMULATED_DEPRECIATION",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "12920",
-    "title": "Accumulated Depreciation - Furniture",
-    "classification": "ACCUMULATED_DEPRECIATION",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "12930",
-    "title": "Accumulated Depreciation - Office Equipment",
-    "classification": "ACCUMULATED_DEPRECIATION",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "12940",
-    "title": "Accumulated Depreciation - Vehicles",
-    "classification": "ACCUMULATED_DEPRECIATION",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "12950",
-    "title": "Accumulated Depreciation - Machinery",
-    "classification": "ACCUMULATED_DEPRECIATION",
-    "normalBalance": "CREDIT"
+    "code": "20000",
+    "title": "LIABILITIES",
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_LIABILITY",
+    "normalBalance": "CREDIT",
+    "parentCode": null,
+    "sortOrder": 13
   },
   {
     "code": "21000",
-    "title": "Accounts Payable",
-    "classification": "ACCOUNTS_PAYABLE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21010",
-    "title": "Trade Payables",
-    "classification": "ACCOUNTS_PAYABLE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21020",
-    "title": "Supplier Payables",
-    "classification": "ACCOUNTS_PAYABLE",
-    "normalBalance": "CREDIT"
+    "title": "CURRENT LIABILITIES",
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_LIABILITY",
+    "normalBalance": "CREDIT",
+    "parentCode": "20000",
+    "sortOrder": 14
   },
   {
     "code": "21100",
-    "title": "Notes Payable",
+    "title": "Accounts Payable",
+    "accountType": "HEADING",
     "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "21000",
+    "sortOrder": 15
   },
   {
     "code": "21200",
-    "title": "Accrued Expenses",
+    "title": "Notes Payable",
+    "accountType": "HEADING",
     "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21210",
-    "title": "Accrued Salaries",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21220",
-    "title": "Accrued Utilities",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21230",
-    "title": "Accrued Professional Fees",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "21000",
+    "sortOrder": 16
   },
   {
     "code": "21300",
-    "title": "Government Payable",
+    "title": "Accrued Expenses",
+    "accountType": "HEADING",
     "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21310",
-    "title": "Output VAT Payable",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21320",
-    "title": "Withholding Tax Payable - Expanded",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21330",
-    "title": "Withholding Tax Payable - Compensation",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21340",
-    "title": "Final Tax Payable",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21350",
-    "title": "SSS Payable",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21360",
-    "title": "PhilHealth Payable",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21370",
-    "title": "Pag-IBIG Payable",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21380",
-    "title": "Income Tax Payable",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21390",
-    "title": "Local Business Tax Payable",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "21000",
+    "sortOrder": 17
   },
   {
     "code": "21400",
+    "title": "Government Payable",
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_LIABILITY",
+    "normalBalance": "CREDIT",
+    "parentCode": "21000",
+    "sortOrder": 18
+  },
+  {
+    "code": "21500",
     "title": "Other Current Liabilities",
+    "accountType": "HEADING",
     "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "21000",
+    "sortOrder": 19
   },
   {
-    "code": "21410",
-    "title": "Due to Employees",
+    "code": "22000",
+    "title": "NONCURRENT LIABILITY",
+    "accountType": "HEADING",
     "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21420",
-    "title": "Due to Officers",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21430",
-    "title": "Due to Stockholders",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21440",
-    "title": "Customer Deposits",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "21450",
-    "title": "Unearned Revenue",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "20000",
+    "sortOrder": 20
   },
   {
     "code": "22010",
     "title": "Long-term Notes Payable",
-    "classification": "LONG_TERM_PAYABLE",
-    "normalBalance": "CREDIT"
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_LIABILITY",
+    "normalBalance": "CREDIT",
+    "parentCode": "22000",
+    "sortOrder": 21
   },
   {
     "code": "22020",
-    "title": "Bank Loan",
-    "classification": "LONG_TERM_PAYABLE",
-    "normalBalance": "CREDIT"
+    "title": "Other Non-Current Payable",
+    "accountType": "HEADING",
+    "classification": "OTHER_CURRENT_LIABILITY",
+    "normalBalance": "CREDIT",
+    "parentCode": "22000",
+    "sortOrder": 22
   },
   {
-    "code": "22030",
-    "title": "Lease Liability",
-    "classification": "LONG_TERM_PAYABLE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "22040",
-    "title": "Deferred Tax Liability",
-    "classification": "LONG_TERM_PAYABLE",
-    "normalBalance": "CREDIT"
+    "code": "30000",
+    "title": "EQUITY",
+    "accountType": "HEADING",
+    "classification": "EQUITY_DOES_NOT_CLOSE",
+    "normalBalance": "CREDIT",
+    "parentCode": null,
+    "sortOrder": 23
   },
   {
     "code": "31000",
     "title": "Capital Stock",
+    "accountType": "HEADING",
     "classification": "EQUITY_DOES_NOT_CLOSE",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "30000",
+    "sortOrder": 24
   },
   {
     "code": "31100",
     "title": "Additional Paid-in Capital",
+    "accountType": "HEADING",
     "classification": "EQUITY_DOES_NOT_CLOSE",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "30000",
+    "sortOrder": 25
   },
   {
     "code": "31200",
     "title": "Owner's Capital",
+    "accountType": "HEADING",
     "classification": "EQUITY_DOES_NOT_CLOSE",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "30000",
+    "sortOrder": 26
   },
   {
     "code": "31300",
     "title": "Owner's Drawings",
-    "classification": "EQUITY_GETS_CLOSED",
-    "normalBalance": "DEBIT"
+    "accountType": "HEADING",
+    "classification": "EQUITY_DOES_NOT_CLOSE",
+    "normalBalance": "CREDIT",
+    "parentCode": "30000",
+    "sortOrder": 27
   },
   {
     "code": "31400",
     "title": "Retained Earnings",
+    "accountType": "HEADING",
     "classification": "EQUITY_DOES_NOT_CLOSE",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "30000",
+    "sortOrder": 28
   },
   {
     "code": "31500",
     "title": "Current Year Earnings",
-    "classification": "EQUITY_GETS_CLOSED",
-    "normalBalance": "CREDIT"
+    "accountType": "HEADING",
+    "classification": "EQUITY_DOES_NOT_CLOSE",
+    "normalBalance": "CREDIT",
+    "parentCode": "30000",
+    "sortOrder": 29
   },
   {
     "code": "31600",
     "title": "Prior Year Adjustments",
-    "classification": "EQUITY_GETS_CLOSED",
-    "normalBalance": "CREDIT"
+    "accountType": "HEADING",
+    "classification": "EQUITY_DOES_NOT_CLOSE",
+    "normalBalance": "CREDIT",
+    "parentCode": "30000",
+    "sortOrder": 30
+  },
+  {
+    "code": "40000",
+    "title": "REVENUE",
+    "accountType": "HEADING",
+    "classification": "REVENUE",
+    "normalBalance": "CREDIT",
+    "parentCode": null,
+    "sortOrder": 31
   },
   {
     "code": "41000",
     "title": "Sales",
+    "accountType": "HEADING",
     "classification": "REVENUE",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "40000",
+    "sortOrder": 32
   },
   {
     "code": "41110",
     "title": "VATable Sales",
+    "accountType": "HEADING",
     "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "41120",
-    "title": "VATAble Sales - Good",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "41130",
-    "title": "Government Sales",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "41000",
+    "sortOrder": 33
   },
   {
     "code": "41200",
     "title": "Zero Rated Sales",
+    "accountType": "HEADING",
     "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "41210",
-    "title": "Zero Rated Sales - Goods",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "41220",
-    "title": "Zero Rated Sales - Service",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "41230",
-    "title": "Export Sales",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "41000",
+    "sortOrder": 34
   },
   {
     "code": "41300",
     "title": "Exempt Sales",
+    "accountType": "HEADING",
     "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "41310",
-    "title": "Exempt Sales - Goods",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "41320",
-    "title": "Exempt Sales - Servides",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "41000",
+    "sortOrder": 35
   },
   {
     "code": "41400",
     "title": "Non-VAT Sales",
+    "accountType": "HEADING",
     "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "41410",
-    "title": "Non-VAT Sales - Goods",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "41420",
-    "title": "Non-VAT Sales - Services",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "41000",
+    "sortOrder": 36
   },
   {
     "code": "41040",
     "title": "Sales Returns and Allowances (-)",
+    "accountType": "HEADING",
     "classification": "REVENUE",
-    "normalBalance": "DEBIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "41000",
+    "sortOrder": 37
   },
   {
     "code": "41050",
     "title": "Sales Discount (-)",
+    "accountType": "HEADING",
     "classification": "REVENUE",
-    "normalBalance": "DEBIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "41000",
+    "sortOrder": 38
   },
   {
     "code": "42000",
     "title": "Other Income",
+    "accountType": "HEADING",
     "classification": "REVENUE",
-    "normalBalance": "CREDIT"
+    "normalBalance": "CREDIT",
+    "parentCode": "40000",
+    "sortOrder": 39
   },
   {
-    "code": "42010",
-    "title": "Interest Income",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "42020",
-    "title": "Rental Income",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "42030",
-    "title": "Foreign Exchange Gain",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "42040",
-    "title": "Miscellaneous Income",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
+    "code": "50000",
+    "title": "COST OF SALES / SERVICES",
+    "accountType": "HEADING",
+    "classification": "EXPENSE",
+    "normalBalance": "DEBIT",
+    "parentCode": null,
+    "sortOrder": 40
   },
   {
     "code": "51000",
     "title": "Cost of Goods Sold",
+    "accountType": "HEADING",
     "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
+    "normalBalance": "DEBIT",
+    "parentCode": "50000",
+    "sortOrder": 41
   },
   {
-    "code": "51100",
+    "code": "52000",
     "title": "Cost of Services",
+    "accountType": "HEADING",
     "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
+    "normalBalance": "DEBIT",
+    "parentCode": "50000",
+    "sortOrder": 42
   },
   {
-    "code": "51200",
-    "title": "Direct Materials",
+    "code": "6000",
+    "title": "OPERATING EXPENSES",
+    "accountType": "HEADING",
     "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
+    "normalBalance": "DEBIT",
+    "parentCode": null,
+    "sortOrder": 43
   },
   {
-    "code": "51300",
-    "title": "Direct Labor",
+    "code": "80000",
+    "title": "OTHER EXPENSES",
+    "accountType": "HEADING",
     "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "51400",
-    "title": "Factory Overhead",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "51500",
-    "title": "Purchases",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "51600",
-    "title": "Purchase Returns",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "51700",
-    "title": "Purchase Discounts",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61000",
-    "title": "Amortizations",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61010",
-    "title": "Bad Debts",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61020",
-    "title": "Chartable Contributions",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61030",
-    "title": "Depletion",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61040",
-    "title": "Depreciation",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61100",
-    "title": "Entertainment, Amusement and Recreation",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61110",
-    "title": "Fringe Benefits",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61120",
-    "title": "Interest",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61130",
-    "title": "Losses",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61140",
-    "title": "Pension Trust",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61150",
-    "title": "Rental",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61160",
-    "title": "Research and Development",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61170",
-    "title": "Salaries, Wages and Allowances",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61180",
-    "title": "SSS, GSIS, Philhealth, HDMF and Other Contributions",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61190",
-    "title": "Taxes and Licenses",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61200",
-    "title": "Transportation and Travel",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61210",
-    "title": "Janitorial and Messengerial Services",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61220",
-    "title": "Professional Fees",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61230",
-    "title": "Security Services",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61240",
-    "title": "Advertising Expense",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61250",
-    "title": "Commission Expense",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61260",
-    "title": "Office Supplies Expense",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61270",
-    "title": "Light and Water",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61280",
-    "title": "Utlities",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61290",
-    "title": "Light and Water",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61300",
-    "title": "Telephone Expense",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61310",
-    "title": "Internet Expense",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61320",
-    "title": "Postage Expense",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61330",
-    "title": "Training and Seminar",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61340",
-    "title": "Fuel and Oil",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61350",
-    "title": "Repairs and Maintenance",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61360",
-    "title": "Insurance Expense",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61370",
-    "title": "Bank Charges",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "61380",
-    "title": "Software Subscription",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "71000",
-    "title": "Interest Income",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "71100",
-    "title": "Dividend Income",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "71200",
-    "title": "Gain on Sale of Assets",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "71300",
-    "title": "Foreign Exchange Gain",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "71400",
-    "title": "Miscellaneous Income",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT"
-  },
-  {
-    "code": "81000",
-    "title": "Interest Expense",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "81100",
-    "title": "Foreign Exchange Loss",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "81200",
-    "title": "Loss on Sale of Assets",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "81300",
-    "title": "Bad Debts Expense",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "81400",
-    "title": "Donation Expense",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "81500",
-    "title": "Penalties and Surcharges",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "81600",
-    "title": "Loss Due to Theft",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
-  },
-  {
-    "code": "81700",
-    "title": "Prior Period Adjustments",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT"
+    "normalBalance": "DEBIT",
+    "parentCode": null,
+    "sortOrder": 44
   }
 ];

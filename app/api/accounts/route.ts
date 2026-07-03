@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_NORMAL_BALANCE } from "@/lib/accounts";
-import type { AccountClassification, NormalBalance } from "@prisma/client";
+import type { AccountClassification, AccountType, NormalBalance } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
   const companyId = request.nextUrl.searchParams.get("companyId");
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
   const accounts = await prisma.account.findMany({
     where: { companyId },
-    orderBy: { code: "asc" },
+    orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
   });
 
   return NextResponse.json({ accounts });
@@ -25,6 +25,8 @@ export async function POST(request: NextRequest) {
     title,
     classification,
     normalBalance,
+    accountType,
+    sortOrder,
     parentAccountId,
     openingBalance,
     openingBalanceDate,
@@ -49,11 +51,10 @@ export async function POST(request: NextRequest) {
     if (!parent || parent.companyId !== companyId) {
       return NextResponse.json({ error: "Parent account not found in this company" }, { status: 400 });
     }
-    if (parent.classification !== classification) {
+    // Parent must be a Heading — posting accounts are always leaves.
+    if (parent.accountType !== "HEADING") {
       return NextResponse.json(
-        {
-          error: `A sub-account's classification must match its parent's (${parent.classification})`,
-        },
+        { error: "The parent must be a heading account." },
         { status: 400 }
       );
     }
@@ -65,6 +66,8 @@ export async function POST(request: NextRequest) {
       code,
       title,
       classification: classification as AccountClassification,
+      accountType: (accountType as AccountType) ?? "POSTING",
+      sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
       normalBalance:
         (normalBalance as NormalBalance) ?? DEFAULT_NORMAL_BALANCE[classification as AccountClassification],
       parentAccountId: parentAccountId ?? null,

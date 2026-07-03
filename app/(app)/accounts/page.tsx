@@ -23,7 +23,7 @@ export default async function AccountsPage() {
 
   const accounts = await prisma.account.findMany({
     where: { companyId: company.id },
-    orderBy: { code: "asc" },
+    orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
   });
 
   return <AccountsClient companyId={company.id} initialAccounts={toPlain(accounts)} />;

@@ -17,9 +17,9 @@ export default async function SalesPage() {
   }
 
   const [accounts, receivableAccounts, customers, atcCodes, locations, suggestedDocumentNo] = await Promise.all([
-    prisma.account.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
+    prisma.account.findMany({ where: { companyId: company.id, isActive: true, accountType: "POSTING" }, orderBy: { code: "asc" } }),
     prisma.account.findMany({
-      where: { companyId: company.id, isActive: true, classification: "ACCOUNTS_RECEIVABLE" },
+      where: { companyId: company.id, isActive: true, accountType: "POSTING", classification: "ACCOUNTS_RECEIVABLE" },
       orderBy: { code: "asc" },
     }),
     prisma.customer.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),

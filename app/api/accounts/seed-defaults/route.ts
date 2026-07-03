@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { capabilitiesFor } from "@/lib/permissions";
-import { DEFAULT_CHART_OF_ACCOUNTS } from "@/lib/defaultChartOfAccounts";
+import { seedDefaultChart } from "@/lib/seedChart";
 
 // Seeds the standard chart of accounts into the caller's company — only when
 // it has none yet (new companies already get it at creation; this covers
@@ -25,9 +25,6 @@ export async function POST() {
     );
   }
 
-  await prisma.account.createMany({
-    data: DEFAULT_CHART_OF_ACCOUNTS.map((a) => ({ ...a, companyId: user.companyId! })),
-  });
-
-  return NextResponse.json({ ok: true, created: DEFAULT_CHART_OF_ACCOUNTS.length });
+  const created = await seedDefaultChart(user.companyId);
+  return NextResponse.json({ ok: true, created });
 }

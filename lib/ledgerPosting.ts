@@ -38,6 +38,9 @@ export type PostDocumentInput = {
 
 export class UnbalancedEntryError extends Error {}
 export class DuplicateDocumentError extends Error {}
+// Extends UnbalancedEntryError so the journal routes' existing catch returns
+// it as a 400 without each route needing to know about this case.
+export class PostingToHeadingError extends UnbalancedEntryError {}
 
 // Compares to the nearest centavo rather than exact float equality —
 // individual lines are already rounded via lib/vat.ts's round2(), but
@@ -74,6 +77,19 @@ export async function postDocument(input: PostDocumentInput) {
   if (existing) {
     throw new DuplicateDocumentError(
       `Document number "${input.documentNo}" is already used in this journal`
+    );
+  }
+
+  // Heading accounts are structural, non-postable. The transaction screens
+  // already hide them; this blocks any direct/API attempt to post to one.
+  const lineAccounts = await prisma.account.findMany({
+    where: { id: { in: input.lines.map((l) => l.accountId) }, companyId: input.companyId },
+    select: { code: true, title: true, accountType: true },
+  });
+  const heading = lineAccounts.find((a) => a.accountType === "HEADING");
+  if (heading) {
+    throw new PostingToHeadingError(
+      `"${heading.code} ${heading.title}" is a heading and can't be posted to — choose a posting account.`
     );
   }
 

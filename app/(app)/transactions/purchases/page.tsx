@@ -17,9 +17,9 @@ export default async function PurchasesPage() {
   }
 
   const [accounts, payableAccounts, vendors, atcCodes, locations, suggestedDocumentNo] = await Promise.all([
-    prisma.account.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
+    prisma.account.findMany({ where: { companyId: company.id, isActive: true, accountType: "POSTING" }, orderBy: { code: "asc" } }),
     prisma.account.findMany({
-      where: { companyId: company.id, isActive: true, classification: "ACCOUNTS_PAYABLE" },
+      where: { companyId: company.id, isActive: true, accountType: "POSTING", classification: "ACCOUNTS_PAYABLE" },
       orderBy: { code: "asc" },
     }),
     prisma.vendor.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
