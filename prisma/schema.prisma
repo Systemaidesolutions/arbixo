@@ -57,6 +57,11 @@ model User {
   passwordHash          String
   role                  UserRole  @default(USER)
 
+  // Simple self-service profile: a display name and an optional profile
+  // photo (stored as a base64 data URL, same approach as company logos).
+  name                  String?
+  photoUrl              String?   @db.Text
+
   // Only meaningful for subscriber (USER role) accounts; null for admins.
   // Determines transaction/approval permissions — see SubscriberSubtype.
   subscriberSubtype     SubscriberSubtype?

@@ -8,10 +8,16 @@ export function AppHeader({
   user,
   onMenu,
   headerLogo = false,
+  companyName = null,
+  userName = null,
+  hasPhoto = false,
 }: {
   user: SessionPayload | null;
   onMenu?: () => void;
   headerLogo?: boolean;
+  companyName?: string | null;
+  userName?: string | null;
+  hasPhoto?: boolean;
 }) {
   return (
     <header className="shrink-0 bg-gradient-to-r from-brand-navyDark via-brand-navy to-[#0e3a63] text-white shadow-sm">
@@ -55,17 +61,35 @@ export function AppHeader({
 
         {user && (
           <div className="ml-auto flex items-center gap-2 sm:gap-4">
+            {companyName && (
+              <span className="hidden max-w-[22vw] truncate text-sm font-bold text-white md:inline">
+                {companyName}
+              </span>
+            )}
             <GlobalSearch />
-            <span className="hidden max-w-[24vw] truncate text-sm text-white/80 lg:inline">
-              {user.email}
+            <span className="hidden max-w-[18vw] truncate text-sm text-white/80 lg:inline">
+              {userName || user.email}
             </span>
             <LogoutButton />
-            <div className="flex items-center gap-1 border-l border-white/15 pl-2 sm:pl-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
-                <User size={16} className="text-white" />
-              </span>
+            <a
+              href="/profile"
+              title="My profile"
+              className="flex items-center gap-1 border-l border-white/15 pl-2 hover:opacity-90 sm:pl-3"
+            >
+              {hasPhoto ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src="/api/profile/photo"
+                  alt="Profile"
+                  className="h-8 w-8 rounded-full object-cover ring-1 ring-white/20"
+                />
+              ) : (
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
+                  <User size={16} className="text-white" />
+                </span>
+              )}
               <ChevronDown size={14} className="text-white/60" />
-            </div>
+            </a>
           </div>
         )}
       </div>

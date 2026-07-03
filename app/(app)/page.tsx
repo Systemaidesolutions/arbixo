@@ -75,7 +75,10 @@ const QUICK_ACTIONS: Array<{ href: string; label: string; icon: LucideIcon; icon
 
 export default async function HomePage() {
   const user = await getCurrentUserRecord();
-  if (user?.role === "ADMIN") {
+  if (!user) {
+    redirect("/login");
+  }
+  if (user.role === "ADMIN") {
     redirect("/admin");
   }
 
@@ -105,6 +108,16 @@ export default async function HomePage() {
   }
 
   const summary = await getDashboardSummary(company.id);
+
+  // Time-of-day greeting, Philippine time (UTC+8, no DST).
+  const phHour = (new Date().getUTCHours() + 8) % 24;
+  const greeting = phHour < 12 ? "Good morning" : phHour < 18 ? "Good afternoon" : "Good evening";
+  const displayName = user.name?.trim() || user.email.split("@")[0];
+  const monthLabel = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Manila",
+  });
 
   const sub = subscriptionStatus(company.subscriptionEndsAt);
   const subEndsOn = company.subscriptionEndsAt
@@ -169,52 +182,21 @@ export default async function HomePage() {
         </div>
       )}
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        {/* Company information */}
-        <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-            Company Information
-          </div>
-          <h2 className="mt-1 text-xl font-semibold text-brand-navy">{company.tradeName}</h2>
-          <dl className="mt-4 space-y-2.5 text-sm">
-            {info.map(([label, value]) => (
-              <div key={label} className="grid grid-cols-[92px_1fr] gap-2">
-                <dt className="text-neutral-400">{label}</dt>
-                <dd className="text-neutral-800">{value || "—"}</dd>
-              </div>
-            ))}
-          </dl>
-          <a
-            href="/company/setup"
-            className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand-blue hover:underline"
-          >
-            View company details <ArrowRight size={14} />
-          </a>
-        </section>
-
-        {/* Quick actions */}
-        <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-            Quick Actions
-          </div>
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            {QUICK_ACTIONS.map((a) => (
-              <a
-                key={a.href}
-                href={a.href}
-                className="flex flex-col items-center justify-center gap-2 rounded-lg border border-neutral-200 p-4 text-center transition-colors hover:border-brand-blue/40 hover:bg-neutral-50"
-              >
-                <a.icon size={22} className={a.iconClass} />
-                <span className="text-xs font-medium text-neutral-600">{a.label}</span>
-              </a>
-            ))}
-          </div>
-        </section>
-      </div>
-
-      {/* At a glance */}
+      {/* Financial snapshot — greeting + key figures, at the top */}
       <section className="mt-6 rounded-xl bg-gradient-to-br from-brand-navy to-[#0e3a63] p-5 shadow-sm">
-        <div className="text-xs font-semibold uppercase tracking-wide text-white/60">At a Glance</div>
+        <div className="flex flex-col gap-1 border-b border-white/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-white sm:text-xl">
+              {greeting}, {displayName} 👋
+            </h2>
+            <p className="text-sm text-white/60">
+              Here&apos;s your financial snapshot for {monthLabel}.
+            </p>
+          </div>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-white/50">
+            Financial Snapshot
+          </span>
+        </div>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <StatTile
             icon={Wallet}
@@ -253,6 +235,50 @@ export default async function HomePage() {
           />
         </div>
       </section>
+
+      {/* Quick actions (below the snapshot) + company information */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        {/* Quick actions */}
+        <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
+            Quick Actions
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            {QUICK_ACTIONS.map((a) => (
+              <a
+                key={a.href}
+                href={a.href}
+                className="flex flex-col items-center justify-center gap-2 rounded-lg border border-neutral-200 p-4 text-center transition-colors hover:border-brand-blue/40 hover:bg-neutral-50"
+              >
+                <a.icon size={22} className={a.iconClass} />
+                <span className="text-xs font-medium text-neutral-600">{a.label}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+
+        {/* Company information */}
+        <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
+            Company Information
+          </div>
+          <h2 className="mt-1 text-xl font-semibold text-brand-navy">{company.tradeName}</h2>
+          <dl className="mt-4 space-y-2.5 text-sm">
+            {info.map(([label, value]) => (
+              <div key={label} className="grid grid-cols-[92px_1fr] gap-2">
+                <dt className="text-neutral-400">{label}</dt>
+                <dd className="text-neutral-800">{value || "—"}</dd>
+              </div>
+            ))}
+          </dl>
+          <a
+            href="/company/setup"
+            className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand-blue hover:underline"
+          >
+            View company details <ArrowRight size={14} />
+          </a>
+        </section>
+      </div>
     </main>
   );
 }

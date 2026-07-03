@@ -16,22 +16,33 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   // A company disabled after the session was issued kicks its users out on
-  // their next navigation (a lapsed subscription does not).
+  // their next navigation (a lapsed subscription does not). We also grab the
+  // trade name here to show in the header.
+  let companyName: string | null = null;
   if (record.role === "USER" && record.companyId) {
     const company = await prisma.company.findUnique({
       where: { id: record.companyId },
-      select: { isActive: true },
+      select: { isActive: true, tradeName: true },
     });
     if (company && !company.isActive) {
       redirect("/login");
     }
+    companyName = company?.tradeName ?? null;
   }
 
   const user: SessionPayload = { sub: record.id, email: record.email, role: record.role };
   const branding = await brandingFlags();
 
   return (
-    <AppShell user={user} role={record.role} subtype={record.subscriberSubtype} branding={branding}>
+    <AppShell
+      user={user}
+      role={record.role}
+      subtype={record.subscriberSubtype}
+      branding={branding}
+      companyName={companyName}
+      userName={record.name}
+      hasPhoto={!!record.photoUrl}
+    >
       {children}
     </AppShell>
   );

@@ -18,12 +18,18 @@ export function AppShell({
   role,
   subtype = null,
   branding,
+  companyName = null,
+  userName = null,
+  hasPhoto = false,
   children,
 }: {
   user: SessionPayload | null;
   role: "ADMIN" | "USER";
   subtype?: SubscriberSubtype | null;
   branding?: BrandingFlags;
+  companyName?: string | null;
+  userName?: string | null;
+  hasPhoto?: boolean;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -34,6 +40,9 @@ export function AppShell({
         user={user}
         onMenu={() => setMobileOpen(true)}
         headerLogo={branding?.headerLogo}
+        companyName={companyName}
+        userName={userName}
+        hasPhoto={hasPhoto}
       />
 
       <div className="flex min-h-0 flex-1">
