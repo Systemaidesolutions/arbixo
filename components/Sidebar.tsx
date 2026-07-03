@@ -4,7 +4,6 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   ChevronDown,
-  Headphones,
   X,
   Building2,
   ReceiptText,
@@ -164,24 +163,6 @@ function NavList({
   );
 }
 
-function HelpCard() {
-  return (
-    <div className="m-3 rounded-xl bg-white/5 p-4 text-center ring-1 ring-white/10">
-      <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-brand-blue/20">
-        <Headphones size={18} className="text-brand-blue" />
-      </div>
-      <p className="mt-2 text-sm font-medium text-white">Need help?</p>
-      <p className="text-xs text-white/60">We're here to assist you.</p>
-      <a
-        href="mailto:info.systemaidesolutions@gmail.com"
-        className="mt-3 inline-block rounded-lg bg-brand-green px-3 py-1.5 text-xs font-medium text-white hover:brightness-110"
-      >
-        Contact Support
-      </a>
-    </div>
-  );
-}
-
 export function Sidebar({
   role,
   subtype = null,
@@ -215,7 +196,6 @@ export function Sidebar({
           toggleSection={toggleSection}
           dashboardHref={dashboardHref}
         />
-        <HelpCard />
       </aside>
 
       {/* Mobile/tablet: off-canvas dark drawer over a backdrop. */}
@@ -240,7 +220,6 @@ export function Sidebar({
               toggleSection={toggleSection}
               dashboardHref={dashboardHref}
             />
-            <HelpCard />
           </aside>
         </div>
       )}

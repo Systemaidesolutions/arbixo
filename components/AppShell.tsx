@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Sidebar } from "@/components/Sidebar";
 import { Footer } from "@/components/Footer";
+import { HelpWidget } from "@/components/HelpWidget";
 import type { SessionPayload } from "@/lib/auth";
 import type { SubscriberSubtype } from "@prisma/client";
 import type { BrandingFlags } from "@/lib/branding";
@@ -87,6 +88,7 @@ export function AppShell({
       </div>
 
       <Footer />
+      <HelpWidget />
     </div>
   );
 }

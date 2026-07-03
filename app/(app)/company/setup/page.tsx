@@ -37,7 +37,12 @@ export default async function CompanyDetailsPage() {
     company.taxClassification === "NON_INDIVIDUAL"
       ? ["Registered name", company.registeredName]
       : ["Taxpayer name", taxpayerName],
-    ["Business address", `${company.businessAddress} ${company.zipCode}`],
+    [
+      "Business address",
+      [company.businessAddress, company.barangay, company.city, company.province, company.zipCode]
+        .filter(Boolean)
+        .join(", "),
+    ],
     ["RDO code", company.rdoCode],
     [
       "Period type",
@@ -67,6 +72,18 @@ export default async function CompanyDetailsPage() {
         These details appear on your BIR forms. They're managed by your administrator — contact them
         if anything needs to change.
       </p>
+
+      {company.logoUrl && (
+        <div className="mt-6 flex items-center gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={company.logoUrl}
+            alt={`${company.tradeName} logo`}
+            className="h-16 w-auto max-w-[200px] object-contain"
+          />
+          <span className="text-sm font-medium text-neutral-700">{company.tradeName}</span>
+        </div>
+      )}
 
       <dl className="mt-6 divide-y divide-neutral-100 rounded-lg border border-neutral-200">
         {rows.map(([label, value]) => (

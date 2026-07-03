@@ -1,5 +1,6 @@
 import type { PeriodType, RegistrationType, TaxClassification } from "@prisma/client";
 import { tinError } from "@/lib/tin";
+import { firstSpecialCharError } from "@/lib/textValidation";
 
 export const TAX_CLASSIFICATION_LABELS: Record<TaxClassification, string> = {
   INDIVIDUAL: "Individual (Single Proprietorship)",
@@ -70,5 +71,14 @@ export function validateCompanyPayload(payload: CompanyFormPayload): string | nu
       return "Fiscal Month End (1-12) is required when Period Type is Fiscal";
     }
   }
-  return null;
+  return firstSpecialCharError({
+    "Registered name": payload.registeredName,
+    "Taxpayer last name": payload.taxpayerLastName,
+    "Taxpayer first name": payload.taxpayerFirstName,
+    "Taxpayer middle name": payload.taxpayerMiddleName,
+    "Trade name": payload.tradeName,
+    "Business address": payload.businessAddress,
+    Barangay: payload.barangay,
+    "Authorized representative": payload.authorizedRep,
+  });
 }

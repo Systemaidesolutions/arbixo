@@ -47,6 +47,21 @@ export function AccountsClient({
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+
+  async function loadDefaults() {
+    if (!window.confirm("Load the standard chart of accounts? You can edit or remove any of them afterward.")) return;
+    setSeeding(true);
+    setError(null);
+    const res = await fetch("/api/accounts/seed-defaults", { method: "POST" });
+    setSeeding(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Couldn't load the default accounts.");
+      return;
+    }
+    await refresh();
+  }
 
   const grouped = useMemo(() => buildAccountTree(accounts), [accounts]);
 
@@ -194,6 +209,15 @@ export function AccountsClient({
       <section>
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-xl font-medium text-neutral-900">Chart of accounts</h1>
+          {accounts.length === 0 && (
+            <button
+              onClick={loadDefaults}
+              disabled={seeding}
+              className="rounded bg-[#0B2A5E] px-3 py-1.5 text-sm text-white hover:bg-[#123A73] disabled:opacity-50"
+            >
+              {seeding ? "Loading…" : "Load default chart of accounts"}
+            </button>
+          )}
         </div>
 
         <div className="divide-y divide-neutral-100 rounded-lg border border-neutral-200">

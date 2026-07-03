@@ -1,4 +1,5 @@
 import type { TaxClassification } from "@prisma/client";
+import { firstSpecialCharError } from "@/lib/textValidation";
 
 export type NamePayload = {
   taxClassification: TaxClassification;
@@ -7,6 +8,8 @@ export type NamePayload = {
   firstName?: string | null;
   middleName?: string | null;
   tradeName: string;
+  address?: string | null;
+  barangay?: string | null;
 };
 
 // Same rule as Company: Registered Name for Non-Individual, Last/First
@@ -23,5 +26,32 @@ export function validateNameFields(payload: NamePayload): string | null {
       return "Last name and first name are required for Individual";
     }
   }
-  return null;
+  return firstSpecialCharError({
+    "Trade name": payload.tradeName,
+    "Registered name": payload.registeredName,
+    "Last name": payload.lastName,
+    "First name": payload.firstName,
+    "Middle name": payload.middleName,
+    Address: payload.address,
+    Barangay: payload.barangay,
+  });
+}
+
+/** Special-character check for employee text fields (no taxClassification). */
+export function validateEmployeeText(body: {
+  lastName?: string | null;
+  firstName?: string | null;
+  middleName?: string | null;
+  position?: string | null;
+  address?: string | null;
+  barangay?: string | null;
+}): string | null {
+  return firstSpecialCharError({
+    "Last name": body.lastName,
+    "First name": body.firstName,
+    "Middle name": body.middleName,
+    Position: body.position,
+    Address: body.address,
+    Barangay: body.barangay,
+  });
 }

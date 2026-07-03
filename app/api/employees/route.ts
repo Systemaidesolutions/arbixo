@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { validateEmployeeText } from "@/lib/partyValidation";
 
 export async function GET(request: NextRequest) {
   const companyId = request.nextUrl.searchParams.get("companyId");
@@ -24,6 +25,9 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+
+  const specialErr = validateEmployeeText(body);
+  if (specialErr) return NextResponse.json({ error: specialErr }, { status: 400 });
 
   const duplicate = await prisma.employee.findUnique({
     where: { companyId_code: { companyId, code } },

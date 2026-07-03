@@ -54,18 +54,14 @@ export function AppHeader({
             </>
           )}
         </a>
-        <span className="hidden text-xs md:inline">
-          <span className="text-white/70">Accounting Intelligence. </span>
-          <span className="font-medium text-brand-green">Business Excellence.</span>
-        </span>
+        {companyName && (
+          <span className="hidden max-w-[32vw] truncate text-sm font-bold text-white sm:inline">
+            {companyName}
+          </span>
+        )}
 
         {user && (
           <div className="ml-auto flex items-center gap-2 sm:gap-4">
-            {companyName && (
-              <span className="hidden max-w-[22vw] truncate text-sm font-bold text-white md:inline">
-                {companyName}
-              </span>
-            )}
             <GlobalSearch />
             <span className="hidden max-w-[18vw] truncate text-sm text-white/80 lg:inline">
               {userName || user.email}

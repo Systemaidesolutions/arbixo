@@ -8,6 +8,7 @@ import {
   MissingPostingAccountError,
   type ExpandInputLine,
 } from "@/lib/vatLineExpansion";
+import { firstSpecialCharError } from "@/lib/textValidation";
 import type { CounterpartyType } from "@prisma/client";
 
 type RequestBody = {
@@ -27,6 +28,8 @@ export async function POST(request: NextRequest) {
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
 
   const { companyId, documentNo, cashAccountId, postingDate, lines } = body;
+  const textErr = firstSpecialCharError({ "Document no.": documentNo, Particulars: body.particulars });
+  if (textErr) return NextResponse.json({ error: textErr }, { status: 400 });
   if (!companyId || !documentNo || !cashAccountId || !postingDate || !lines?.length) {
     return NextResponse.json(
       { error: "companyId, documentNo, cashAccountId, postingDate, and at least one line are required" },

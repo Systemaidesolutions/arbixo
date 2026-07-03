@@ -1,6 +1,7 @@
 "use client";
 
 import { PROVINCES, citiesOf, zipsOf } from "@/lib/ph-locations";
+import { sanitizeText } from "@/lib/textValidation";
 
 export type AddressValue = {
   street: string;
@@ -46,7 +47,7 @@ export function AddressFields({
           required={required}
           disabled={disabled}
           value={value.street}
-          onChange={(e) => onChange({ street: e.target.value })}
+          onChange={(e) => onChange({ street: sanitizeText(e.target.value) })}
           placeholder="Unit / House No., Street"
           className={field}
         />
@@ -99,7 +100,7 @@ export function AddressFields({
           <input
             disabled={disabled}
             value={value.barangay}
-            onChange={(e) => onChange({ barangay: e.target.value })}
+            onChange={(e) => onChange({ barangay: sanitizeText(e.target.value) })}
             placeholder="Barangay"
             className={field}
           />

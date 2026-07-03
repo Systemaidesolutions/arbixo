@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { validateEmployeeText } from "@/lib/partyValidation";
 
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
   const employee = await prisma.employee.findUnique({ where: { id: params.id } });
@@ -18,6 +19,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       (body.firstName !== undefined && !body.firstName?.trim())) {
     return NextResponse.json({ error: "Last name and first name can't be blank" }, { status: 400 });
   }
+
+  const specialErr = validateEmployeeText(body);
+  if (specialErr) return NextResponse.json({ error: specialErr }, { status: 400 });
 
   if (body.code && body.code !== existing.code) {
     const duplicate = await prisma.employee.findUnique({
