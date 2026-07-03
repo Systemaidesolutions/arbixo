@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { CounterpartyType, DocumentType, JournalType, VatType } from "@prisma/client";
+import type { CounterpartyType, DocumentType, JournalType, TaxSource, VatType } from "@prisma/client";
 
 export type LedgerLineInput = {
   accountId: string;
@@ -15,6 +15,7 @@ export type LedgerLineInput = {
   grossAmount?: number | null;
   netAmount?: number | null;
   vatAmount?: number | null;
+  taxSource?: TaxSource | null;
   atcCode?: string | null;
   atcDescription?: string | null;
   withholdingAmt?: number | null;
@@ -124,6 +125,7 @@ export async function postDocument(input: PostDocumentInput) {
           grossAmount: line.grossAmount ?? null,
           netAmount: line.netAmount ?? null,
           vatAmount: line.vatAmount ?? null,
+          taxSource: line.taxSource ?? null,
           atcCode: line.atcCode ?? null,
           atcDescription: line.atcDescription ?? null,
           withholdingAmt: line.withholdingAmt ?? null,

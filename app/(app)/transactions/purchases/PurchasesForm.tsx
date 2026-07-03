@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
-import type { Account, AtcCode, Location, Vendor, VatType } from "@prisma/client";
+import type { Account, AtcCode, Location, TaxSource, Vendor, VatType } from "@prisma/client";
 import { VatComputationFields, type VatComputationValue } from "@/components/VatComputationFields";
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
 import { TransactionSummary } from "@/components/TransactionSummary";
@@ -14,6 +14,7 @@ type LineState = {
   amount: number;
   amountIsGross: boolean;
   atcCodeId: string | null;
+  taxSource: TaxSource;
   computed: VatComputationValue | null;
 };
 
@@ -25,6 +26,7 @@ function newLine(): LineState {
     amount: 0,
     amountIsGross: true,
     atcCodeId: null,
+    taxSource: "GOODS",
     computed: null,
   };
 }
@@ -104,6 +106,7 @@ export function PurchasesForm({
         vatType: l.vatType,
         amountIsGross: l.amountIsGross,
         atcCodeId: l.atcCodeId,
+        taxSource: l.taxSource,
       })),
     };
 
@@ -265,6 +268,19 @@ export function PurchasesForm({
                       {a.code} — {a.title}
                     </option>
                   ))}
+                </select>
+              </label>
+
+              <label className={`${label} mb-3`}>
+                Nature (BIR Summary List of Purchases)
+                <select
+                  value={line.taxSource}
+                  onChange={(e) => updateLine(line.key, { taxSource: e.target.value as TaxSource })}
+                  className={field}
+                >
+                  <option value="GOODS">Goods (other than capital)</option>
+                  <option value="SERVICE">Services</option>
+                  <option value="CAPITAL_GOODS">Capital Goods</option>
                 </select>
               </label>
 

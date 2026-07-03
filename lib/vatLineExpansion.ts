@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { computeVat, computeWithholding } from "@/lib/vat";
 import type { LedgerLineInput } from "@/lib/ledgerPosting";
-import type { CounterpartyType, VatType } from "@prisma/client";
+import type { CounterpartyType, TaxSource, VatType } from "@prisma/client";
 
 export type ExpandInputLine = {
   accountId: string;
@@ -10,6 +10,8 @@ export type ExpandInputLine = {
   vatType?: VatType | null;
   amountIsGross?: boolean;
   atcCodeId?: string | null;
+  // Goods / Service / Capital Goods — BIR SLP taxable breakdown (purchases).
+  taxSource?: TaxSource | null;
 };
 
 export type CounterpartyFields = Pick<
@@ -99,6 +101,7 @@ export async function expandVatLines(
       grossAmount: vatType ? vat.grossAmount : null,
       netAmount: vatType ? vat.netAmount : null,
       vatAmount: vatType ? vat.vatAmount : null,
+      taxSource: line.taxSource ?? null,
       atcCode: atc?.code ?? null,
       atcDescription: atc?.description ?? null,
       withholdingAmt: withholdingAmt || null,

@@ -58,6 +58,8 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/reports/income-statement", label: "Income statement", icon: "income" },
       { href: "/reports/balance-sheet", label: "Balance sheet", icon: "balance" },
       { href: "/reports/bir/vat-return", label: "Monthly VAT return (BIR 2550M)", icon: "vat" },
+      { href: "/reports/bir/sls", label: "Summary List of Sales (SLS)", icon: "sales" },
+      { href: "/reports/bir/slp", label: "Summary List of Purchases (SLP)", icon: "purchases" },
     ],
   },
   {
