@@ -65,17 +65,23 @@ export function SnapshotTiles({
               key={t.key}
               type="button"
               onClick={() => setOpenKey(t.key)}
-              className="rounded-xl bg-white/5 p-4 text-left ring-1 ring-white/10 transition-colors hover:bg-white/10 hover:ring-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
-              title="Click to see the breakdown"
+              className="group rounded-xl bg-white/5 p-4 text-left ring-1 ring-white/10 transition-colors hover:bg-white/10 hover:ring-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
+              title={`Click to see the ${t.label} breakdown`}
             >
               <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${t.iconClass}`}>
                 <Icon size={18} />
               </div>
               <div className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-white/60">{t.label}</div>
-              <div className="mt-0.5 text-xl font-semibold text-white">{peso(metric.value)}</div>
+              {/* The value doubles as the link that opens the breakdown. */}
+              <div className="mt-0.5 text-xl font-semibold text-white underline decoration-white/30 decoration-dotted underline-offset-4 group-hover:decoration-white/80">
+                {peso(metric.value)}
+              </div>
               <div className="text-xs text-white/50">{t.sub}</div>
               <div className="mt-1">
                 <ChangeBadge pct={metric.changePct} />
+              </div>
+              <div className="mt-2 text-[11px] font-medium text-brand-blue opacity-80 group-hover:opacity-100">
+                View breakdown →
               </div>
             </button>
           );
