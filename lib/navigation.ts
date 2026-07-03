@@ -38,25 +38,6 @@ export type NavSection = {
 // own company via lib/currentUser.ts.
 export const NAV_SECTIONS: NavSection[] = [
   {
-    title: "Setup",
-    icon: "settings",
-    links: [
-      { href: "/company/setup", label: "Company details", icon: "company" },
-      { href: "/company/tax-posting-setup", label: "Tax posting setup", icon: "tax" },
-      { href: "/accounts", label: "Chart of accounts", icon: "accounts" },
-    ],
-  },
-  {
-    title: "Master Data",
-    icon: "settings",
-    links: [
-      { href: "/agents/customers", label: "Customers", icon: "customers" },
-      { href: "/agents/vendors", label: "Vendors", icon: "vendors" },
-      { href: "/agents/employees", label: "Employees", icon: "employees" },
-      { href: "/agents/contacts", label: "Contacts", icon: "contacts" },
-    ],
-  },
-  {
     title: "Transactions",
     icon: "transactions",
     links: [
@@ -77,6 +58,25 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/reports/income-statement", label: "Income statement", icon: "income" },
       { href: "/reports/balance-sheet", label: "Balance sheet", icon: "balance" },
       { href: "/reports/bir/vat-return", label: "Monthly VAT return (BIR 2550M)", icon: "vat" },
+    ],
+  },
+  {
+    title: "Master Data",
+    icon: "settings",
+    links: [
+      { href: "/agents/customers", label: "Customers", icon: "customers" },
+      { href: "/agents/vendors", label: "Vendors", icon: "vendors" },
+      { href: "/agents/employees", label: "Employees", icon: "employees" },
+      { href: "/agents/contacts", label: "Contacts", icon: "contacts" },
+    ],
+  },
+  {
+    title: "Setup",
+    icon: "settings",
+    links: [
+      { href: "/company/setup", label: "Company details", icon: "company" },
+      { href: "/company/tax-posting-setup", label: "Tax posting setup", icon: "tax" },
+      { href: "/accounts", label: "Chart of accounts", icon: "accounts" },
     ],
   },
 ];

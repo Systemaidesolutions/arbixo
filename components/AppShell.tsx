@@ -39,10 +39,32 @@ export function AppShell({
 
   return (
     <div className="flex h-screen flex-col">
+      {/* Fixed page background — stays in place while content scrolls. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-[#eef4fb] to-[#f7fafd]"
+      >
+        {branding?.background ? (
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: "url(/api/branding/background)",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right bottom",
+              backgroundSize: "min(40%, 480px) auto",
+            }}
+          />
+        ) : (
+          <div className="absolute inset-x-0 bottom-0 flex justify-center overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/arbixo-icon.png" alt="" className="w-[520px] max-w-[80%] opacity-[0.06]" />
+          </div>
+        )}
+      </div>
+
       <AppHeader
         user={user}
         onMenu={() => setMobileOpen(true)}
-        headerLogo={branding?.headerLogo}
         companyName={companyName}
         userName={userName}
         hasPhoto={hasPhoto}
@@ -57,35 +79,7 @@ export function AppShell({
           onCloseMobile={() => setMobileOpen(false)}
         />
 
-        <main
-          className="relative flex-1 overflow-y-auto bg-gradient-to-b from-[#eef4fb] to-[#f7fafd]"
-          style={
-            branding?.background
-              ? {
-                  // A quarter-page decoration pinned to the bottom-right,
-                  // not a full-cover background.
-                  backgroundImage: "url(/api/branding/background)",
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right bottom",
-                  backgroundSize: "min(40%, 480px) auto",
-                  backgroundAttachment: "fixed",
-                }
-              : undefined
-          }
-        >
-          {!branding?.background && (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center overflow-hidden"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/arbixo-icon.png"
-                alt=""
-                className="w-[520px] max-w-[80%] opacity-[0.06]"
-              />
-            </div>
-          )}
+        <main className="relative flex-1 overflow-y-auto">
           <div className="relative min-h-full">{children}</div>
         </main>
       </div>

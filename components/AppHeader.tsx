@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Menu, User, ChevronDown } from "lucide-react";
 import { LogoutButton } from "@/components/LogoutButton";
 import { GlobalSearch } from "@/components/GlobalSearch";
@@ -7,7 +6,6 @@ import type { SessionPayload } from "@/lib/auth";
 export function AppHeader({
   user,
   onMenu,
-  headerLogo = false,
   companyName = null,
   userName = null,
   hasPhoto = false,
@@ -15,7 +13,6 @@ export function AppHeader({
 }: {
   user: SessionPayload | null;
   onMenu?: () => void;
-  headerLogo?: boolean;
   companyName?: string | null;
   userName?: string | null;
   hasPhoto?: boolean;
@@ -39,32 +36,17 @@ export function AppHeader({
           </button>
         )}
 
-        <a href="/" className="flex items-center gap-2.5">
-          {hasCompanyLogo ? (
-            // Each company shows its own logo (framed on white so transparent
-            // or dark logos stay visible on the navy header).
-            // eslint-disable-next-line @next/next/no-img-element
+        {/* Header shows only the company's own logo — nothing when it has none. */}
+        {hasCompanyLogo && (
+          <a href="/" className="flex items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/api/company/logo"
               alt="Company logo"
               className="h-9 w-auto max-w-[200px] rounded bg-white object-contain px-1.5 py-0.5"
             />
-          ) : headerLogo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src="/api/branding/header-logo" alt="Logo" className="h-9 w-auto max-w-[220px] object-contain" />
-          ) : (
-            <>
-              <Image src="/arbixo-icon.png" alt="Arbixo" width={191} height={124} className="h-8 w-auto" priority />
-              <span className="text-lg font-semibold tracking-tight text-white">
-                ARbi
-                <span className="bg-gradient-to-br from-brand-blue to-brand-green bg-clip-text text-transparent">
-                  x
-                </span>
-                o
-              </span>
-            </>
-          )}
-        </a>
+          </a>
+        )}
         {companyName && (
           <span className="hidden max-w-[32vw] truncate text-sm font-bold text-white sm:inline">
             {companyName}
