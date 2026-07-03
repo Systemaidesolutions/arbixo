@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateEmployeeText } from "@/lib/partyValidation";
+import { nextPartyCode } from "@/lib/numberSeriesServer";
 
 export async function GET(request: NextRequest) {
   const companyId = request.nextUrl.searchParams.get("companyId");
@@ -18,10 +19,10 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
 
-  const { companyId, code, lastName, firstName } = body;
-  if (!companyId || !code || !lastName?.trim() || !firstName?.trim()) {
+  const { companyId, lastName, firstName } = body;
+  if (!companyId || !lastName?.trim() || !firstName?.trim()) {
     return NextResponse.json(
-      { error: "companyId, code, lastName, and firstName are required" },
+      { error: "companyId, lastName, and firstName are required" },
       { status: 400 }
     );
   }
@@ -29,11 +30,17 @@ export async function POST(request: NextRequest) {
   const specialErr = validateEmployeeText(body);
   if (specialErr) return NextResponse.json({ error: specialErr }, { status: 400 });
 
-  const duplicate = await prisma.employee.findUnique({
-    where: { companyId_code: { companyId, code } },
-  });
-  if (duplicate) {
-    return NextResponse.json({ error: `Employee code "${code}" is already in use` }, { status: 409 });
+  // Code is optional: when omitted, auto-assign from the company's No. Series.
+  let code: string = typeof body.code === "string" ? body.code.trim() : "";
+  if (code) {
+    const duplicate = await prisma.employee.findUnique({
+      where: { companyId_code: { companyId, code } },
+    });
+    if (duplicate) {
+      return NextResponse.json({ error: `Employee code "${code}" is already in use` }, { status: 409 });
+    }
+  } else {
+    code = await nextPartyCode(companyId, "employee");
   }
 
   const employee = await prisma.employee.create({

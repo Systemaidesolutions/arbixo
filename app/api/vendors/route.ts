@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateNameFields } from "@/lib/partyValidation";
+import { nextPartyCode } from "@/lib/numberSeriesServer";
 import type { RegistrationType, TaxClassification, VendorType } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
@@ -19,10 +20,10 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
 
-  const { companyId, code, vendorType, registrationType } = body;
-  if (!companyId || !code || !vendorType || !registrationType) {
+  const { companyId, vendorType, registrationType } = body;
+  if (!companyId || !vendorType || !registrationType) {
     return NextResponse.json(
-      { error: "companyId, code, vendorType, and registrationType are required" },
+      { error: "companyId, vendorType, and registrationType are required" },
       { status: 400 }
     );
   }
@@ -30,11 +31,17 @@ export async function POST(request: NextRequest) {
   const nameError = validateNameFields(body);
   if (nameError) return NextResponse.json({ error: nameError }, { status: 400 });
 
-  const duplicate = await prisma.vendor.findUnique({
-    where: { companyId_code: { companyId, code } },
-  });
-  if (duplicate) {
-    return NextResponse.json({ error: `Vendor code "${code}" is already in use` }, { status: 409 });
+  // Code is optional: when omitted, auto-assign from the company's No. Series.
+  let code: string = typeof body.code === "string" ? body.code.trim() : "";
+  if (code) {
+    const duplicate = await prisma.vendor.findUnique({
+      where: { companyId_code: { companyId, code } },
+    });
+    if (duplicate) {
+      return NextResponse.json({ error: `Vendor code "${code}" is already in use` }, { status: 409 });
+    }
+  } else {
+    code = await nextPartyCode(companyId, "vendor");
   }
 
   const vendor = await prisma.vendor.create({

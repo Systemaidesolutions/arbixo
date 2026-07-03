@@ -188,8 +188,14 @@ export function NewPartyForm({
   return (
     <form onSubmit={submit} className="space-y-3">
       <label className={labelCls}>
-        Code
-        <input required autoFocus value={form.code} onChange={(e) => set("code", e.target.value)} className={`${field} font-mono`} />
+        Code <span className="text-neutral-400">(optional)</span>
+        <input
+          autoFocus
+          value={form.code}
+          onChange={(e) => set("code", e.target.value)}
+          placeholder="Auto-assigned if blank"
+          className={`${field} font-mono`}
+        />
       </label>
 
       <label className={labelCls}>

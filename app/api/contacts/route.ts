@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateNameFields } from "@/lib/partyValidation";
+import { nextPartyCode } from "@/lib/numberSeriesServer";
 import type { RegistrationType, TaxClassification } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
@@ -19,10 +20,10 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
 
-  const { companyId, code, registrationType } = body;
-  if (!companyId || !code || !registrationType) {
+  const { companyId, registrationType } = body;
+  if (!companyId || !registrationType) {
     return NextResponse.json(
-      { error: "companyId, code, and registrationType are required" },
+      { error: "companyId and registrationType are required" },
       { status: 400 }
     );
   }
@@ -30,11 +31,17 @@ export async function POST(request: NextRequest) {
   const nameError = validateNameFields(body);
   if (nameError) return NextResponse.json({ error: nameError }, { status: 400 });
 
-  const duplicate = await prisma.contact.findUnique({
-    where: { companyId_code: { companyId, code } },
-  });
-  if (duplicate) {
-    return NextResponse.json({ error: `Contact code "${code}" is already in use` }, { status: 409 });
+  // Code is optional: when omitted, auto-assign from the company's No. Series.
+  let code: string = typeof body.code === "string" ? body.code.trim() : "";
+  if (code) {
+    const duplicate = await prisma.contact.findUnique({
+      where: { companyId_code: { companyId, code } },
+    });
+    if (duplicate) {
+      return NextResponse.json({ error: `Contact code "${code}" is already in use` }, { status: 409 });
+    }
+  } else {
+    code = await nextPartyCode(companyId, "contact");
   }
 
   const contact = await prisma.contact.create({

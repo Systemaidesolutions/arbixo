@@ -168,6 +168,25 @@ model Company {
   auditLogs     AuditLog[]
   taxPostingSetup TaxPostingSetup?
   users         User[]
+  numberSeries  NumberSeries[]
+}
+
+// Per-company, per-master-data "No. Series" (à la Business Central). An admin
+// sets a prefix (e.g. "CUST"); new records get prefix + a zero-padded running
+// number (e.g. CUST0000001) that auto-increments. entityType is one of
+// "customer" | "vendor" | "employee" | "contact".
+model NumberSeries {
+  id         String   @id @default(cuid())
+  company    Company  @relation(fields: [companyId], references: [id])
+  companyId  String
+  entityType String
+  prefix     String
+  nextNumber Int      @default(1)
+  padding    Int      @default(7)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([companyId, entityType])
 }
 
 // 3.4 Setup Location — branches. Reports stay consolidated by

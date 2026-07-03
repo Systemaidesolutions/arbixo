@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CustomerType, RegistrationType, TaxClassification, VendorType } from "@prisma/client";
 import { TAX_CLASSIFICATION_LABELS, REGISTRATION_TYPE_LABELS } from "@/lib/company";
 import { CUSTOMER_TYPE_LABELS, VENDOR_TYPE_LABELS, PARTY_LABELS, type PartyEntityType } from "@/lib/parties";
+import { formatSeriesCode } from "@/lib/numberSeries";
 import { TinInput } from "@/components/TinInput";
 import { AddressFields } from "@/components/AddressFields";
 
@@ -140,14 +141,35 @@ export function PartyManager({
   const [form, setForm] = useState<FormState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Preview of the next auto-assigned code (from the company No. Series), and
+  // whether the user has chosen to type a code manually instead.
+  const [nextCodePreview, setNextCodePreview] = useState<string | null>(null);
+  const [manualCode, setManualCode] = useState(false);
 
   const { plural, apiBase, responseKey } = PARTY_LABELS[entityType];
   const isEmployee = entityType === "employee";
+
+  async function loadSeriesPreview() {
+    try {
+      const res = await fetch("/api/company/number-series");
+      const data = await res.json();
+      const s = (data.series ?? []).find((x: { entityType: string }) => x.entityType === entityType);
+      setNextCodePreview(s ? formatSeriesCode(s.prefix, s.nextNumber, s.padding) : null);
+    } catch {
+      setNextCodePreview(null);
+    }
+  }
+
+  useEffect(() => {
+    loadSeriesPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entityType]);
 
   async function refresh() {
     const res = await fetch(`${apiBase}?companyId=${companyId}`);
     const data = await res.json();
     setItems(data[responseKey] ?? []);
+    loadSeriesPreview();
   }
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -160,9 +182,12 @@ export function PartyManager({
     setSaving(true);
     setError(null);
 
+    // On create with auto-numbering, omit code so the server assigns it from
+    // the No. Series. On edit (or when typed manually) send the entered code.
+    const autoAssign = form.mode === "create" && !manualCode;
     const payload: Record<string, unknown> = {
       companyId,
-      code: form.code.trim(),
+      ...(autoAssign ? {} : { code: form.code.trim() }),
       tin: form.tin.trim() || null,
       address: form.address.trim() || null,
       barangay: form.barangay.trim() || null,
@@ -240,6 +265,7 @@ export function PartyManager({
           <button
             onClick={() => {
               setError(null);
+              setManualCode(false);
               setForm(emptyForm());
             }}
             className="text-xs text-neutral-500 hover:text-neutral-900"
@@ -260,6 +286,7 @@ export function PartyManager({
                   key={item.id}
                   onClick={() => {
                     setError(null);
+                    setManualCode(true);
                     setForm(toForm(item));
                   }}
                   className={`flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-neutral-50 ${
@@ -288,15 +315,46 @@ export function PartyManager({
               {form.mode === "create" ? "New" : "Edit"} {PARTY_LABELS[entityType].singular.toLowerCase()}
             </h3>
 
-            <label className={label}>
-              Code
-              <input
-                required
-                value={form.code}
-                onChange={(e) => set("code", e.target.value)}
-                className={`${field} font-mono`}
-              />
-            </label>
+            {form.mode === "create" && !manualCode ? (
+              <div className={label}>
+                Code
+                <div className={`${field} flex items-center justify-between bg-neutral-50 font-mono text-neutral-600`}>
+                  <span>{nextCodePreview ?? "Auto-assigned"}</span>
+                  <button
+                    type="button"
+                    onClick={() => setManualCode(true)}
+                    className="ml-2 font-sans text-xs text-brand-navy hover:underline"
+                  >
+                    Enter manually
+                  </button>
+                </div>
+                <span className="mt-1 block text-xs font-normal text-neutral-400">
+                  Assigned automatically from the company number series.
+                </span>
+              </div>
+            ) : (
+              <label className={label}>
+                Code
+                <input
+                  required
+                  value={form.code}
+                  onChange={(e) => set("code", e.target.value)}
+                  className={`${field} font-mono`}
+                />
+                {form.mode === "create" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setManualCode(false);
+                      set("code", "");
+                    }}
+                    className="mt-1 text-xs text-brand-navy hover:underline"
+                  >
+                    Use automatic numbering
+                  </button>
+                )}
+              </label>
+            )}
 
             <label className={label}>
               TIN

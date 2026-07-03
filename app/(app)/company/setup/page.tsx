@@ -1,16 +1,19 @@
-import { getCurrentCompany } from "@/lib/currentUser";
+import { getCurrentCompany, getCurrentCapability } from "@/lib/currentUser";
 import {
   MONTHS,
   PERIOD_TYPE_LABELS,
   REGISTRATION_TYPE_LABELS,
   TAX_CLASSIFICATION_LABELS,
 } from "@/lib/company";
+import { NumberSeriesSetup } from "@/components/NumberSeriesSetup";
 
 // Subscribers see their company details read-only. Company records are
 // created and edited by an Arbixo admin (see /admin/companies), so there
 // is no form here — only a view.
 export default async function CompanyDetailsPage() {
   const company = await getCurrentCompany();
+  const capability = await getCurrentCapability();
+  const canEditSeries = Boolean(capability && !capability.isReadOnly);
 
   if (!company) {
     return (
@@ -95,6 +98,8 @@ export default async function CompanyDetailsPage() {
           </div>
         ))}
       </dl>
+
+      <NumberSeriesSetup editable={canEditSeries} />
     </main>
   );
 }

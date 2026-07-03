@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateNameFields } from "@/lib/partyValidation";
+import { nextPartyCode } from "@/lib/numberSeriesServer";
 import type { CustomerType, RegistrationType, TaxClassification } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
@@ -19,10 +20,10 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
 
-  const { companyId, code, customerType, registrationType } = body;
-  if (!companyId || !code || !customerType || !registrationType) {
+  const { companyId, customerType, registrationType } = body;
+  if (!companyId || !customerType || !registrationType) {
     return NextResponse.json(
-      { error: "companyId, code, customerType, and registrationType are required" },
+      { error: "companyId, customerType, and registrationType are required" },
       { status: 400 }
     );
   }
@@ -30,11 +31,17 @@ export async function POST(request: NextRequest) {
   const nameError = validateNameFields(body);
   if (nameError) return NextResponse.json({ error: nameError }, { status: 400 });
 
-  const duplicate = await prisma.customer.findUnique({
-    where: { companyId_code: { companyId, code } },
-  });
-  if (duplicate) {
-    return NextResponse.json({ error: `Customer code "${code}" is already in use` }, { status: 409 });
+  // Code is optional: when omitted, auto-assign from the company's No. Series.
+  let code: string = typeof body.code === "string" ? body.code.trim() : "";
+  if (code) {
+    const duplicate = await prisma.customer.findUnique({
+      where: { companyId_code: { companyId, code } },
+    });
+    if (duplicate) {
+      return NextResponse.json({ error: `Customer code "${code}" is already in use` }, { status: 409 });
+    }
+  } else {
+    code = await nextPartyCode(companyId, "customer");
   }
 
   const customer = await prisma.customer.create({
