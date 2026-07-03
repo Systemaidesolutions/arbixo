@@ -105,6 +105,15 @@ export type DatCompany = {
 const H_TRAILER = "12";
 
 const digitsOnly = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
+// RELIEF files are positional and comma-delimited with NO quoting, so any comma
+// or line break inside a text field shifts every field after it. Strip those
+// (and collapse whitespace); other punctuation the validator accepts is kept.
+const datText = (s: string | null | undefined) =>
+  (s ?? "").replace(/[\r\n]+/g, " ").replace(/,/g, " ").replace(/\s+/g, " ").trim();
+// BIR RELIEF identifies a taxpayer by the 9-digit base TIN — the export file is
+// itself named "<9-digit TIN>...". Branch codes are not part of the TIN field,
+// so use only the first 9 digits.
+const datTin = (s: string | null | undefined) => digitsOnly(s).slice(0, 9);
 // Match the sample's number style: integers plain, otherwise 2 decimals.
 const amt = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(2));
 function mmddyyyy(d: Date): string {
@@ -118,18 +127,18 @@ function mmddyyyy(d: Date): string {
  * client's sample layout.
  */
 export function buildSlpDat(co: DatCompany, slp: Slp, periodEnd: Date): string {
-  const coTin = digitsOnly(co.tin);
+  const coTin = datTin(co.tin);
   const me = mmddyyyy(periodEnd);
   const t = slp.totals;
   const coIsPerson = Boolean(co.taxpayerLastName || co.taxpayerFirstName);
-  const coReg = coIsPerson ? "" : (co.registeredName ?? co.tradeName ?? "");
-  const coAddr1 = [co.businessAddress, co.barangay].filter(Boolean).join(" ");
-  const coAddr2 = [co.city, co.province, co.zipCode].filter(Boolean).join(" ");
+  const coReg = coIsPerson ? "" : datText(co.registeredName ?? co.tradeName ?? "");
+  const coAddr1 = datText([co.businessAddress, co.barangay].filter(Boolean).join(" "));
+  const coAddr2 = datText([co.city, co.province, co.zipCode].filter(Boolean).join(" "));
 
   const header = [
     "H", "P", coTin, coReg,
-    co.taxpayerLastName ?? "", co.taxpayerFirstName ?? "", co.taxpayerMiddleName ?? "",
-    co.tradeName, coAddr1, coAddr2,
+    datText(co.taxpayerLastName), datText(co.taxpayerFirstName), datText(co.taxpayerMiddleName),
+    datText(co.tradeName), coAddr1, coAddr2,
     amt(t.exempt), amt(t.zeroRated), amt(t.services), amt(t.capitalGoods), amt(t.goods),
     amt(t.inputTax), amt(t.inputTax), "0",
     digitsOnly(co.rdoCode), me, H_TRAILER,
@@ -137,7 +146,8 @@ export function buildSlpDat(co: DatCompany, slp: Slp, periodEnd: Date): string {
 
   const details = slp.rows.map((r) =>
     [
-      "D", "P", digitsOnly(r.tin), r.reg, r.last, r.first, r.middle, r.addr1, r.addr2,
+      "D", "P", datTin(r.tin), datText(r.reg), datText(r.last), datText(r.first), datText(r.middle),
+      datText(r.addr1), datText(r.addr2),
       amt(r.exempt), amt(r.zeroRated), amt(r.services), amt(r.capitalGoods), amt(r.goods),
       amt(r.inputTax), coTin, me,
     ].join(",")
@@ -153,25 +163,26 @@ export function buildSlpDat(co: DatCompany, slp: Slp, periodEnd: Date): string {
  * so its records are shorter than SLP's.
  */
 export function buildSlsDat(co: DatCompany, sls: Sls, periodEnd: Date): string {
-  const coTin = digitsOnly(co.tin);
+  const coTin = datTin(co.tin);
   const me = mmddyyyy(periodEnd);
   const t = sls.totals;
   const coIsPerson = Boolean(co.taxpayerLastName || co.taxpayerFirstName);
-  const coReg = coIsPerson ? "" : (co.registeredName ?? co.tradeName ?? "");
-  const coAddr1 = [co.businessAddress, co.barangay].filter(Boolean).join(" ");
-  const coAddr2 = [co.city, co.province, co.zipCode].filter(Boolean).join(" ");
+  const coReg = coIsPerson ? "" : datText(co.registeredName ?? co.tradeName ?? "");
+  const coAddr1 = datText([co.businessAddress, co.barangay].filter(Boolean).join(" "));
+  const coAddr2 = datText([co.city, co.province, co.zipCode].filter(Boolean).join(" "));
 
   const header = [
     "H", "S", coTin, coReg,
-    co.taxpayerLastName ?? "", co.taxpayerFirstName ?? "", co.taxpayerMiddleName ?? "",
-    co.tradeName, coAddr1, coAddr2,
+    datText(co.taxpayerLastName), datText(co.taxpayerFirstName), datText(co.taxpayerMiddleName),
+    datText(co.tradeName), coAddr1, coAddr2,
     amt(t.exempt), amt(t.zeroRated), amt(t.taxable), amt(t.outputTax),
     digitsOnly(co.rdoCode), me, H_TRAILER,
   ].join(",");
 
   const details = sls.rows.map((r) =>
     [
-      "D", "S", digitsOnly(r.tin), r.reg, r.last, r.first, r.middle, r.addr1, r.addr2,
+      "D", "S", datTin(r.tin), datText(r.reg), datText(r.last), datText(r.first), datText(r.middle),
+      datText(r.addr1), datText(r.addr2),
       amt(r.exempt), amt(r.zeroRated), amt(r.taxable), amt(r.outputTax), coTin, me,
     ].join(",")
   );
