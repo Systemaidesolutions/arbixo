@@ -44,6 +44,13 @@ export type SlpRow = {
   tin: string;
   name: string;
   address: string;
+  // Separate components for the BIR .DAT layout.
+  reg: string;
+  last: string;
+  first: string;
+  middle: string;
+  addr1: string;
+  addr2: string;
   exempt: number;
   zeroRated: number;
   services: number;
@@ -66,8 +73,65 @@ export type SlsRow = {
   outputTax: number;
 };
 
-export type Slp = { rows: SlpRow[]; totals: Omit<SlpRow, "id" | "tin" | "name" | "address"> };
+export type Slp = { rows: SlpRow[]; totals: Omit<SlpRow, "id" | "tin" | "name" | "address" | "reg" | "last" | "first" | "middle" | "addr1" | "addr2"> };
 export type Sls = { rows: SlsRow[]; totals: Omit<SlsRow, "id" | "tin" | "name" | "address"> };
+
+export type DatCompany = {
+  tin: string;
+  registeredName: string | null;
+  tradeName: string;
+  taxpayerLastName: string | null;
+  taxpayerFirstName: string | null;
+  taxpayerMiddleName: string | null;
+  businessAddress: string;
+  barangay: string | null;
+  city: string | null;
+  province: string | null;
+  zipCode: string;
+  rdoCode: string;
+};
+
+const digitsOnly = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
+// Match the sample's number style: integers plain, otherwise 2 decimals.
+const amt = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(2));
+function mmddyyyy(d: Date): string {
+  const p = (x: number) => String(x).padStart(2, "0");
+  return `${p(d.getMonth() + 1)}/${p(d.getDate())}/${d.getFullYear()}`;
+}
+
+/**
+ * Generates the BIR RELIEF SLP file text: one H (taxpayer + grand totals)
+ * record followed by one D record per supplier, comma-delimited, matching the
+ * client's sample layout.
+ */
+export function buildSlpDat(co: DatCompany, slp: Slp, periodEnd: Date): string {
+  const coTin = digitsOnly(co.tin);
+  const me = mmddyyyy(periodEnd);
+  const t = slp.totals;
+  const coIsPerson = Boolean(co.taxpayerLastName || co.taxpayerFirstName);
+  const coReg = coIsPerson ? "" : (co.registeredName ?? co.tradeName ?? "");
+  const coAddr1 = [co.businessAddress, co.barangay].filter(Boolean).join(" ");
+  const coAddr2 = [co.city, co.province, co.zipCode].filter(Boolean).join(" ");
+
+  const header = [
+    "H", "P", coTin, coReg,
+    co.taxpayerLastName ?? "", co.taxpayerFirstName ?? "", co.taxpayerMiddleName ?? "",
+    co.tradeName, coAddr1, coAddr2,
+    amt(t.exempt), amt(t.zeroRated), amt(t.services), amt(t.capitalGoods), amt(t.goods),
+    amt(t.inputTax), amt(t.inputTax), "0",
+    digitsOnly(co.rdoCode), me, String(slp.rows.length),
+  ].join(",");
+
+  const details = slp.rows.map((r) =>
+    [
+      "D", "P", digitsOnly(r.tin), r.reg, r.last, r.first, r.middle, r.addr1, r.addr2,
+      amt(r.exempt), amt(r.zeroRated), amt(r.services), amt(r.capitalGoods), amt(r.goods),
+      amt(r.inputTax), coTin, me,
+    ].join(",")
+  );
+
+  return [header, ...details].join("\r\n") + "\r\n";
+}
 
 export async function getSummaryListOfPurchases(companyId: string, from: Date, to: Date): Promise<Slp> {
   const lines = await prisma.ledgerEntry.findMany({
@@ -91,11 +155,18 @@ export async function getSummaryListOfPurchases(companyId: string, from: Date, t
     const key = l.vendor.id;
     let row = map.get(key);
     if (!row) {
+      const isPerson = Boolean(l.vendor.lastName || l.vendor.firstName || l.vendor.middleName);
       row = {
         id: key,
         tin: l.vendor.tin ?? "",
         name: partyName(l.vendor),
         address: partyAddress(l.vendor),
+        reg: isPerson ? "" : (l.vendor.registeredName ?? l.vendor.tradeName ?? ""),
+        last: l.vendor.lastName ?? "",
+        first: l.vendor.firstName ?? "",
+        middle: l.vendor.middleName ?? "",
+        addr1: [l.vendor.address, l.vendor.barangay].filter(Boolean).join(" "),
+        addr2: [l.vendor.city, l.vendor.province, l.vendor.zipCode].filter(Boolean).join(" "),
         exempt: 0, zeroRated: 0, services: 0, capitalGoods: 0, goods: 0, taxable: 0, gross: 0, inputTax: 0,
       };
       map.set(key, row);
