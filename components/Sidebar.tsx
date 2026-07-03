@@ -26,6 +26,9 @@ import {
   Database,
   Palette,
   Link2,
+  Truck,
+  Briefcase,
+  Contact,
   type LucideIcon,
 } from "lucide-react";
 import type { SubscriberSubtype } from "@prisma/client";
@@ -84,7 +87,25 @@ const LINK_ICONS: Record<NavIcon, LucideIcon> = {
   backup: Database,
   branding: Palette,
   links: Link2,
+  customers: Users,
+  vendors: Truck,
+  employees: Briefcase,
+  contacts: Contact,
 };
+
+function SidebarBrand() {
+  return (
+    <div className="m-3 rounded-lg bg-white p-3 text-center">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/arbixo-logo.jpg"
+        alt="ARbixo — Accounting Intelligence. Business Excellence."
+        className="mx-auto w-full max-w-[180px]"
+      />
+      <p className="mt-1 text-[10px] text-neutral-500">Powered by: Systemaide Solutions Inc.</p>
+    </div>
+  );
+}
 
 function NavList({
   sections,
@@ -196,6 +217,7 @@ export function Sidebar({
           toggleSection={toggleSection}
           dashboardHref={dashboardHref}
         />
+        <SidebarBrand />
       </aside>
 
       {/* Mobile/tablet: off-canvas dark drawer over a backdrop. */}
@@ -220,6 +242,7 @@ export function Sidebar({
               toggleSection={toggleSection}
               dashboardHref={dashboardHref}
             />
+            <SidebarBrand />
           </aside>
         </div>
       )}

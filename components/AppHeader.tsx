@@ -11,6 +11,7 @@ export function AppHeader({
   companyName = null,
   userName = null,
   hasPhoto = false,
+  hasCompanyLogo = false,
 }: {
   user: SessionPayload | null;
   onMenu?: () => void;
@@ -18,6 +19,7 @@ export function AppHeader({
   companyName?: string | null;
   userName?: string | null;
   hasPhoto?: boolean;
+  hasCompanyLogo?: boolean;
 }) {
   return (
     <header className="shrink-0 bg-gradient-to-r from-brand-navyDark via-brand-navy to-[#0e3a63] text-white shadow-sm">
@@ -38,7 +40,16 @@ export function AppHeader({
         )}
 
         <a href="/" className="flex items-center gap-2.5">
-          {headerLogo ? (
+          {hasCompanyLogo ? (
+            // Each company shows its own logo (framed on white so transparent
+            // or dark logos stay visible on the navy header).
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/api/company/logo"
+              alt="Company logo"
+              className="h-9 w-auto max-w-[200px] rounded bg-white object-contain px-1.5 py-0.5"
+            />
+          ) : headerLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src="/api/branding/header-logo" alt="Logo" className="h-9 w-auto max-w-[220px] object-contain" />
           ) : (

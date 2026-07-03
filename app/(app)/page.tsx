@@ -212,7 +212,7 @@ export default async function HomePage() {
       {/* Quick actions (below the snapshot) + company information */}
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         {/* Quick actions */}
-        <section className="rounded-xl border border-white/40 bg-white/70 p-5 shadow-sm backdrop-blur-sm">
+        <section className="rounded-xl border border-white/40 bg-white/50 p-5 shadow-sm backdrop-blur-sm">
           <div className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
             Quick Actions
           </div>
@@ -231,7 +231,7 @@ export default async function HomePage() {
         </section>
 
         {/* Related links */}
-        <section className="rounded-xl border border-white/40 bg-white/70 p-5 shadow-sm backdrop-blur-sm">
+        <section className="rounded-xl border border-white/40 bg-white/50 p-5 shadow-sm backdrop-blur-sm">
           <div className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
             Related Links
           </div>

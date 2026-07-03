@@ -21,7 +21,11 @@ export type NavIcon =
   | "audit"
   | "backup"
   | "branding"
-  | "links";
+  | "links"
+  | "customers"
+  | "vendors"
+  | "employees"
+  | "contacts";
 
 export type NavLink = { href: string; label: string; icon: NavIcon };
 export type NavSection = {
@@ -40,7 +44,16 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/company/setup", label: "Company details", icon: "company" },
       { href: "/company/tax-posting-setup", label: "Tax posting setup", icon: "tax" },
       { href: "/accounts", label: "Chart of accounts", icon: "accounts" },
-      { href: "/agents", label: "Customers, vendors, employees, contacts", icon: "parties" },
+    ],
+  },
+  {
+    title: "Master Data",
+    icon: "settings",
+    links: [
+      { href: "/agents/customers", label: "Customers", icon: "customers" },
+      { href: "/agents/vendors", label: "Vendors", icon: "vendors" },
+      { href: "/agents/employees", label: "Employees", icon: "employees" },
+      { href: "/agents/contacts", label: "Contacts", icon: "contacts" },
     ],
   },
   {

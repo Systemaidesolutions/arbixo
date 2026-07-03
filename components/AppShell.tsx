@@ -22,6 +22,7 @@ export function AppShell({
   companyName = null,
   userName = null,
   hasPhoto = false,
+  hasCompanyLogo = false,
   children,
 }: {
   user: SessionPayload | null;
@@ -31,6 +32,7 @@ export function AppShell({
   companyName?: string | null;
   userName?: string | null;
   hasPhoto?: boolean;
+  hasCompanyLogo?: boolean;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -44,6 +46,7 @@ export function AppShell({
         companyName={companyName}
         userName={userName}
         hasPhoto={hasPhoto}
+        hasCompanyLogo={hasCompanyLogo}
       />
 
       <div className="flex min-h-0 flex-1">
@@ -73,13 +76,13 @@ export function AppShell({
           {!branding?.background && (
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 flex justify-center overflow-hidden"
+              className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center overflow-hidden"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/arbixo-icon.png"
                 alt=""
-                className="mt-12 w-[440px] max-w-[70%] opacity-[0.04]"
+                className="w-[520px] max-w-[80%] opacity-[0.06]"
               />
             </div>
           )}

@@ -1,6 +1,10 @@
 export function Footer() {
   return (
     <footer className="shrink-0 border-t border-neutral-200 bg-white px-4 py-3 text-xs text-neutral-500 sm:px-6">
+      <div className="mb-2 text-center text-sm font-semibold">
+        <span className="text-brand-navy">Accounting Intelligence. </span>
+        <span className="text-brand-green">Business Excellence.</span>
+      </div>
       <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
         <p className="text-center sm:text-left">
           © {new Date().getFullYear()} Systemaide Solutions Inc. All rights reserved.

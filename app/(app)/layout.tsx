@@ -19,15 +19,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // their next navigation (a lapsed subscription does not). We also grab the
   // trade name here to show in the header.
   let companyName: string | null = null;
+  let hasCompanyLogo = false;
   if (record.role === "USER" && record.companyId) {
     const company = await prisma.company.findUnique({
       where: { id: record.companyId },
-      select: { isActive: true, tradeName: true },
+      select: { isActive: true, tradeName: true, logoUrl: true },
     });
     if (company && !company.isActive) {
       redirect("/login");
     }
     companyName = company?.tradeName ?? null;
+    hasCompanyLogo = !!company?.logoUrl;
   }
 
   const user: SessionPayload = { sub: record.id, email: record.email, role: record.role };
@@ -42,6 +44,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       companyName={companyName}
       userName={record.name}
       hasPhoto={!!record.photoUrl}
+      hasCompanyLogo={hasCompanyLogo}
     >
       {children}
     </AppShell>
