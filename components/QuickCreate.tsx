@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type {
   Account,
@@ -31,7 +32,14 @@ export function QuickCreateModal({
   onClose: () => void;
   children: React.ReactNode;
 }) {
-  return (
+  // Rendered through a portal to <body> so the modal's <form> is never nested
+  // inside the surrounding transaction <form> (nested forms are invalid HTML
+  // and make the modal's submit button post the outer form instead).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
       <div className="relative max-h-[88vh] w-full max-w-md overflow-y-auto rounded-xl border border-neutral-200 bg-white p-5 shadow-xl">
@@ -48,7 +56,8 @@ export function QuickCreateModal({
         </div>
         <div className="mt-3">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
