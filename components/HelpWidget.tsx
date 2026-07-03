@@ -11,7 +11,7 @@ export function HelpWidget() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 print:hidden">
+    <div className="absolute bottom-4 right-4 z-50 print:hidden">
       {open ? (
         <div className="relative w-64 rounded-xl bg-brand-navy p-4 text-center shadow-xl ring-1 ring-white/10">
           <button

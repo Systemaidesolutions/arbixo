@@ -71,7 +71,7 @@ export function AppShell({
         hasCompanyLogo={hasCompanyLogo}
       />
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         <Sidebar
           role={role}
           subtype={subtype}
@@ -82,10 +82,13 @@ export function AppShell({
         <main className="relative flex-1 overflow-y-auto">
           <div className="relative min-h-full">{children}</div>
         </main>
+
+        {/* Anchored to the content region (above the footer) so the button
+            never covers the footer links. */}
+        <HelpWidget />
       </div>
 
       <Footer />
-      <HelpWidget />
     </div>
   );
 }
