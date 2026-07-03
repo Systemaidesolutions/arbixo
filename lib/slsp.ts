@@ -66,6 +66,13 @@ export type SlsRow = {
   tin: string;
   name: string;
   address: string;
+  // Separate components for the BIR .DAT layout.
+  reg: string;
+  last: string;
+  first: string;
+  middle: string;
+  addr1: string;
+  addr2: string;
   exempt: number;
   zeroRated: number;
   taxable: number;
@@ -74,7 +81,7 @@ export type SlsRow = {
 };
 
 export type Slp = { rows: SlpRow[]; totals: Omit<SlpRow, "id" | "tin" | "name" | "address" | "reg" | "last" | "first" | "middle" | "addr1" | "addr2"> };
-export type Sls = { rows: SlsRow[]; totals: Omit<SlsRow, "id" | "tin" | "name" | "address"> };
+export type Sls = { rows: SlsRow[]; totals: Omit<SlsRow, "id" | "tin" | "name" | "address" | "reg" | "last" | "first" | "middle" | "addr1" | "addr2"> };
 
 export type DatCompany = {
   tin: string;
@@ -90,6 +97,12 @@ export type DatCompany = {
   zipCode: string;
   rdoCode: string;
 };
+
+// Trailing field of the H record. Both the client's SLP (5 rows) and SLS
+// (3 rows) samples show a constant "12" regardless of row count or tax month,
+// so it is emitted verbatim. Change here if BIR's RELIEF validator shows it is
+// dynamic (e.g. tax-month number).
+const H_TRAILER = "12";
 
 const digitsOnly = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
 // Match the sample's number style: integers plain, otherwise 2 decimals.
@@ -119,7 +132,7 @@ export function buildSlpDat(co: DatCompany, slp: Slp, periodEnd: Date): string {
     co.tradeName, coAddr1, coAddr2,
     amt(t.exempt), amt(t.zeroRated), amt(t.services), amt(t.capitalGoods), amt(t.goods),
     amt(t.inputTax), amt(t.inputTax), "0",
-    digitsOnly(co.rdoCode), me, String(slp.rows.length),
+    digitsOnly(co.rdoCode), me, H_TRAILER,
   ].join(",");
 
   const details = slp.rows.map((r) =>
@@ -127,6 +140,39 @@ export function buildSlpDat(co: DatCompany, slp: Slp, periodEnd: Date): string {
       "D", "P", digitsOnly(r.tin), r.reg, r.last, r.first, r.middle, r.addr1, r.addr2,
       amt(r.exempt), amt(r.zeroRated), amt(r.services), amt(r.capitalGoods), amt(r.goods),
       amt(r.inputTax), coTin, me,
+    ].join(",")
+  );
+
+  return [header, ...details].join("\r\n") + "\r\n";
+}
+
+/**
+ * Generates the BIR RELIEF SLS file text: one H (taxpayer + grand totals)
+ * record followed by one D record per customer, comma-delimited, matching the
+ * client's sample layout. SLS has a single taxable ("Vatable Sales") column,
+ * so its records are shorter than SLP's.
+ */
+export function buildSlsDat(co: DatCompany, sls: Sls, periodEnd: Date): string {
+  const coTin = digitsOnly(co.tin);
+  const me = mmddyyyy(periodEnd);
+  const t = sls.totals;
+  const coIsPerson = Boolean(co.taxpayerLastName || co.taxpayerFirstName);
+  const coReg = coIsPerson ? "" : (co.registeredName ?? co.tradeName ?? "");
+  const coAddr1 = [co.businessAddress, co.barangay].filter(Boolean).join(" ");
+  const coAddr2 = [co.city, co.province, co.zipCode].filter(Boolean).join(" ");
+
+  const header = [
+    "H", "S", coTin, coReg,
+    co.taxpayerLastName ?? "", co.taxpayerFirstName ?? "", co.taxpayerMiddleName ?? "",
+    co.tradeName, coAddr1, coAddr2,
+    amt(t.exempt), amt(t.zeroRated), amt(t.taxable), amt(t.outputTax),
+    digitsOnly(co.rdoCode), me, H_TRAILER,
+  ].join(",");
+
+  const details = sls.rows.map((r) =>
+    [
+      "D", "S", digitsOnly(r.tin), r.reg, r.last, r.first, r.middle, r.addr1, r.addr2,
+      amt(r.exempt), amt(r.zeroRated), amt(r.taxable), amt(r.outputTax), coTin, me,
     ].join(",")
   );
 
@@ -233,11 +279,18 @@ export async function getSummaryListOfSales(companyId: string, from: Date, to: D
     const key = l.customer.id;
     let row = map.get(key);
     if (!row) {
+      const isPerson = Boolean(l.customer.lastName || l.customer.firstName || l.customer.middleName);
       row = {
         id: key,
         tin: l.customer.tin ?? "",
         name: partyName(l.customer),
         address: partyAddress(l.customer),
+        reg: isPerson ? "" : (l.customer.registeredName ?? l.customer.tradeName ?? ""),
+        last: l.customer.lastName ?? "",
+        first: l.customer.firstName ?? "",
+        middle: l.customer.middleName ?? "",
+        addr1: [l.customer.address, l.customer.barangay].filter(Boolean).join(" "),
+        addr2: [l.customer.city, l.customer.province, l.customer.zipCode].filter(Boolean).join(" "),
         exempt: 0, zeroRated: 0, taxable: 0, gross: 0, outputTax: 0,
       };
       map.set(key, row);
