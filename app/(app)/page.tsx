@@ -127,26 +127,6 @@ export default async function HomePage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
-      <div className="flex flex-col items-center">
-        {company.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={company.logoUrl}
-            alt={company.tradeName}
-            className="h-auto max-h-28 w-auto max-w-[280px] object-contain"
-          />
-        ) : (
-          <Image
-            src="/arbixo-logo.jpg"
-            alt="Arbixo — Accounting Intelligence. Business Excellence."
-            width={480}
-            height={269}
-            priority
-            className="h-auto w-full max-w-[280px]"
-          />
-        )}
-      </div>
-
       {(sub.state === "expiring" || sub.state === "expired" || sub.state === "none") && (
         <div
           className={`mt-6 rounded-lg border p-4 text-sm ${
@@ -179,10 +159,10 @@ export default async function HomePage() {
       <section className="mt-6 rounded-xl bg-gradient-to-br from-brand-navy to-[#0e3a63] p-5 shadow-sm">
         <div className="flex flex-col gap-1 border-b border-white/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white sm:text-xl">
+            <h2 className="text-2xl font-bold text-white sm:text-3xl">
               {greeting}, {displayName} 👋
             </h2>
-            <p className="text-sm text-white/60">
+            <p className="mt-1 text-sm text-white/60">
               Here&apos;s your financial snapshot for {monthLabel}.
             </p>
           </div>
@@ -232,7 +212,7 @@ export default async function HomePage() {
       {/* Quick actions (below the snapshot) + company information */}
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         {/* Quick actions */}
-        <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <section className="rounded-xl border border-white/40 bg-white/70 p-5 shadow-sm backdrop-blur-sm">
           <div className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
             Quick Actions
           </div>
@@ -251,7 +231,7 @@ export default async function HomePage() {
         </section>
 
         {/* Related links */}
-        <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <section className="rounded-xl border border-white/40 bg-white/70 p-5 shadow-sm backdrop-blur-sm">
           <div className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
             Related Links
           </div>
