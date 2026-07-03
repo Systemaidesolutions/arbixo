@@ -8,10 +8,18 @@ import type {
   Contact,
   CounterpartyType,
   Customer,
+  CustomerType,
   Employee,
+  RegistrationType,
+  TaxClassification,
   Vendor,
+  VendorType,
 } from "@prisma/client";
 import { CLASSIFICATION_LABELS, CLASSIFICATION_ORDER } from "@/lib/accounts";
+import { TAX_CLASSIFICATION_LABELS, REGISTRATION_TYPE_LABELS } from "@/lib/company";
+import { CUSTOMER_TYPE_LABELS, VENDOR_TYPE_LABELS } from "@/lib/parties";
+import { TinInput } from "@/components/TinInput";
+import { AddressFields } from "@/components/AddressFields";
 
 /** Floating modal shell used by all the quick-create forms. */
 export function QuickCreateModal({
@@ -26,7 +34,7 @@ export function QuickCreateModal({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
-      <div className="relative w-full max-w-md rounded-xl border border-neutral-200 bg-white p-5 shadow-xl">
+      <div className="relative max-h-[88vh] w-full max-w-md overflow-y-auto rounded-xl border border-neutral-200 bg-white p-5 shadow-xl">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-semibold text-neutral-900">{title}</h3>
           <button
@@ -56,10 +64,44 @@ const PARTY_ENDPOINT: Record<CounterpartyType, { url: string; key: string; label
 
 type AnyParty = Customer | Vendor | Employee | Contact;
 
+type PartyForm = {
+  code: string;
+  tin: string;
+  taxClassification: TaxClassification;
+  registeredName: string;
+  lastName: string;
+  firstName: string;
+  middleName: string;
+  tradeName: string;
+  customerType: CustomerType;
+  vendorType: VendorType;
+  registrationType: RegistrationType;
+  position: string;
+  address: string;
+  barangay: string;
+  city: string;
+  province: string;
+  zipCode: string;
+  telNo: string;
+  cellNo: string;
+  email: string;
+  faxNo: string;
+  website: string;
+};
+
+function emptyPartyForm(): PartyForm {
+  return {
+    code: "", tin: "", taxClassification: "NON_INDIVIDUAL", registeredName: "",
+    lastName: "", firstName: "", middleName: "", tradeName: "", customerType: "PRIVATE",
+    vendorType: "SUPPLIER", registrationType: "VAT", position: "", address: "", barangay: "",
+    city: "", province: "", zipCode: "", telNo: "", cellNo: "", email: "", faxNo: "", website: "",
+  };
+}
+
 /**
- * Minimal "quick create" for a party. Captures just enough to post a valid
- * record with sensible defaults (Non-Individual, VAT); full details can be
- * filled in later on the Agents page.
+ * Full "create a party" form used inline from the transaction screens — the
+ * same field set as the Agents page, so a record can be captured completely
+ * without leaving the transaction.
  */
 export function NewPartyForm({
   companyId,
@@ -73,13 +115,13 @@ export function NewPartyForm({
   onCancel: () => void;
 }) {
   const isEmployee = type === "EMPLOYEE";
-  const [code, setCode] = useState("");
-  const [name, setName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [registrationType, setRegistrationType] = useState<"VAT" | "NON_VAT">("VAT");
+  const [form, setForm] = useState<PartyForm>(emptyPartyForm());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function set<K extends keyof PartyForm>(key: K, value: PartyForm[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -87,18 +129,38 @@ export function NewPartyForm({
     setBusy(true);
 
     const ep = PARTY_ENDPOINT[type];
-    const payload: Record<string, unknown> = isEmployee
-      ? { companyId, code, lastName, firstName }
-      : {
-          companyId,
-          code,
-          tradeName: name,
-          registeredName: name,
-          taxClassification: "NON_INDIVIDUAL",
-          registrationType,
-          ...(type === "CUSTOMER" ? { customerType: "PRIVATE" } : {}),
-          ...(type === "VENDOR" ? { vendorType: "SUPPLIER" } : {}),
-        };
+    const payload: Record<string, unknown> = {
+      companyId,
+      code: form.code.trim(),
+      tin: form.tin.trim() || null,
+      address: form.address.trim() || null,
+      barangay: form.barangay.trim() || null,
+      city: form.city.trim() || null,
+      province: form.province.trim() || null,
+      zipCode: form.zipCode.trim() || null,
+      telNo: form.telNo.trim() || null,
+      cellNo: form.cellNo.trim() || null,
+      email: form.email.trim() || null,
+    };
+
+    if (isEmployee) {
+      payload.lastName = form.lastName.trim();
+      payload.firstName = form.firstName.trim();
+      payload.middleName = form.middleName.trim() || null;
+      payload.position = form.position.trim() || null;
+    } else {
+      payload.taxClassification = form.taxClassification;
+      payload.registeredName = form.registeredName.trim() || null;
+      payload.lastName = form.lastName.trim() || null;
+      payload.firstName = form.firstName.trim() || null;
+      payload.middleName = form.middleName.trim() || null;
+      payload.tradeName = form.tradeName.trim();
+      payload.registrationType = form.registrationType;
+      payload.faxNo = form.faxNo.trim() || null;
+      payload.website = form.website.trim() || null;
+      if (type === "CUSTOMER") payload.customerType = form.customerType;
+      if (type === "VENDOR") payload.vendorType = form.vendorType;
+    }
 
     const res = await fetch(ep.url, {
       method: "POST",
@@ -118,44 +180,140 @@ export function NewPartyForm({
     <form onSubmit={submit} className="space-y-3">
       <label className={labelCls}>
         Code
-        <input required autoFocus value={code} onChange={(e) => setCode(e.target.value)} className={field} />
+        <input required autoFocus value={form.code} onChange={(e) => set("code", e.target.value)} className={`${field} font-mono`} />
+      </label>
+
+      <label className={labelCls}>
+        TIN
+        <TinInput value={form.tin} onChange={(v) => set("tin", v)} className={field} />
       </label>
 
       {isEmployee ? (
-        <div className="grid grid-cols-2 gap-3">
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <label className={labelCls}>
+              Last name
+              <input required value={form.lastName} onChange={(e) => set("lastName", e.target.value)} className={field} />
+            </label>
+            <label className={labelCls}>
+              First name
+              <input required value={form.firstName} onChange={(e) => set("firstName", e.target.value)} className={field} />
+            </label>
+          </div>
           <label className={labelCls}>
-            Last name
-            <input required value={lastName} onChange={(e) => setLastName(e.target.value)} className={field} />
+            Middle name
+            <input value={form.middleName} onChange={(e) => set("middleName", e.target.value)} className={field} />
           </label>
           <label className={labelCls}>
-            First name
-            <input required value={firstName} onChange={(e) => setFirstName(e.target.value)} className={field} />
+            Position
+            <input value={form.position} onChange={(e) => set("position", e.target.value)} className={field} />
           </label>
-        </div>
+        </>
       ) : (
         <>
           <label className={labelCls}>
-            Name
-            <input required value={name} onChange={(e) => setName(e.target.value)} className={field} />
-          </label>
-          <label className={labelCls}>
-            Registration
+            Tax classification
             <select
-              value={registrationType}
-              onChange={(e) => setRegistrationType(e.target.value as "VAT" | "NON_VAT")}
+              value={form.taxClassification}
+              onChange={(e) => set("taxClassification", e.target.value as TaxClassification)}
               className={field}
             >
-              <option value="VAT">VAT</option>
-              <option value="NON_VAT">Non-VAT</option>
+              {Object.entries(TAX_CLASSIFICATION_LABELS).map(([value, text]) => (
+                <option key={value} value={value}>{text}</option>
+              ))}
+            </select>
+          </label>
+
+          {form.taxClassification === "NON_INDIVIDUAL" ? (
+            <label className={labelCls}>
+              Registered name
+              <input required value={form.registeredName} onChange={(e) => set("registeredName", e.target.value)} className={field} />
+            </label>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <label className={labelCls}>
+                Last name
+                <input required value={form.lastName} onChange={(e) => set("lastName", e.target.value)} className={field} />
+              </label>
+              <label className={labelCls}>
+                First name
+                <input required value={form.firstName} onChange={(e) => set("firstName", e.target.value)} className={field} />
+              </label>
+            </div>
+          )}
+
+          <label className={labelCls}>
+            Trade name
+            <input required value={form.tradeName} onChange={(e) => set("tradeName", e.target.value)} className={field} />
+          </label>
+
+          {type === "CUSTOMER" && (
+            <label className={labelCls}>
+              Customer type
+              <select value={form.customerType} onChange={(e) => set("customerType", e.target.value as CustomerType)} className={field}>
+                {Object.entries(CUSTOMER_TYPE_LABELS).map(([value, text]) => (
+                  <option key={value} value={value}>{text}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {type === "VENDOR" && (
+            <label className={labelCls}>
+              Vendor type
+              <select value={form.vendorType} onChange={(e) => set("vendorType", e.target.value as VendorType)} className={field}>
+                {Object.entries(VENDOR_TYPE_LABELS).map(([value, text]) => (
+                  <option key={value} value={value}>{text}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <label className={labelCls}>
+            Registration type
+            <select value={form.registrationType} onChange={(e) => set("registrationType", e.target.value as RegistrationType)} className={field}>
+              {Object.entries(REGISTRATION_TYPE_LABELS).map(([value, text]) => (
+                <option key={value} value={value}>{text}</option>
+              ))}
             </select>
           </label>
         </>
       )}
 
+      <AddressFields
+        idPrefix={`qc-${type.toLowerCase()}`}
+        value={{
+          street: form.address,
+          barangay: form.barangay,
+          province: form.province,
+          city: form.city,
+          zip: form.zipCode,
+        }}
+        onChange={(patch) => {
+          if (patch.street !== undefined) set("address", patch.street);
+          if (patch.barangay !== undefined) set("barangay", patch.barangay);
+          if (patch.province !== undefined) set("province", patch.province);
+          if (patch.city !== undefined) set("city", patch.city);
+          if (patch.zip !== undefined) set("zipCode", patch.zip);
+        }}
+      />
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className={labelCls}>
+          Tel no.
+          <input value={form.telNo} onChange={(e) => set("telNo", e.target.value)} className={field} />
+        </label>
+        <label className={labelCls}>
+          Cell no.
+          <input value={form.cellNo} onChange={(e) => set("cellNo", e.target.value)} className={field} />
+        </label>
+      </div>
+      <label className={labelCls}>
+        Email
+        <input value={form.email} onChange={(e) => set("email", e.target.value)} className={field} />
+      </label>
+
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <p className="text-[11px] text-neutral-400">
-        Only the essentials — edit full details later under Agents.
-      </p>
 
       <div className="flex justify-end gap-2 pt-1">
         <button type="button" onClick={onCancel} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
