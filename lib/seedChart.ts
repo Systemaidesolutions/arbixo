@@ -2,15 +2,17 @@ import { prisma } from "@/lib/prisma";
 import { DEFAULT_CHART_OF_ACCOUNTS } from "@/lib/defaultChartOfAccounts";
 
 /**
- * Seeds the default nested chart of accounts into a company.
+ * Seeds the default nested heading chart into a company. Safe to run on a
+ * company that already has accounts: existing codes are skipped, and only the
+ * seeded heading rows are (re)parented — a pre-existing account that happens to
+ * share a code is never touched. Uses a bulk createMany + raw parent UPDATEs so
+ * it doesn't flood the audit trail.
  *
- * Uses a bulk createMany (a single audit-trail entry, not one per account)
- * for the rows, then links each child to its parent with raw UPDATEs — which
- * the audit extension doesn't record — so a brand-new company doesn't open
- * with dozens of "account created" trail rows.
+ * Returns how many accounts were newly created.
  */
 export async function seedDefaultChart(companyId: string): Promise<number> {
-  await prisma.account.createMany({
+  const result = await prisma.account.createMany({
+    skipDuplicates: true,
     data: DEFAULT_CHART_OF_ACCOUNTS.map((a) => ({
       companyId,
       code: a.code,
@@ -22,20 +24,22 @@ export async function seedDefaultChart(companyId: string): Promise<number> {
     })),
   });
 
-  const created = await prisma.account.findMany({
+  const existing = await prisma.account.findMany({
     where: { companyId },
-    select: { id: true, code: true },
+    select: { id: true, code: true, accountType: true },
   });
-  const idByCode = new Map(created.map((a) => [a.code, a.id]));
+  const byCode = new Map(existing.map((a) => [a.code, a]));
 
   for (const a of DEFAULT_CHART_OF_ACCOUNTS) {
     if (!a.parentCode) continue;
-    const childId = idByCode.get(a.code);
-    const parentId = idByCode.get(a.parentCode);
-    if (childId && parentId) {
-      await prisma.$executeRaw`UPDATE "Account" SET "parentAccountId" = ${parentId} WHERE id = ${childId}`;
+    const child = byCode.get(a.code);
+    const parent = byCode.get(a.parentCode);
+    // Only link the seeded headings — never re-parent a user's own account
+    // that happens to share a code with a default heading.
+    if (child && parent && child.accountType === "HEADING") {
+      await prisma.$executeRaw`UPDATE "Account" SET "parentAccountId" = ${parent.id} WHERE id = ${child.id}`;
     }
   }
 
-  return DEFAULT_CHART_OF_ACCOUNTS.length;
+  return result.count;
 }

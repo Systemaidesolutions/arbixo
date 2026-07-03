@@ -85,7 +85,7 @@ export function AccountsClient({
   }
 
   async function loadDefaults() {
-    if (!window.confirm("Load the standard chart of accounts (headings)? You can edit or remove them, and add posting accounts underneath.")) return;
+    if (!window.confirm("Add the standard heading structure? Any account codes you already use are skipped, and nothing you have is changed. You can then nest your accounts under a heading.")) return;
     setSeeding(true);
     setError(null);
     const res = await fetch("/api/accounts/seed-defaults", { method: "POST" });
@@ -239,15 +239,13 @@ export function AccountsClient({
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-xl font-medium text-neutral-900">Chart of accounts</h1>
           <div className="flex items-center gap-2">
-            {accounts.length === 0 && (
-              <button
-                onClick={loadDefaults}
-                disabled={seeding}
-                className="rounded bg-[#0B2A5E] px-3 py-1.5 text-sm text-white hover:bg-[#123A73] disabled:opacity-50"
-              >
-                {seeding ? "Loading…" : "Load default chart of accounts"}
-              </button>
-            )}
+            <button
+              onClick={loadDefaults}
+              disabled={seeding}
+              className="rounded bg-[#0B2A5E] px-3 py-1.5 text-sm text-white hover:bg-[#123A73] disabled:opacity-50"
+            >
+              {seeding ? "Loading…" : "Load default headings"}
+            </button>
             <button
               onClick={startCreateRoot}
               className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
@@ -286,11 +284,23 @@ export function AccountsClient({
               {form.mode === "create" ? "New account" : "Edit account"}
             </h2>
 
-            {form.parentLabel && (
-              <p className="rounded bg-neutral-50 px-2 py-1 text-xs text-neutral-500">
-                Under: <span className="font-medium text-neutral-700">{form.parentLabel}</span>
-              </p>
-            )}
+            <label className="block text-xs text-neutral-500">
+              Parent (heading)
+              <select
+                value={form.parentAccountId ?? ""}
+                onChange={(e) => setForm({ ...form, parentAccountId: e.target.value || null })}
+                className={field}
+              >
+                <option value="">— None (top level) —</option>
+                {accounts
+                  .filter((a) => a.accountType === "HEADING" && a.id !== form.id)
+                  .map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.code} {a.title}
+                    </option>
+                  ))}
+              </select>
+            </label>
 
             <label className="block text-xs text-neutral-500">
               Type
