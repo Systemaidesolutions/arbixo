@@ -1,4 +1,5 @@
 import type { PeriodType, RegistrationType, TaxClassification } from "@prisma/client";
+import { tinError } from "@/lib/tin";
 
 export const TAX_CLASSIFICATION_LABELS: Record<TaxClassification, string> = {
   INDIVIDUAL: "Individual (Single Proprietorship)",
@@ -29,6 +30,9 @@ export type CompanyFormPayload = {
   taxpayerMiddleName?: string | null;
   tradeName: string;
   businessAddress: string;
+  barangay?: string | null;
+  city?: string | null;
+  province?: string | null;
   zipCode: string;
   rdoCode: string;
   periodType: PeriodType;
@@ -46,7 +50,8 @@ export type CompanyFormPayload = {
 // Reg. Name is required for Non-Individual, Taxpayer Name for Individual;
 // Trade Name is always required regardless of classification.
 export function validateCompanyPayload(payload: CompanyFormPayload): string | null {
-  if (!payload.tin?.trim()) return "TIN is required";
+  const tinErr = tinError(payload.tin, { required: true });
+  if (tinErr) return tinErr;
   if (!payload.tradeName?.trim()) return "Trade Name is required";
   if (!payload.businessAddress?.trim()) return "Business Address is required";
   if (!payload.zipCode?.trim()) return "Zip Code is required";

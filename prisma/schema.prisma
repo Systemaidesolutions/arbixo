@@ -119,6 +119,11 @@ model Company {
   taxpayerMiddleName   String?
   tradeName            String
   businessAddress      String
+  // Structured PH address (added alongside the free-text businessAddress,
+  // which now holds the street/building line).
+  barangay             String?
+  city                 String?
+  province             String?
   zipCode              String
   rdoCode              String
   periodType           PeriodType @default(CALENDAR)
@@ -333,6 +338,10 @@ model Customer {
   registrationType  RegistrationType
   authorizedRep     String?
   address           String?
+  barangay          String?
+  city              String?
+  province          String?
+  zipCode           String?
   telNo             String?
   faxNo             String?
   cellNo            String?
@@ -363,6 +372,10 @@ model Vendor {
   registrationType  RegistrationType
   authorizedRep     String?
   address           String?
+  barangay          String?
+  city              String?
+  province          String?
+  zipCode           String?
   telNo             String?
   faxNo             String?
   cellNo            String?
@@ -388,6 +401,10 @@ model Employee {
   middleName String?
   position   String?
   address    String?
+  barangay   String?
+  city       String?
+  province   String?
+  zipCode    String?
   telNo      String?
   cellNo     String?
   email      String?
@@ -417,6 +434,10 @@ model Contact {
   tradeName         String
   registrationType  RegistrationType
   address           String?
+  barangay          String?
+  city              String?
+  province          String?
+  zipCode           String?
   telNo             String?
   cellNo            String?
   email             String?

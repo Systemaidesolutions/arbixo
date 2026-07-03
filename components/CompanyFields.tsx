@@ -8,6 +8,9 @@ import {
   TAX_CLASSIFICATION_LABELS,
   type CompanyFormPayload,
 } from "@/lib/company";
+import { TinInput } from "@/components/TinInput";
+import { AddressFields } from "@/components/AddressFields";
+import { RdoSelect } from "@/components/RdoSelect";
 
 /**
  * The full BIR company field set (manual section 1.1), shared by the admin
@@ -34,12 +37,11 @@ export function CompanyFields({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className={label}>
           TIN
-          <input
+          <TinInput
             required
             disabled={readOnly}
             value={form.tin}
-            onChange={(e) => onChange("tin", e.target.value)}
-            placeholder="000-065-432"
+            onChange={(v) => onChange("tin", v)}
             className={field}
           />
         </label>
@@ -118,40 +120,36 @@ export function CompanyFields({
       </label>
 
       {/* Address */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_140px]">
-        <label className={label}>
-          Business address
-          <input
-            required
-            disabled={readOnly}
-            value={form.businessAddress}
-            onChange={(e) => onChange("businessAddress", e.target.value)}
-            placeholder="Street/Brgy., City/Municipality"
-            className={field}
-          />
-        </label>
-        <label className={label}>
-          Zip code
-          <input
-            required
-            disabled={readOnly}
-            value={form.zipCode}
-            onChange={(e) => onChange("zipCode", e.target.value)}
-            className={field}
-          />
-        </label>
-      </div>
+      <AddressFields
+        disabled={readOnly}
+        required
+        streetLabel="Business address (street / building)"
+        idPrefix="company-addr"
+        value={{
+          street: form.businessAddress,
+          barangay: form.barangay ?? "",
+          province: form.province ?? "",
+          city: form.city ?? "",
+          zip: form.zipCode,
+        }}
+        onChange={(patch) => {
+          if (patch.street !== undefined) onChange("businessAddress", patch.street);
+          if (patch.barangay !== undefined) onChange("barangay", patch.barangay);
+          if (patch.province !== undefined) onChange("province", patch.province);
+          if (patch.city !== undefined) onChange("city", patch.city);
+          if (patch.zip !== undefined) onChange("zipCode", patch.zip);
+        }}
+      />
 
       {/* RDO + Period */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className={label}>
           RDO code
-          <input
+          <RdoSelect
             required
             disabled={readOnly}
             value={form.rdoCode}
-            onChange={(e) => onChange("rdoCode", e.target.value)}
-            placeholder="113 - DAVAO CITY"
+            onChange={(v) => onChange("rdoCode", v)}
             className={field}
           />
         </label>
@@ -288,6 +286,9 @@ export function toCompanyFormState(
     taxpayerMiddleName: company?.taxpayerMiddleName ?? "",
     tradeName: company?.tradeName ?? "",
     businessAddress: company?.businessAddress ?? "",
+    barangay: company?.barangay ?? "",
+    city: company?.city ?? "",
+    province: company?.province ?? "",
     zipCode: company?.zipCode ?? "",
     rdoCode: company?.rdoCode ?? "",
     periodType: company?.periodType ?? "CALENDAR",

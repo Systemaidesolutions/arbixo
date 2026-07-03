@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { CustomerType, RegistrationType, TaxClassification, VendorType } from "@prisma/client";
 import { TAX_CLASSIFICATION_LABELS, REGISTRATION_TYPE_LABELS } from "@/lib/company";
 import { CUSTOMER_TYPE_LABELS, VENDOR_TYPE_LABELS, PARTY_LABELS, type PartyEntityType } from "@/lib/parties";
+import { TinInput } from "@/components/TinInput";
+import { AddressFields } from "@/components/AddressFields";
 
 // The four models (Customer/Vendor/Employee/Contact) share most fields but
 // not all — Employee has no taxClassification/tradeName/registrationType,
@@ -26,6 +28,10 @@ type PartyRecord = {
   registrationType?: RegistrationType;
   position?: string | null;
   address?: string | null;
+  barangay?: string | null;
+  city?: string | null;
+  province?: string | null;
+  zipCode?: string | null;
   telNo?: string | null;
   faxNo?: string | null;
   cellNo?: string | null;
@@ -50,6 +56,10 @@ type FormState = {
   registrationType: RegistrationType;
   position: string;
   address: string;
+  barangay: string;
+  city: string;
+  province: string;
+  zipCode: string;
   telNo: string;
   faxNo: string;
   cellNo: string;
@@ -74,6 +84,10 @@ function emptyForm(): FormState {
     registrationType: "VAT",
     position: "",
     address: "",
+    barangay: "",
+    city: "",
+    province: "",
+    zipCode: "",
     telNo: "",
     faxNo: "",
     cellNo: "",
@@ -100,6 +114,10 @@ function toForm(record: PartyRecord): FormState {
     registrationType: record.registrationType ?? "VAT",
     position: record.position ?? "",
     address: record.address ?? "",
+    barangay: record.barangay ?? "",
+    city: record.city ?? "",
+    province: record.province ?? "",
+    zipCode: record.zipCode ?? "",
     telNo: record.telNo ?? "",
     faxNo: record.faxNo ?? "",
     cellNo: record.cellNo ?? "",
@@ -133,8 +151,7 @@ export function PartyManager({
   }
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
-    if (!form) return;
-    setForm({ ...form, [key]: value });
+    setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -148,6 +165,10 @@ export function PartyManager({
       code: form.code.trim(),
       tin: form.tin.trim() || null,
       address: form.address.trim() || null,
+      barangay: form.barangay.trim() || null,
+      city: form.city.trim() || null,
+      province: form.province.trim() || null,
+      zipCode: form.zipCode.trim() || null,
       telNo: form.telNo.trim() || null,
       cellNo: form.cellNo.trim() || null,
       email: form.email.trim() || null,
@@ -279,7 +300,7 @@ export function PartyManager({
 
             <label className={label}>
               TIN
-              <input value={form.tin} onChange={(e) => set("tin", e.target.value)} className={field} />
+              <TinInput value={form.tin} onChange={(v) => set("tin", v)} className={field} />
             </label>
 
             {isEmployee ? (
@@ -452,10 +473,24 @@ export function PartyManager({
               </>
             )}
 
-            <label className={label}>
-              Address
-              <input value={form.address} onChange={(e) => set("address", e.target.value)} className={field} />
-            </label>
+            <AddressFields
+              streetLabel="Address (street / building)"
+              idPrefix="party-addr"
+              value={{
+                street: form.address,
+                barangay: form.barangay,
+                province: form.province,
+                city: form.city,
+                zip: form.zipCode,
+              }}
+              onChange={(patch) => {
+                if (patch.street !== undefined) set("address", patch.street);
+                if (patch.barangay !== undefined) set("barangay", patch.barangay);
+                if (patch.province !== undefined) set("province", patch.province);
+                if (patch.city !== undefined) set("city", patch.city);
+                if (patch.zip !== undefined) set("zipCode", patch.zip);
+              }}
+            />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <label className={label}>
                 Tel no.
