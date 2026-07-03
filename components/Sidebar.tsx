@@ -95,14 +95,14 @@ const LINK_ICONS: Record<NavIcon, LucideIcon> = {
 
 function SidebarBrand() {
   return (
-    <div className="m-3 rounded-lg bg-white p-3 text-center">
+    <div className="mx-4 mb-4 mt-2 rounded-2xl bg-white p-2.5 text-center shadow-lg ring-1 ring-black/5">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/arbixo-logo.jpg"
         alt="ARbixo — Accounting Intelligence. Business Excellence."
-        className="mx-auto w-full max-w-[180px]"
+        className="mx-auto w-full max-w-[130px]"
       />
-      <p className="mt-1 text-[10px] text-neutral-500">Powered by: Systemaide Solutions Inc.</p>
+      <p className="mt-1 text-[9px] text-neutral-500">Powered by: Systemaide Solutions Inc.</p>
     </div>
   );
 }
