@@ -37,7 +37,7 @@ import type { SubscriberSubtype } from "@prisma/client";
 import {
   NAV_SECTIONS,
   ADMIN_NAV_SECTIONS,
-  UTILITY_SECTION,
+  HISTORY_SECTION,
   type NavIcon,
   type NavSection,
 } from "@/lib/navigation";
@@ -49,8 +49,12 @@ const REVIEW_SECTION: NavSection = {
   links: [{ href: "/approvals", label: "Pending approvals", icon: "approvals" }],
 };
 
+const COMPANY_BACKUP_LINK = { href: "/utility/backup", label: "Backup this company", icon: "backup" } as const;
+
 // Builds the nav a subscriber sees based on their subtype: Report Creator
-// (read-only) loses the Transactions section; a Manager gains Approvals.
+// (read-only) loses the Transactions section; a Manager gains the History
+// group (ledger browsers + audit trail), a company-backup option in Setup,
+// and Approvals.
 function sectionsFor(role: "ADMIN" | "USER", subtype: SubscriberSubtype | null): NavSection[] {
   if (role === "ADMIN") return ADMIN_NAV_SECTIONS;
   const cap = capabilitiesFor(role, subtype);
@@ -58,11 +62,20 @@ function sectionsFor(role: "ADMIN" | "USER", subtype: SubscriberSubtype | null):
   if (!cap.canPost) {
     sections = sections.filter((s) => s.title !== "Transactions");
   }
-  if (cap.canApprove) {
-    // Managers get approvals + the utility tools (audit trail, backup).
-    sections = [...sections, REVIEW_SECTION, UTILITY_SECTION];
+  if (!cap.canApprove) return sections;
+
+  // Managers: History group before Setup, a company-backup link inside Setup,
+  // and Approvals at the end.
+  const managerSections: NavSection[] = [];
+  for (const s of sections) {
+    if (s.title === "Setup") {
+      managerSections.push(HISTORY_SECTION);
+      managerSections.push({ ...s, links: [...s.links, COMPANY_BACKUP_LINK] });
+    } else {
+      managerSections.push(s);
+    }
   }
-  return sections;
+  return [...managerSections, REVIEW_SECTION];
 }
 
 const LINK_ICONS: Record<NavIcon, LucideIcon> = {

@@ -88,6 +88,19 @@ export const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
+// History — Business-Central-style browsers over posted ledger entries, plus
+// the company audit trail. Manager-only (injected in the sidebar).
+export const HISTORY_SECTION: NavSection = {
+  title: "History",
+  icon: "reports",
+  links: [
+    { href: "/history/sales", label: "Sales entries", icon: "sales" },
+    { href: "/history/purchases", label: "Purchase entries", icon: "purchases" },
+    { href: "/history/general-ledger", label: "General ledger entries", icon: "generalLedger" },
+    { href: "/utility/audit-trail", label: "Audit trail", icon: "audit" },
+  ],
+};
+
 // Utility tools — shown to admins (full) and, in the sidebar, to Managers
 // (audit + per-company backup). The backup page itself adapts what it
 // offers based on the viewer's role.
