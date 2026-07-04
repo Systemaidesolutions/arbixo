@@ -112,6 +112,12 @@ export function QapClient({ tin, registeredName }: { tin: string; registeredName
         </label>
 
         <div className="ml-auto flex gap-2">
+          <a
+            href={`/api/reports/bir/qap/dat?year=${year}&quarter=${quarter}`}
+            className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+          >
+            Export BIR .DAT
+          </a>
           <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
             Export CSV
           </button>
@@ -122,7 +128,8 @@ export function QapClient({ tin, registeredName }: { tin: string; registeredName
       </div>
 
       <p className="mt-3 text-xs text-neutral-400">
-        {year} Q{quarter}. BIR .DAT (Alphalist) export will be added once the QAP format is confirmed.
+        {year} Q{quarter}. The .DAT uses the shared BIR alphalist layout — validate it against the BIR
+        Alphalist module before filing.
       </p>
 
       {loading || !data ? (

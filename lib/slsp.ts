@@ -124,21 +124,21 @@ export type DatCompany = {
 // (3 rows) samples show a constant "12" regardless of row count or tax month,
 // so it is emitted verbatim. Change here if BIR's RELIEF validator shows it is
 // dynamic (e.g. tax-month number).
-const H_TRAILER = "12";
+export const H_TRAILER = "12";
 
-const digitsOnly = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
+export const digitsOnly = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
 // RELIEF files are positional and comma-delimited with NO quoting, so any comma
 // or line break inside a text field shifts every field after it. Strip those
 // (and collapse whitespace); other punctuation the validator accepts is kept.
-const datText = (s: string | null | undefined) =>
+export const datText = (s: string | null | undefined) =>
   (s ?? "").replace(/[\r\n]+/g, " ").replace(/,/g, " ").replace(/\s+/g, " ").trim();
 // BIR RELIEF identifies a taxpayer by the 9-digit base TIN — the export file is
 // itself named "<9-digit TIN>...". Branch codes are not part of the TIN field,
 // so use only the first 9 digits.
-const datTin = (s: string | null | undefined) => digitsOnly(s).slice(0, 9);
+export const datTin = (s: string | null | undefined) => digitsOnly(s).slice(0, 9);
 // Match the sample's number style: integers plain, otherwise 2 decimals.
-const amt = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(2));
-function mmddyyyy(d: Date): string {
+export const amt = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(2));
+export function mmddyyyy(d: Date): string {
   const p = (x: number) => String(x).padStart(2, "0");
   return `${p(d.getMonth() + 1)}/${p(d.getDate())}/${d.getFullYear()}`;
 }

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { partyName } from "@/lib/slsp";
+import { partyName, datText, datTin, amt, digitsOnly, mmddyyyy, H_TRAILER, type DatCompany } from "@/lib/slsp";
 
 // BIR Quarterly Alphalist of Payees (QAP) — payees the company withheld
 // expanded withholding tax (EWT) from, i.e. the withholding-agent side of
@@ -174,4 +174,47 @@ export async function getQuarterlyAlphalistOfPayees(
     rows,
     totals,
   };
+}
+
+/**
+ * Generates a BIR Alphalist QAP file: one H (taxpayer + grand totals) record
+ * followed by one D record per payee + ATC, comma-delimited, using the same
+ * sanitizing conventions as the SLS/SLP/SLI RELIEF files (commas stripped from
+ * text, 9-digit TIN). Each D record carries the per-month income payment and
+ * tax withheld plus their totals.
+ *
+ * NOTE: built to the shared H/D convention, not to a supplied QAP sample —
+ * validate against BIR's Alphalist module before filing.
+ */
+export function buildQapDat(co: DatCompany, qap: Qap): string {
+  const coTin = datTin(co.tin);
+  const periodEnd = new Date(qap.year, qap.quarter * 3, 0); // last day of the quarter
+  const pe = mmddyyyy(periodEnd);
+  const t = qap.totals;
+  const coIsPerson = Boolean(co.taxpayerLastName || co.taxpayerFirstName);
+  const coReg = coIsPerson ? "" : datText(co.registeredName ?? co.tradeName ?? "");
+  const coAddr1 = datText([co.businessAddress, co.barangay].filter(Boolean).join(" "));
+  const coAddr2 = datText([co.city, co.province, co.zipCode].filter(Boolean).join(" "));
+
+  const header = [
+    "H", "Q", coTin, coReg,
+    datText(co.taxpayerLastName), datText(co.taxpayerFirstName), datText(co.taxpayerMiddleName),
+    datText(co.tradeName), coAddr1, coAddr2,
+    amt(t.incomeTotal), amt(t.taxTotal),
+    digitsOnly(co.rdoCode), pe, H_TRAILER,
+  ].join(",");
+
+  const details = qap.rows.map((r, i) =>
+    [
+      "D", "Q", String(i + 1), datTin(r.tin),
+      r.isIndividual ? "" : datText(r.reg),
+      datText(r.last), datText(r.first), datText(r.middle),
+      datText(r.atcCode), datText(r.atcDescription), amt(r.ratePercent),
+      amt(r.income[0]), amt(r.income[1]), amt(r.income[2]), amt(r.incomeTotal),
+      amt(r.tax[0]), amt(r.tax[1]), amt(r.tax[2]), amt(r.taxTotal),
+      coTin, pe,
+    ].join(",")
+  );
+
+  return [header, ...details].join("\r\n") + "\r\n";
 }
