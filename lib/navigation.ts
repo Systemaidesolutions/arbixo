@@ -15,6 +15,7 @@ export type NavIcon =
   | "income"
   | "balance"
   | "vat"
+  | "withholding"
   | "dashboard"
   | "users"
   | "companies"
@@ -63,6 +64,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/reports/bir/sls", label: "Summary List of Sales (SLS)", icon: "sales" },
       { href: "/reports/bir/slp", label: "Summary List of Purchases (SLP)", icon: "purchases" },
       { href: "/reports/bir/sli", label: "Summary List of Importations (SLI)", icon: "importations" },
+      { href: "/reports/bir/qap", label: "Quarterly Alphalist of Payees (QAP)", icon: "withholding" },
     ],
   },
   {
