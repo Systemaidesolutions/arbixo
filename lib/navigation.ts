@@ -7,6 +7,7 @@ export type NavIcon =
   | "cashIn"
   | "sales"
   | "purchases"
+  | "importations"
   | "journal"
   | "trialBalance"
   | "generalLedger"
@@ -60,6 +61,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/reports/bir/vat-return", label: "Monthly VAT return (BIR 2550M)", icon: "vat" },
       { href: "/reports/bir/sls", label: "Summary List of Sales (SLS)", icon: "sales" },
       { href: "/reports/bir/slp", label: "Summary List of Purchases (SLP)", icon: "purchases" },
+      { href: "/reports/bir/sli", label: "Summary List of Importations (SLI)", icon: "importations" },
     ],
   },
   {

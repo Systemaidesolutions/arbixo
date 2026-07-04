@@ -83,6 +83,26 @@ export type SlsRow = {
 export type Slp = { rows: SlpRow[]; totals: Omit<SlpRow, "id" | "tin" | "name" | "address" | "reg" | "last" | "first" | "middle" | "addr1" | "addr2"> };
 export type Sls = { rows: SlsRow[]; totals: Omit<SlsRow, "id" | "tin" | "name" | "address" | "reg" | "last" | "first" | "middle" | "addr1" | "addr2"> };
 
+// Summary List of Importations — one row per importation document, sourced
+// from the import-specific fields on IMPORTATION ledger entries.
+export type SliRow = {
+  id: string;
+  documentNo: string;
+  entryNo: number;
+  entryDeclNo: string; // Import Entry & Internal Revenue Declaration No.
+  importDate: Date | null;
+  releaseDate: Date | null; // assessment / release date
+  sellerName: string;
+  countryOrigin: string;
+  dutiableValue: number;
+  landedCost: number;
+  vatPaid: number; // input VAT paid on importation
+};
+export type Sli = {
+  rows: SliRow[];
+  totals: { dutiableValue: number; landedCost: number; vatPaid: number };
+};
+
 export type DatCompany = {
   tin: string;
   registeredName: string | null;
@@ -333,6 +353,79 @@ export async function getSummaryListOfSales(companyId: string, from: Date, to: D
       outputTax: round2(t.outputTax + r.outputTax),
     }),
     { exempt: 0, zeroRated: 0, taxable: 0, gross: 0, outputTax: 0 }
+  );
+
+  return { rows, totals };
+}
+
+/**
+ * Summary List of Importations — one row per importation document, built from
+ * the import-specific fields (import entry no., dates, dutiable value, landed
+ * cost) plus the input VAT paid, on IMPORTATION ledger entries. Lines sharing a
+ * documentNo are one importation, so metadata is taken from whichever line
+ * carries it and the money columns are summed.
+ */
+export async function getSummaryListOfImportations(companyId: string, from: Date, to: Date): Promise<Sli> {
+  const lines = await prisma.ledgerEntry.findMany({
+    where: {
+      companyId,
+      isCancelled: false,
+      postingDate: { gte: from, lte: to },
+      vatType: "IMPORTATION",
+    },
+    orderBy: [{ postingDate: "asc" }, { entryNo: "asc" }],
+  });
+
+  const map = new Map<string, SliRow>();
+  for (const l of lines) {
+    const key = l.documentNo || l.id;
+    let row = map.get(key);
+    if (!row) {
+      row = {
+        id: key,
+        documentNo: l.documentNo,
+        entryNo: l.entryNo,
+        entryDeclNo: "",
+        importDate: null,
+        releaseDate: null,
+        sellerName: "",
+        countryOrigin: "",
+        dutiableValue: 0,
+        landedCost: 0,
+        vatPaid: 0,
+      };
+      map.set(key, row);
+    }
+    // Metadata: keep the first non-empty value seen across the document's lines.
+    if (!row.entryDeclNo && l.importEntryNo) row.entryDeclNo = l.importEntryNo;
+    if (!row.sellerName && l.importSellerName) row.sellerName = l.importSellerName;
+    if (!row.countryOrigin && l.importCountryOrigin) row.countryOrigin = l.importCountryOrigin;
+    if (!row.importDate && l.importDate) row.importDate = l.importDate;
+    if (!row.releaseDate && l.importAssessDate) row.releaseDate = l.importAssessDate;
+    row.dutiableValue += num(l.importDutiableValue);
+    row.landedCost += num(l.importLandedCost);
+    row.vatPaid += num(l.vatAmount);
+  }
+
+  const rows = [...map.values()].map((r) => ({
+    ...r,
+    dutiableValue: round2(r.dutiableValue),
+    landedCost: round2(r.landedCost),
+    vatPaid: round2(r.vatPaid),
+  }));
+  rows.sort((a, b) => {
+    const ad = a.importDate?.getTime() ?? 0;
+    const bd = b.importDate?.getTime() ?? 0;
+    return ad - bd || a.entryNo - b.entryNo;
+  });
+
+  const totals = rows.reduce(
+    (t, r) => ({
+      dutiableValue: round2(t.dutiableValue + r.dutiableValue),
+      landedCost: round2(t.landedCost + r.landedCost),
+      vatPaid: round2(t.vatPaid + r.vatPaid),
+    }),
+    { dutiableValue: 0, landedCost: 0, vatPaid: 0 }
   );
 
   return { rows, totals };
