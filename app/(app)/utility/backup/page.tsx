@@ -24,12 +24,18 @@ export default async function BackupPage() {
     <main className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-12">
       <h1 className="text-xl font-medium text-neutral-900">Data backup &amp; restore</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Download a JSON snapshot of your data, or restore from one. (Credentials are never included.)
+        {isAdmin
+          ? "Download a JSON snapshot of your data, or restore from one. (Credentials are never included.)"
+          : "Download a JSON snapshot of your company's data. (Credentials are never included.)"}
       </p>
       <BackupClient isAdmin={isAdmin} companies={companies} ownCompany={ownCompany} />
-      <div className="mt-6">
-        <RestoreClient isAdmin={isAdmin} />
-      </div>
+      {/* Restore overwrites live data — admin-only. Managers can back up but
+          not restore. */}
+      {isAdmin && (
+        <div className="mt-6">
+          <RestoreClient isAdmin={isAdmin} />
+        </div>
+      )}
     </main>
   );
 }

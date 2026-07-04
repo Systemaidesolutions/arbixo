@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   ChevronDown,
@@ -215,12 +215,44 @@ export function Sidebar({
   const pathname = usePathname();
   const sections = sectionsFor(role, subtype);
   const dashboardHref = role === "ADMIN" ? "/admin" : "/";
+  const storageKey = `arbixo:navOpen:${role}`;
+
+  // Groups start collapsed (headers only). The user's expand/collapse choices
+  // are remembered across sessions in localStorage. Server + first client
+  // render both use the collapsed default to avoid a hydration mismatch; saved
+  // state is applied on mount.
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(sections.map((s) => [s.title, true]))
+    Object.fromEntries(sections.map((s) => [s.title, false]))
   );
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Record<string, boolean>;
+      setOpenSections((prev) => {
+        const next = { ...prev };
+        for (const s of sections) {
+          if (typeof saved[s.title] === "boolean") next[s.title] = saved[s.title];
+        }
+        return next;
+      });
+    } catch {
+      // ignore malformed / unavailable storage
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]);
+
   function toggleSection(title: string) {
-    setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }));
+    setOpenSections((prev) => {
+      const next = { ...prev, [title]: !prev[title] };
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch {
+        // ignore storage write failures (private mode, quota)
+      }
+      return next;
+    });
   }
 
   return (
