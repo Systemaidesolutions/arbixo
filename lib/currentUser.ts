@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { redirect } from "next/navigation";
@@ -13,7 +14,7 @@ import { hasActiveSubscription } from "@/lib/subscription";
  * company). This does one Prisma lookup to get the authoritative row.
  * Returns null if there's no valid session at all.
  */
-export async function getCurrentUserRecord(): Promise<User | null> {
+export const getCurrentUserRecord = cache(async (): Promise<User | null> => {
   const session = await getCurrentUser();
   if (!session) return null;
   const user = await prisma.user.findUnique({ where: { id: session.sub } });
@@ -21,7 +22,7 @@ export async function getCurrentUserRecord(): Promise<User | null> {
   // any writes made later in this request.
   if (user) setAuditActor({ userId: user.id, email: user.email, companyId: user.companyId });
   return user;
-}
+});
 
 /**
  * The multi-tenant boundary. ADMIN users (Arbixo staff) never have a
@@ -32,11 +33,11 @@ export async function getCurrentUserRecord(): Promise<User | null> {
  * be "no company exists yet" before multi-tenancy and the UI for it
  * already exists).
  */
-export async function getCurrentCompany(): Promise<Company | null> {
+export const getCurrentCompany = cache(async (): Promise<Company | null> => {
   const user = await getCurrentUserRecord();
   if (!user || user.role !== "USER" || !user.companyId) return null;
   return prisma.company.findUnique({ where: { id: user.companyId } });
-}
+});
 
 /**
  * Guard for admin-only pages (User List, Company List, admin

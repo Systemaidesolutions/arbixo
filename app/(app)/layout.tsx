@@ -10,7 +10,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // /login. This second check hits the database so it also catches accounts
   // that were disabled or deleted *after* their session token was issued —
   // the stateless JWT itself can't know that. Runs once per navigation.
-  const record = await getCurrentUserRecord();
+  // Fetch the user record and branding flags together — they're independent.
+  const [record, branding] = await Promise.all([getCurrentUserRecord(), brandingFlags()]);
   if (!record || record.isDisabled) {
     redirect("/login");
   }
@@ -33,7 +34,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const user: SessionPayload = { sub: record.id, email: record.email, role: record.role };
-  const branding = await brandingFlags();
 
   return (
     <AppShell

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, verifySessionToken, type SessionPayload } from "@/lib/auth";
 
@@ -8,9 +9,12 @@ import { SESSION_COOKIE, verifySessionToken, type SessionPayload } from "@/lib/a
  * they an admin) without an extra database round trip on every page
  * load. If a page ever needs fresher user data (e.g. after a profile
  * edit), query Prisma directly there instead of extending this.
+ *
+ * Wrapped in React `cache()` so the cookie read + JWT verify happen once
+ * per request even when several helpers call it.
  */
-export async function getCurrentUser(): Promise<SessionPayload | null> {
+export const getCurrentUser = cache(async (): Promise<SessionPayload | null> => {
   const token = cookies().get(SESSION_COOKIE)?.value;
   if (!token) return null;
   return verifySessionToken(token);
-}
+});
