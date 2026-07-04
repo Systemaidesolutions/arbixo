@@ -1,5 +1,5 @@
 // ============================================================
-// EJAS Web — Prisma schema
+// ARbixo — Prisma schema
 // Converted from the "Easy Journal Accounting System" desktop
 // manual, restructured as a single flat ledger-entry table —
 // the same pattern Business Central uses for G/L Entry: one

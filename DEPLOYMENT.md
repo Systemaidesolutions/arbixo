@@ -10,8 +10,8 @@ touching Vercel), then deploying to Vercel for real.
 docker compose up -d
 ```
 This starts Postgres 16 on `localhost:5432` with the credentials already
-baked into `docker-compose.yml` (`ejas` / `ejas_local_dev`, database
-`ejas_web`). Don't reuse these credentials anywhere real — they only
+baked into `docker-compose.yml` (`arbixo` / `arbixo_local_dev`, database
+`arbixo`). Don't reuse these credentials anywhere real — they only
 exist for local testing.
 
 **2. Set up your environment.**
