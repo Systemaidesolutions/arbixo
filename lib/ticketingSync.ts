@@ -49,7 +49,14 @@ type CompanyLike = {
 export async function createTicketProjectForCompany(company: CompanyLike): Promise<string | null> {
   const url = process.env.ARBIXO_CORE_SUPABASE_URL;
   const serviceKey = process.env.ARBIXO_CORE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) return null; // not configured — skip silently
+  if (!url || !serviceKey) {
+    // Distinguish "not configured" from "failed" in the logs.
+    console.warn(
+      `[ticketingSync] skipped — env not set (url:${url ? "yes" : "no"}, key:${serviceKey ? "yes" : "no"}). ` +
+        `Add ARBIXO_CORE_SUPABASE_URL and ARBIXO_CORE_SERVICE_ROLE_KEY, then redeploy.`
+    );
+    return null;
+  }
 
   const name = (company.registeredName || company.tradeName || "").trim() || "New Company";
   const description = `${company.tradeName} — TIN ${company.tin}. Linked from the Arbixo accounting app.`;
@@ -72,7 +79,10 @@ export async function createTicketProjectForCompany(company: CompanyLike): Promi
         headers,
         body: JSON.stringify({ key, name, description }),
       });
-      if (res.ok) return key;
+      if (res.ok) {
+        console.log(`[ticketingSync] created project "${key}" in ARbixo Core`);
+        return key;
+      }
       if (res.status === 409) continue; // duplicate key — try the next suffix
       // Any other status: log and give up (best-effort).
       console.error(`[ticketingSync] project create failed (${res.status}):`, await res.text().catch(() => ""));
