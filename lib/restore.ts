@@ -32,6 +32,8 @@ type CompanyBackup = {
   employees?: unknown;
   contacts?: unknown;
   taxPostingSetup?: Record<string, unknown> | null;
+  numberSeries?: unknown;
+  importations?: unknown;
   ledgerEntries?: unknown;
   auditLogs?: unknown;
 };
@@ -51,6 +53,8 @@ async function overwriteCompany(tx: Tx, cb: CompanyBackup): Promise<void> {
   // locations; taxPostingSetup references accounts.
   await tx.ledgerEntry.deleteMany({ where: { companyId } });
   await tx.taxPostingSetup.deleteMany({ where: { companyId } });
+  await tx.numberSeries.deleteMany({ where: { companyId } });
+  await tx.importation.deleteMany({ where: { companyId } });
   await tx.auditLog.deleteMany({ where: { companyId } });
   await tx.contact.deleteMany({ where: { companyId } });
   await tx.employee.deleteMany({ where: { companyId } });
@@ -84,6 +88,12 @@ async function overwriteCompany(tx: Tx, cb: CompanyBackup): Promise<void> {
   if (cb.taxPostingSetup) {
     await tx.taxPostingSetup.create({ data: reviveRow(cb.taxPostingSetup) });
   }
+
+  const numberSeries = reviveRows(cb.numberSeries);
+  if (numberSeries.length) await tx.numberSeries.createMany({ data: numberSeries });
+
+  const importations = reviveRows(cb.importations);
+  if (importations.length) await tx.importation.createMany({ data: importations });
 
   const ledger = reviveRows(cb.ledgerEntries);
   if (ledger.length) await tx.ledgerEntry.createMany({ data: ledger });
@@ -137,6 +147,8 @@ export async function restoreDatabaseBackup(backup: unknown): Promise<{ companie
     employees?: Array<{ companyId?: string }>;
     contacts?: Array<{ companyId?: string }>;
     taxPostingSetups?: Array<{ companyId?: string }>;
+    numberSeries?: Array<{ companyId?: string }>;
+    importations?: Array<{ companyId?: string }>;
     ledgerEntries?: Array<{ companyId?: string }>;
     auditLogs?: Array<{ companyId?: string }>;
     atcCodes?: unknown;
@@ -162,6 +174,8 @@ export async function restoreDatabaseBackup(backup: unknown): Promise<{ companie
             employees: forCompany(b.employees, company.id),
             contacts: forCompany(b.contacts, company.id),
             taxPostingSetup: forCompany(b.taxPostingSetups, company.id)[0] ?? null,
+            numberSeries: forCompany(b.numberSeries, company.id),
+            importations: forCompany(b.importations, company.id),
             ledgerEntries: forCompany(b.ledgerEntries, company.id),
             auditLogs: forCompany(b.auditLogs, company.id),
           });
