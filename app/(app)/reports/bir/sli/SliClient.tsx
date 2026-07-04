@@ -5,18 +5,20 @@ import { formatPeso } from "@/lib/format";
 
 type Row = {
   id: string;
-  documentNo: string;
-  entryNo: number;
-  entryDeclNo: string;
-  importDate: string | null;
-  releaseDate: string | null;
+  assessReleaseDate: string;
   sellerName: string;
+  importDate: string;
   countryOrigin: string;
   dutiableValue: number;
-  landedCost: number;
-  vatPaid: number;
+  charges: number;
+  exempt: number;
+  taxableGoods: number;
+  vat: number;
+  orNo: string;
+  paymentDate: string;
 };
-type Data = { rows: Row[]; totals: { dutiableValue: number; landedCost: number; vatPaid: number } };
+type Totals = { dutiableValue: number; charges: number; exempt: number; taxableGoods: number; vat: number };
+type Data = { rows: Row[]; totals: Totals };
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -74,8 +76,9 @@ export function SliClient({ tin, registeredName }: { tin: string; registeredName
   function exportCsv() {
     if (!data) return;
     const headers = [
-      "Import Entry/Decl No.", "Import Date", "Release Date", "Supplier", "Country of Origin",
-      "Dutiable Value", "Landed Cost", "VAT Paid",
+      "Assessment/Release Date", "Name of Seller", "Date of Importation", "Country of Origin",
+      "Dutiable Value", "All Charges Before Release", "Exempt", "Taxable Goods", "VAT",
+      "OR No.", "Date of Payment",
     ];
     const esc = (v: string | number) => {
       const s = String(v);
@@ -85,14 +88,16 @@ export function SliClient({ tin, registeredName }: { tin: string; registeredName
     for (const r of data.rows) {
       lines.push(
         [
-          r.entryDeclNo, fmtDate(r.importDate), fmtDate(r.releaseDate), r.sellerName, r.countryOrigin,
-          r.dutiableValue.toFixed(2), r.landedCost.toFixed(2), r.vatPaid.toFixed(2),
+          fmtDate(r.assessReleaseDate), r.sellerName, fmtDate(r.importDate), r.countryOrigin,
+          r.dutiableValue.toFixed(2), r.charges.toFixed(2), r.exempt.toFixed(2),
+          r.taxableGoods.toFixed(2), r.vat.toFixed(2), r.orNo, fmtDate(r.paymentDate),
         ].map(esc).join(",")
       );
     }
     lines.push(
-      ["", "", "", "", "TOTAL",
-        data.totals.dutiableValue.toFixed(2), data.totals.landedCost.toFixed(2), data.totals.vatPaid.toFixed(2),
+      ["", "", "", "TOTAL",
+        data.totals.dutiableValue.toFixed(2), data.totals.charges.toFixed(2), data.totals.exempt.toFixed(2),
+        data.totals.taxableGoods.toFixed(2), data.totals.vat.toFixed(2), "", "",
       ].map(esc).join(",")
     );
     const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
@@ -110,8 +115,8 @@ export function SliClient({ tin, registeredName }: { tin: string; registeredName
     <main className="mx-auto max-w-6xl p-4 sm:p-8">
       <h1 className="text-xl font-medium text-neutral-900">Summary List of Importations (SLI)</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Per-importation summary from posted importation entries, for RELIEF/BIR reporting. Verify
-        before submitting.
+        Per-importation summary from recorded importations, for RELIEF/BIR reporting. Verify before
+        submitting.
       </p>
 
       <div className="mt-4 rounded-lg border border-neutral-200 p-4 text-sm text-neutral-600">
@@ -169,6 +174,12 @@ export function SliClient({ tin, registeredName }: { tin: string; registeredName
         )}
 
         <div className="ml-auto flex gap-2">
+          <a
+            href={`/api/reports/bir/sli/dat?from=${range.from}&to=${range.to}`}
+            className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+          >
+            Export BIR .DAT
+          </a>
           <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
             Export CSV
           </button>
@@ -178,10 +189,7 @@ export function SliClient({ tin, registeredName }: { tin: string; registeredName
         </div>
       </div>
 
-      <p className="mt-3 text-xs text-neutral-400">
-        Covering {range.from} to {range.to}. BIR .DAT export will be added once the SLI RELIEF format
-        is confirmed.
-      </p>
+      <p className="mt-3 text-xs text-neutral-400">Covering {range.from} to {range.to}.</p>
 
       {loading || !data ? (
         <p className="mt-6 text-sm text-neutral-400">Loading…</p>
@@ -192,36 +200,45 @@ export function SliClient({ tin, registeredName }: { tin: string; registeredName
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500">
-                <th className="px-3 py-2">Entry/Decl No.</th>
-                <th className="px-3 py-2">Import Date</th>
                 <th className="px-3 py-2">Release Date</th>
-                <th className="px-3 py-2">Supplier</th>
+                <th className="px-3 py-2">Seller</th>
+                <th className="px-3 py-2">Import Date</th>
                 <th className="px-3 py-2">Country</th>
-                <th className="px-3 py-2 text-right">Dutiable Value</th>
-                <th className="px-3 py-2 text-right">Landed Cost</th>
-                <th className="px-3 py-2 text-right">VAT Paid</th>
+                <th className="px-3 py-2 text-right">Dutiable</th>
+                <th className="px-3 py-2 text-right">Charges</th>
+                <th className="px-3 py-2 text-right">Exempt</th>
+                <th className="px-3 py-2 text-right">Taxable</th>
+                <th className="px-3 py-2 text-right">VAT</th>
+                <th className="px-3 py-2">OR No.</th>
+                <th className="px-3 py-2">Paid</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
               {data.rows.map((r) => (
                 <tr key={r.id}>
-                  <td className="px-3 py-1.5 font-mono text-xs">{r.entryDeclNo || "—"}</td>
+                  <td className="px-3 py-1.5 text-xs">{fmtDate(r.assessReleaseDate)}</td>
+                  <td className="px-3 py-1.5">{r.sellerName}</td>
                   <td className="px-3 py-1.5 text-xs">{fmtDate(r.importDate)}</td>
-                  <td className="px-3 py-1.5 text-xs">{fmtDate(r.releaseDate)}</td>
-                  <td className="px-3 py-1.5">{r.sellerName || "—"}</td>
-                  <td className="px-3 py-1.5 text-xs text-neutral-500">{r.countryOrigin || "—"}</td>
+                  <td className="px-3 py-1.5 text-xs text-neutral-500">{r.countryOrigin}</td>
                   <td className="px-3 py-1.5 text-right font-mono">{formatPeso(r.dutiableValue)}</td>
-                  <td className="px-3 py-1.5 text-right font-mono">{formatPeso(r.landedCost)}</td>
-                  <td className="px-3 py-1.5 text-right font-mono">{formatPeso(r.vatPaid)}</td>
+                  <td className="px-3 py-1.5 text-right font-mono">{formatPeso(r.charges)}</td>
+                  <td className="px-3 py-1.5 text-right font-mono">{formatPeso(r.exempt)}</td>
+                  <td className="px-3 py-1.5 text-right font-mono">{formatPeso(r.taxableGoods)}</td>
+                  <td className="px-3 py-1.5 text-right font-mono">{formatPeso(r.vat)}</td>
+                  <td className="px-3 py-1.5 font-mono text-xs">{r.orNo}</td>
+                  <td className="px-3 py-1.5 text-xs">{fmtDate(r.paymentDate)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="bg-neutral-50 font-medium">
-                <td className="px-3 py-2" colSpan={5}>TOTAL</td>
+                <td className="px-3 py-2" colSpan={4}>TOTAL</td>
                 <td className="px-3 py-2 text-right font-mono">{formatPeso(data.totals.dutiableValue)}</td>
-                <td className="px-3 py-2 text-right font-mono">{formatPeso(data.totals.landedCost)}</td>
-                <td className="px-3 py-2 text-right font-mono">{formatPeso(data.totals.vatPaid)}</td>
+                <td className="px-3 py-2 text-right font-mono">{formatPeso(data.totals.charges)}</td>
+                <td className="px-3 py-2 text-right font-mono">{formatPeso(data.totals.exempt)}</td>
+                <td className="px-3 py-2 text-right font-mono">{formatPeso(data.totals.taxableGoods)}</td>
+                <td className="px-3 py-2 text-right font-mono">{formatPeso(data.totals.vat)}</td>
+                <td className="px-3 py-2" colSpan={2} />
               </tr>
             </tfoot>
           </table>

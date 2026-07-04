@@ -83,24 +83,26 @@ export type SlsRow = {
 export type Slp = { rows: SlpRow[]; totals: Omit<SlpRow, "id" | "tin" | "name" | "address" | "reg" | "last" | "first" | "middle" | "addr1" | "addr2"> };
 export type Sls = { rows: SlsRow[]; totals: Omit<SlsRow, "id" | "tin" | "name" | "address" | "reg" | "last" | "first" | "middle" | "addr1" | "addr2"> };
 
-// Summary List of Importations — one row per importation document, sourced
-// from the import-specific fields on IMPORTATION ledger entries.
+// Summary List of Importations — one row per importation record. Exempt and
+// Taxable Goods are the same base (dutiable value + charges), placed in whichever
+// column the importation's VAT treatment calls for; VAT is 12% of taxable.
 export type SliRow = {
   id: string;
-  documentNo: string;
-  entryNo: number;
-  entryDeclNo: string; // Import Entry & Internal Revenue Declaration No.
-  importDate: Date | null;
-  releaseDate: Date | null; // assessment / release date
+  assessReleaseDate: Date;
   sellerName: string;
+  importDate: Date;
   countryOrigin: string;
   dutiableValue: number;
-  landedCost: number;
-  vatPaid: number; // input VAT paid on importation
+  charges: number;
+  exempt: number;
+  taxableGoods: number;
+  vat: number;
+  orNo: string;
+  paymentDate: Date;
 };
 export type Sli = {
   rows: SliRow[];
-  totals: { dutiableValue: number; landedCost: number; vatPaid: number };
+  totals: { dutiableValue: number; charges: number; exempt: number; taxableGoods: number; vat: number };
 };
 
 export type DatCompany = {
@@ -359,74 +361,80 @@ export async function getSummaryListOfSales(companyId: string, from: Date, to: D
 }
 
 /**
- * Summary List of Importations — one row per importation document, built from
- * the import-specific fields (import entry no., dates, dutiable value, landed
- * cost) plus the input VAT paid, on IMPORTATION ledger entries. Lines sharing a
- * documentNo are one importation, so metadata is taken from whichever line
- * carries it and the money columns are summed.
+ * Summary List of Importations — one row per importation record captured in the
+ * Importation table. The dutiable value + charges base lands in the Exempt or
+ * Taxable Goods column per the record's VAT treatment; VAT is the recorded 12%.
  */
 export async function getSummaryListOfImportations(companyId: string, from: Date, to: Date): Promise<Sli> {
-  const lines = await prisma.ledgerEntry.findMany({
-    where: {
-      companyId,
-      isCancelled: false,
-      postingDate: { gte: from, lte: to },
-      vatType: "IMPORTATION",
-    },
-    orderBy: [{ postingDate: "asc" }, { entryNo: "asc" }],
+  const imports = await prisma.importation.findMany({
+    where: { companyId, importDate: { gte: from, lte: to } },
+    orderBy: [{ importDate: "asc" }, { createdAt: "asc" }],
   });
 
-  const map = new Map<string, SliRow>();
-  for (const l of lines) {
-    const key = l.documentNo || l.id;
-    let row = map.get(key);
-    if (!row) {
-      row = {
-        id: key,
-        documentNo: l.documentNo,
-        entryNo: l.entryNo,
-        entryDeclNo: "",
-        importDate: null,
-        releaseDate: null,
-        sellerName: "",
-        countryOrigin: "",
-        dutiableValue: 0,
-        landedCost: 0,
-        vatPaid: 0,
-      };
-      map.set(key, row);
-    }
-    // Metadata: keep the first non-empty value seen across the document's lines.
-    if (!row.entryDeclNo && l.importEntryNo) row.entryDeclNo = l.importEntryNo;
-    if (!row.sellerName && l.importSellerName) row.sellerName = l.importSellerName;
-    if (!row.countryOrigin && l.importCountryOrigin) row.countryOrigin = l.importCountryOrigin;
-    if (!row.importDate && l.importDate) row.importDate = l.importDate;
-    if (!row.releaseDate && l.importAssessDate) row.releaseDate = l.importAssessDate;
-    row.dutiableValue += num(l.importDutiableValue);
-    row.landedCost += num(l.importLandedCost);
-    row.vatPaid += num(l.vatAmount);
-  }
-
-  const rows = [...map.values()].map((r) => ({
-    ...r,
-    dutiableValue: round2(r.dutiableValue),
-    landedCost: round2(r.landedCost),
-    vatPaid: round2(r.vatPaid),
-  }));
-  rows.sort((a, b) => {
-    const ad = a.importDate?.getTime() ?? 0;
-    const bd = b.importDate?.getTime() ?? 0;
-    return ad - bd || a.entryNo - b.entryNo;
+  const rows: SliRow[] = imports.map((im) => {
+    const dutiableValue = num(im.dutiableValue);
+    const charges = num(im.charges);
+    const base = round2(dutiableValue + charges);
+    return {
+      id: im.id,
+      assessReleaseDate: im.assessReleaseDate,
+      sellerName: im.sellerName,
+      importDate: im.importDate,
+      countryOrigin: im.countryOrigin,
+      dutiableValue: round2(dutiableValue),
+      charges: round2(charges),
+      exempt: im.isVatExempt ? base : 0,
+      taxableGoods: im.isVatExempt ? 0 : base,
+      vat: im.isVatExempt ? 0 : round2(num(im.vatAmount)),
+      orNo: im.orNo,
+      paymentDate: im.paymentDate,
+    };
   });
 
   const totals = rows.reduce(
     (t, r) => ({
       dutiableValue: round2(t.dutiableValue + r.dutiableValue),
-      landedCost: round2(t.landedCost + r.landedCost),
-      vatPaid: round2(t.vatPaid + r.vatPaid),
+      charges: round2(t.charges + r.charges),
+      exempt: round2(t.exempt + r.exempt),
+      taxableGoods: round2(t.taxableGoods + r.taxableGoods),
+      vat: round2(t.vat + r.vat),
     }),
-    { dutiableValue: 0, landedCost: 0, vatPaid: 0 }
+    { dutiableValue: 0, charges: 0, exempt: 0, taxableGoods: 0, vat: 0 }
   );
 
   return { rows, totals };
+}
+
+/**
+ * Generates the BIR RELIEF SLI file: one H (taxpayer + grand totals) record
+ * followed by one D record per importation, comma-delimited. Same sanitizing as
+ * SLS/SLP — commas stripped from text, 9-digit TIN.
+ */
+export function buildSliDat(co: DatCompany, sli: Sli, periodEnd: Date): string {
+  const coTin = datTin(co.tin);
+  const me = mmddyyyy(periodEnd);
+  const t = sli.totals;
+  const coIsPerson = Boolean(co.taxpayerLastName || co.taxpayerFirstName);
+  const coReg = coIsPerson ? "" : datText(co.registeredName ?? co.tradeName ?? "");
+  const coAddr1 = datText([co.businessAddress, co.barangay].filter(Boolean).join(" "));
+  const coAddr2 = datText([co.city, co.province, co.zipCode].filter(Boolean).join(" "));
+
+  const header = [
+    "H", "I", coTin, coReg,
+    datText(co.taxpayerLastName), datText(co.taxpayerFirstName), datText(co.taxpayerMiddleName),
+    datText(co.tradeName), coAddr1, coAddr2,
+    amt(t.dutiableValue), amt(t.charges), amt(t.exempt), amt(t.taxableGoods), amt(t.vat),
+    digitsOnly(co.rdoCode), me, H_TRAILER,
+  ].join(",");
+
+  const details = sli.rows.map((r, i) =>
+    [
+      "D", "I", String(i + 1), mmddyyyy(r.assessReleaseDate), datText(r.sellerName),
+      mmddyyyy(r.importDate), datText(r.countryOrigin),
+      amt(r.dutiableValue), amt(r.charges), amt(r.exempt), amt(r.taxableGoods), amt(r.vat),
+      datText(r.orNo), mmddyyyy(r.paymentDate), coTin, me,
+    ].join(",")
+  );
+
+  return [header, ...details].join("\r\n") + "\r\n";
 }

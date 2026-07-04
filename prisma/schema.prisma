@@ -169,6 +169,32 @@ model Company {
   taxPostingSetup TaxPostingSetup?
   users         User[]
   numberSeries  NumberSeries[]
+  importations  Importation[]
+}
+
+// Importation record for the BIR Summary List of Importations (SLI). Kept as a
+// standalone capture (not a general-ledger posting) — the SLI is built directly
+// from these. The taxable/exempt base is dutiableValue + charges; VAT is 12% of
+// the taxable base when not exempt.
+model Importation {
+  id                String   @id @default(cuid())
+  company           Company  @relation(fields: [companyId], references: [id])
+  companyId         String
+  assessReleaseDate DateTime // Assessment / release date from customs
+  sellerName        String   // Name of foreign seller
+  importDate        DateTime // Date of importation
+  countryOrigin     String
+  dutiableValue     Decimal  @db.Decimal(18, 2)
+  charges           Decimal  @db.Decimal(18, 2) @default(0) // all charges before release from customs custody
+  isVatExempt       Boolean  @default(false)
+  vatAmount         Decimal  @db.Decimal(18, 2) @default(0) // 12% of (dutiable + charges) when taxable
+  orNo              String   // Official Receipt no. of the duty/VAT payment
+  paymentDate       DateTime
+  createdById       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([companyId, importDate])
 }
 
 // Per-company, per-master-data "No. Series" (à la Business Central). An admin
