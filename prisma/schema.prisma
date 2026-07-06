@@ -48,7 +48,84 @@ model AppSettings {
   backgroundImage String?
   loginImage      String?
   headerLogo      String?
+  // GCash collection account for subscription payments (admin-set).
+  gcashName       String?
+  gcashNumber     String?
   updatedAt       DateTime @updatedAt
+}
+
+// Business-Central-style dated subscription pricing. The "current" price is the
+// one whose window covers today: effectiveFrom <= now and (effectiveTo is null
+// or >= now). Adding a new price closes the previously open one (sets its
+// effectiveTo), so history is preserved and status is derivable from dates.
+model SubscriptionPrice {
+  id            String    @id @default(cuid())
+  name          String                        // e.g. "Price A"
+  amount        Decimal   @db.Decimal(10, 2)  // monthly rate
+  currency      String    @default("PHP")
+  effectiveFrom DateTime
+  effectiveTo   DateTime?                      // null = open-ended / current
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([effectiveFrom])
+}
+
+enum VoucherDiscountType {
+  FIXED
+  PERCENT
+}
+
+// Single-use discount codes redeemed on the subscription payment page. Codes are
+// random + unique so they can't be guessed. A voucher is usable only while
+// isActive and unredeemed (redeemedAt is null).
+model Voucher {
+  id              String              @id @default(cuid())
+  code            String              @unique
+  discountType    VoucherDiscountType @default(FIXED)
+  discountValue   Decimal             @db.Decimal(10, 2) // amount, or percent when PERCENT
+  isActive        Boolean             @default(true)
+  redeemedAt      DateTime?
+  redeemedByCompanyId String?
+  batchId         String?                                // groups a batch generation
+  note            String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([batchId])
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+// Audit log of subscription payments. Snapshots the price and voucher used so
+// the record stays accurate even if those are edited later.
+model SubscriptionPayment {
+  id             String        @id @default(cuid())
+  company        Company       @relation(fields: [companyId], references: [id])
+  companyId      String
+  priceName      String
+  baseAmount     Decimal       @db.Decimal(10, 2)
+  currency       String        @default("PHP")
+  voucherCode    String?
+  discountAmount Decimal       @db.Decimal(10, 2) @default(0)
+  amountDue      Decimal       @db.Decimal(10, 2)
+  gcashRef       String?
+  status         PaymentStatus @default(PENDING)
+  periodStart    DateTime?
+  periodEnd      DateTime?     // the subscription end this payment sets when verified
+  createdById    String?
+  createdByEmail String?
+  verifiedById   String?
+  verifiedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([companyId, createdAt])
+  @@index([status])
 }
 
 // Admin-curated shortcuts shown on every subscriber's dashboard — e.g. the
@@ -175,6 +252,7 @@ model Company {
   users         User[]
   numberSeries  NumberSeries[]
   importations  Importation[]
+  subscriptionPayments SubscriptionPayment[]
 }
 
 // Importation record for the BIR Summary List of Importations (SLI). Kept as a

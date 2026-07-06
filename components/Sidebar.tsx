@@ -31,6 +31,9 @@ import {
   Truck,
   Briefcase,
   Contact,
+  Coins,
+  Ticket,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import type { SubscriberSubtype } from "@prisma/client";
@@ -104,6 +107,10 @@ const LINK_ICONS: Record<NavIcon, LucideIcon> = {
   backup: Database,
   branding: Palette,
   links: Link2,
+  pricing: Coins,
+  voucher: Ticket,
+  payments: Wallet,
+  gcash: Wallet,
   customers: Users,
   vendors: Truck,
   employees: Briefcase,

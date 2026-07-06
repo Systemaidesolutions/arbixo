@@ -24,6 +24,10 @@ export type NavIcon =
   | "backup"
   | "branding"
   | "links"
+  | "pricing"
+  | "voucher"
+  | "payments"
+  | "gcash"
   | "customers"
   | "vendors"
   | "employees"
@@ -125,6 +129,14 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
       { href: "/admin/companies", label: "Company list", icon: "companies" },
       { href: "/admin/branding", label: "Branding", icon: "branding" },
       { href: "/admin/related-links", label: "Related links", icon: "links" },
+    ],
+  },
+  {
+    title: "Subscription",
+    icon: "admin",
+    links: [
+      { href: "/admin/subscription/pricing", label: "Pricing", icon: "pricing" },
+      { href: "/admin/subscription/vouchers", label: "Vouchers", icon: "voucher" },
     ],
   },
   UTILITY_SECTION,
