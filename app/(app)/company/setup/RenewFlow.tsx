@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
 
 type Checkout = {
   price: { name: string; amount: number; currency: string } | null;
-  gcash: { name: string; number: string };
+  gcash: { name: string; number: string; qrImage: string | null };
   subscriptionEndsAt: string | null;
 };
 type Applied = { code: string; discountAmount: number; finalAmount: number } | null;
@@ -35,7 +34,7 @@ export function RenewFlow() {
     setLoading(true);
     const res = await fetch("/api/subscription/checkout");
     const data = await res.json().catch(() => ({}));
-    setCheckout(res.ok ? data : { price: null, gcash: { name: "", number: "" }, subscriptionEndsAt: null });
+    setCheckout(res.ok ? data : { price: null, gcash: { name: "", number: "", qrImage: null }, subscriptionEndsAt: null });
     setLoading(false);
   }
 
@@ -128,31 +127,33 @@ export function RenewFlow() {
                 <button onClick={() => setStep(1)} className="text-xs text-neutral-400 hover:text-neutral-700">Back</button>
               </div>
 
-              {checkout.gcash.number ? (
+              {checkout.gcash.qrImage || checkout.gcash.number ? (
                 <div className="flex flex-col items-center gap-3 rounded-lg bg-neutral-50 p-4">
-                  <QRCodeSVG value={`gcash:${checkout.gcash.number}`} size={168} includeMargin />
+                  {checkout.gcash.qrImage && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={checkout.gcash.qrImage} alt="GCash QR" className="h-52 w-52 rounded border border-neutral-200 bg-white object-contain" />
+                  )}
                   <div className="text-center text-sm">
                     <div className="font-medium text-neutral-800">{checkout.gcash.name || "GCash"}</div>
-                    <div className="font-mono text-neutral-600">{checkout.gcash.number}</div>
+                    {checkout.gcash.number && <div className="font-mono text-neutral-600">{checkout.gcash.number}</div>}
                   </div>
                   <div className="flex gap-2">
-                    <a
-                      href="gcash://"
-                      className="rounded bg-[#0074E0] px-3 py-1.5 text-xs font-medium text-white hover:brightness-110"
-                    >
+                    <a href="gcash://" className="rounded bg-[#0074E0] px-3 py-1.5 text-xs font-medium text-white hover:brightness-110">
                       Open GCash app
                     </a>
-                    <button
-                      type="button"
-                      onClick={() => navigator.clipboard?.writeText(checkout.gcash.number)}
-                      className="rounded border border-neutral-300 px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50"
-                    >
-                      Copy number
-                    </button>
+                    {checkout.gcash.number && (
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard?.writeText(checkout.gcash.number)}
+                        className="rounded border border-neutral-300 px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50"
+                      >
+                        Copy number
+                      </button>
+                    )}
                   </div>
                   <p className="text-center text-xs text-neutral-500">
-                    Scan the QR or send <span className="font-medium">{fmt(finalAmount)}</span> to the number above, then
-                    enter the GCash reference number below.
+                    Scan the QR{checkout.gcash.number ? " or send to the number above" : ""} and pay{" "}
+                    <span className="font-medium">{fmt(finalAmount)}</span>, then enter the GCash reference number below.
                   </p>
                 </div>
               ) : (

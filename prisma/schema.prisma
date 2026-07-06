@@ -51,6 +51,7 @@ model AppSettings {
   // GCash collection account for subscription payments (admin-set).
   gcashName       String?
   gcashNumber     String?
+  gcashQrImage    String?  @db.Text // the admin's real GCash QR (base64 data URL)
   updatedAt       DateTime @updatedAt
 }
 

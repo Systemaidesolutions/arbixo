@@ -1,13 +1,12 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
 
 type Company = { id: string; tradeName: string; registeredName: string | null; subscriptionEndsAt: string | null };
 type Data = {
   companies: Company[];
   price: { name: string; amount: number; currency: string } | null;
-  gcash: { name: string; number: string };
+  gcash: { name: string; number: string; qrImage: string | null };
 };
 
 function status(endsAt: string | null): { label: string; cls: string } {
@@ -123,12 +122,15 @@ export function RenewalsClient() {
                             </button>
                             {rowMsg?.id === c.id && <p className={`text-xs ${rowMsg.ok ? "text-green-600" : "text-red-600"}`}>{rowMsg.text}</p>}
                           </div>
-                          {data.gcash.number && (
+                          {(data.gcash.qrImage || data.gcash.number) && (
                             <div className="flex flex-col items-center justify-center gap-2 rounded-lg bg-white p-3 ring-1 ring-neutral-200">
-                              <QRCodeSVG value={`gcash:${data.gcash.number}`} size={128} includeMargin />
+                              {data.gcash.qrImage && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={data.gcash.qrImage} alt="GCash QR" className="h-36 w-36 object-contain" />
+                              )}
                               <div className="text-center text-xs">
                                 <div className="font-medium text-neutral-700">{data.gcash.name || "GCash"}</div>
-                                <div className="font-mono text-neutral-500">{data.gcash.number}</div>
+                                {data.gcash.number && <div className="font-mono text-neutral-500">{data.gcash.number}</div>}
                               </div>
                             </div>
                           )}

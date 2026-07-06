@@ -17,7 +17,7 @@ export async function GET() {
 
   const [price, settings, company] = await Promise.all([
     getCurrentPrice(),
-    prisma.appSettings.findUnique({ where: { id: "singleton" }, select: { gcashName: true, gcashNumber: true } }),
+    prisma.appSettings.findUnique({ where: { id: "singleton" }, select: { gcashName: true, gcashNumber: true, gcashQrImage: true } }),
     prisma.company.findUnique({ where: { id: user.companyId }, select: { subscriptionEndsAt: true } }),
   ]);
 
@@ -25,7 +25,7 @@ export async function GET() {
     price: price
       ? { name: price.name, amount: Number(price.amount), currency: price.currency }
       : null,
-    gcash: { name: settings?.gcashName ?? "", number: settings?.gcashNumber ?? "" },
+    gcash: { name: settings?.gcashName ?? "", number: settings?.gcashNumber ?? "", qrImage: settings?.gcashQrImage ?? null },
     subscriptionEndsAt: company?.subscriptionEndsAt ?? null,
   });
 }

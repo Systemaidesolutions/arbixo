@@ -27,13 +27,13 @@ export async function GET() {
       orderBy: { tradeName: "asc" },
     }),
     getCurrentPrice(),
-    prisma.appSettings.findUnique({ where: { id: "singleton" }, select: { gcashName: true, gcashNumber: true } }),
+    prisma.appSettings.findUnique({ where: { id: "singleton" }, select: { gcashName: true, gcashNumber: true, gcashQrImage: true } }),
   ]);
 
   return NextResponse.json({
     companies,
     price: price ? { name: price.name, amount: Number(price.amount), currency: price.currency } : null,
-    gcash: { name: settings?.gcashName ?? "", number: settings?.gcashNumber ?? "" },
+    gcash: { name: settings?.gcashName ?? "", number: settings?.gcashNumber ?? "", qrImage: settings?.gcashQrImage ?? null },
   });
 }
 
