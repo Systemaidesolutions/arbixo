@@ -1,16 +1,15 @@
 export function Footer() {
   return (
-    <footer className="shrink-0 border-t border-neutral-200 bg-white px-4 py-3 text-xs text-neutral-500 sm:px-6">
-      <div className="mb-2 text-center text-sm font-semibold">
-        <span className="text-brand-navy">Accounting Intelligence. </span>
-        <span className="text-brand-green">Business Excellence.</span>
-      </div>
-      <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
+    <footer className="shrink-0 border-t border-neutral-200 bg-white px-4 py-2 text-xs text-neutral-500 sm:px-6">
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 sm:justify-between">
         <p className="text-center sm:text-left">
-          © {new Date().getFullYear()} Systemaide Solutions Inc. All rights reserved.
+          © {new Date().getFullYear()} Systemaide Solutions Inc.
+          <span className="mx-2 text-neutral-300">|</span>
+          <span className="font-semibold text-brand-navy">ARbixo</span> Accounting System
           <span className="mx-2 hidden text-neutral-300 sm:inline">|</span>
-          <span className="block sm:inline">
-            <span className="font-semibold text-brand-navy">ARbixo</span> Accounting System
+          <span className="hidden sm:inline">
+            <span className="font-medium text-brand-navy">Accounting Intelligence.</span>{" "}
+            <span className="font-medium text-brand-green">Business Excellence.</span>
           </span>
         </p>
         <nav className="flex items-center gap-4">
