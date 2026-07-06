@@ -74,15 +74,23 @@ export function PageStackProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [stack.length, close]);
 
+  return <Ctx.Provider value={{ stack, open, close, closeAll }}>{children}</Ctx.Provider>;
+}
+
+/**
+ * Renders the stacked page overlays. Placed INSIDE the app's content row (which
+ * already sits below the header and above the footer) and offset past the
+ * sidebar, so panels frame the workspace — the header and navigation stay
+ * visible and usable while pages are open (Business-Central style).
+ */
+export function PageStackOverlay() {
+  const ps = usePageStack();
+  if (!ps || ps.stack.length === 0) return null;
   return (
-    <Ctx.Provider value={{ stack, open, close, closeAll }}>
-      {children}
-      {/* Overlays start to the RIGHT of the sidebar (lg:left-64) so the
-          navigation stays visible and clickable — you can open another page on
-          top while one is open, Business-Central style. */}
-      {stack.map((e, i) => (
-        <div key={e.id} className="fixed inset-y-0 left-0 right-0 lg:left-64 print:hidden" style={{ zIndex: 50 + i }}>
-          <div className="absolute inset-0 bg-black/10" onClick={() => close(e.id)} aria-hidden />
+    <>
+      {ps.stack.map((e, i) => (
+        <div key={e.id} className="absolute inset-y-0 left-0 right-0 lg:left-64 print:hidden" style={{ zIndex: 50 + i }}>
+          <div className="absolute inset-0 bg-black/10" onClick={() => ps.close(e.id)} aria-hidden />
           <div
             className="absolute flex flex-col overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-black/10"
             style={{ top: `${8 + i * 10}px`, left: `${8 + i * 10}px`, right: "8px", bottom: "8px" }}
@@ -90,7 +98,7 @@ export function PageStackProvider({ children }: { children: React.ReactNode }) {
             <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-50 px-4 py-2">
               <span className="truncate text-sm font-medium text-neutral-800">{e.title}</span>
               <button
-                onClick={() => close(e.id)}
+                onClick={() => ps.close(e.id)}
                 aria-label="Close"
                 className="rounded p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700"
               >
@@ -101,7 +109,7 @@ export function PageStackProvider({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       ))}
-    </Ctx.Provider>
+    </>
   );
 }
 

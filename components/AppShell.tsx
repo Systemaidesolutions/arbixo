@@ -6,7 +6,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Sidebar } from "@/components/Sidebar";
 import { Footer } from "@/components/Footer";
 import { HelpWidget } from "@/components/HelpWidget";
-import { PageStackProvider, EmbedLinkInterceptor } from "@/components/PageStack";
+import { PageStackProvider, PageStackOverlay, EmbedLinkInterceptor } from "@/components/PageStack";
 import type { SessionPayload } from "@/lib/auth";
 import type { SubscriberSubtype } from "@prisma/client";
 import type { BrandingFlags } from "@/lib/branding";
@@ -102,6 +102,10 @@ export function AppShell({
         {/* Anchored to the content region (above the footer) so the button
             never covers the footer links. */}
         <HelpWidget />
+
+        {/* Stacked page overlays — live inside this content row so they sit
+            below the header, above the footer, and right of the sidebar. */}
+        <PageStackOverlay />
       </div>
 
       <Footer />
