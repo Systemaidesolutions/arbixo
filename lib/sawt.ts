@@ -32,23 +32,15 @@ export type SawtRow = {
 };
 
 export type Sawt = {
-  year: number;
-  quarter: number;
   rows: SawtRow[];
   totals: { income: number; tax: number };
 };
 
 export async function getSummaryAlphalistOfWithholdingTaxes(
   companyId: string,
-  year: number,
-  quarter: number
+  from: Date,
+  to: Date
 ): Promise<Sawt> {
-  const startMonth = (quarter - 1) * 3;
-  const from = new Date(`${year}-${String(startMonth + 1).padStart(2, "0")}-01T00:00:00`);
-  const endMonth = startMonth + 2;
-  const lastDay = new Date(year, endMonth + 1, 0).getDate();
-  const to = new Date(`${year}-${String(endMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}T23:59:59.999`);
-
   const [entries, atcCodes] = await Promise.all([
     prisma.ledgerEntry.findMany({
       where: {
@@ -105,7 +97,7 @@ export async function getSummaryAlphalistOfWithholdingTaxes(
     { income: 0, tax: 0 }
   );
 
-  return { year, quarter, rows, totals };
+  return { rows, totals };
 }
 
 // ---- .DAT (BIR Alphalist SAWT) ----
@@ -125,8 +117,8 @@ const rdoCode = (s: string | null | undefined) => (s ?? "").trim().match(/^[0-9A
  * quoted; amounts carry two decimals. Company TIN split into 9-digit + 4-digit
  * branch. Matches the client's sample layout.
  */
-export function buildSawtDat(co: DatCompany, sawt: Sawt): string {
-  const period = `${String(sawt.quarter * 3).padStart(2, "0")}/${sawt.year}`;
+export function buildSawtDat(co: DatCompany, sawt: Sawt, periodEnd: Date): string {
+  const period = `${String(periodEnd.getMonth() + 1).padStart(2, "0")}/${periodEnd.getFullYear()}`;
   const coTin = tin9(co.tin);
   const coBranch = branch4(co.tin);
   const coIsPerson = Boolean(co.taxpayerLastName || co.taxpayerFirstName);

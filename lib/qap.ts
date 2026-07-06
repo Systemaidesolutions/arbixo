@@ -2,9 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { partyName, datText, datTin, amt, digitsOnly, mmddyyyy, H_TRAILER, type DatCompany } from "@/lib/slsp";
 
 // BIR Quarterly Alphalist of Payees (QAP) — payees the company withheld
-// expanded withholding tax (EWT) from, i.e. the withholding-agent side of
-// purchases / cash disbursements. Income payment and tax withheld are split
-// across the three months of the quarter.
+// expanded withholding tax (EWT) from (the withholding-agent side of purchases /
+// cash disbursements). Reported per payee + ATC for the selected period
+// (monthly, quarterly, or a date range).
 
 function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -13,17 +13,11 @@ function num(d: unknown): number {
   return Number(d ?? 0);
 }
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
 export type QapRow = {
   id: string;
   tin: string;
   name: string;
   isIndividual: boolean;
-  // Separate name components for the alphalist .DAT.
   reg: string;
   last: string;
   first: string;
@@ -31,23 +25,13 @@ export type QapRow = {
   atcCode: string;
   atcDescription: string;
   ratePercent: number;
-  income: [number, number, number];
-  tax: [number, number, number];
-  incomeTotal: number;
-  taxTotal: number;
+  income: number;
+  tax: number;
 };
 
 export type Qap = {
-  year: number;
-  quarter: number;
-  months: [string, string, string];
   rows: QapRow[];
-  totals: {
-    income: [number, number, number];
-    tax: [number, number, number];
-    incomeTotal: number;
-    taxTotal: number;
-  };
+  totals: { income: number; tax: number };
 };
 
 type PayeeLike = {
@@ -74,17 +58,7 @@ function payeeIdentity(p: PayeeLike, keyPrefix: string) {
   };
 }
 
-export async function getQuarterlyAlphalistOfPayees(
-  companyId: string,
-  year: number,
-  quarter: number
-): Promise<Qap> {
-  const startMonth = (quarter - 1) * 3; // 0-based
-  const from = new Date(`${year}-${String(startMonth + 1).padStart(2, "0")}-01T00:00:00`);
-  const endMonth = startMonth + 2;
-  const lastDay = new Date(year, endMonth + 1, 0).getDate();
-  const to = new Date(`${year}-${String(endMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}T23:59:59.999`);
-
+export async function getAlphalistOfPayees(companyId: string, from: Date, to: Date): Promise<Qap> {
   const [entries, atcCodes] = await Promise.all([
     prisma.ledgerEntry.findMany({
       where: {
@@ -102,7 +76,6 @@ export async function getQuarterlyAlphalistOfPayees(
   const rateByCode = new Map(atcCodes.map((a) => [a.code, Number(a.ratePercent)]));
 
   const map = new Map<string, QapRow>();
-
   for (const e of entries) {
     let ident: ReturnType<typeof payeeIdentity> | null = null;
     if (e.vendorId && e.vendor) ident = payeeIdentity(e.vendor, `v:${e.vendorId}`);
@@ -127,69 +100,37 @@ export async function getQuarterlyAlphalistOfPayees(
         atcCode: atc,
         atcDescription: e.atcDescription ?? "",
         ratePercent: rateByCode.get(atc) ?? 0,
-        income: [0, 0, 0],
-        tax: [0, 0, 0],
-        incomeTotal: 0,
-        taxTotal: 0,
+        income: 0,
+        tax: 0,
       };
       map.set(key, row);
     }
-
-    // Income payment base = the main line's net (its debit, or credit on a
-    // return); returns net out via sign.
+    // Income base = main line net (its debit, or credit on a return); returns net out.
     const sign = e.isReturn ? -1 : 1;
-    const income = (num(e.debitAmount) + num(e.creditAmount)) * sign;
-    const tax = num(e.withholdingAmt) * sign;
-    const mIdx = Math.min(2, Math.max(0, e.postingDate.getMonth() - startMonth));
-    row.income[mIdx] += income;
-    row.tax[mIdx] += tax;
+    row.income += (num(e.debitAmount) + num(e.creditAmount)) * sign;
+    row.tax += num(e.withholdingAmt) * sign;
   }
 
-  const rows = [...map.values()].map((r) => {
-    r.income = r.income.map(round2) as [number, number, number];
-    r.tax = r.tax.map(round2) as [number, number, number];
-    r.incomeTotal = round2(r.income[0] + r.income[1] + r.income[2]);
-    r.taxTotal = round2(r.tax[0] + r.tax[1] + r.tax[2]);
-    return r;
-  });
+  const rows = [...map.values()].map((r) => ({ ...r, income: round2(r.income), tax: round2(r.tax) }));
   rows.sort((a, b) => a.name.localeCompare(b.name) || a.atcCode.localeCompare(b.atcCode));
 
   const totals = rows.reduce(
-    (t, r) => {
-      for (let i = 0; i < 3; i++) {
-        t.income[i] = round2(t.income[i] + r.income[i]);
-        t.tax[i] = round2(t.tax[i] + r.tax[i]);
-      }
-      t.incomeTotal = round2(t.incomeTotal + r.incomeTotal);
-      t.taxTotal = round2(t.taxTotal + r.taxTotal);
-      return t;
-    },
-    { income: [0, 0, 0] as [number, number, number], tax: [0, 0, 0] as [number, number, number], incomeTotal: 0, taxTotal: 0 }
+    (t, r) => ({ income: round2(t.income + r.income), tax: round2(t.tax + r.tax) }),
+    { income: 0, tax: 0 }
   );
 
-  return {
-    year,
-    quarter,
-    months: [MONTHS[startMonth], MONTHS[startMonth + 1], MONTHS[startMonth + 2]] as [string, string, string],
-    rows,
-    totals,
-  };
+  return { rows, totals };
 }
 
 /**
- * Generates a BIR Alphalist QAP file: one H (taxpayer + grand totals) record
- * followed by one D record per payee + ATC, comma-delimited, using the same
- * sanitizing conventions as the SLS/SLP/SLI RELIEF files (commas stripped from
- * text, 9-digit TIN). Each D record carries the per-month income payment and
- * tax withheld plus their totals.
- *
- * NOTE: built to the shared H/D convention, not to a supplied QAP sample —
- * validate against BIR's Alphalist module before filing.
+ * BIR Alphalist QAP file: one H (taxpayer + grand totals) record and one D
+ * record per payee + ATC. Shared BIR sanitizing (commas stripped, 9-digit TIN).
+ * Built to the shared H/D convention (no client QAP sample) — validate in BIR's
+ * Alphalist module before filing.
  */
-export function buildQapDat(co: DatCompany, qap: Qap): string {
+export function buildQapDat(co: DatCompany, qap: Qap, periodEnd: Date): string {
   const coTin = datTin(co.tin);
-  const periodEnd = new Date(qap.year, qap.quarter * 3, 0); // last day of the quarter
-  const pe = mmddyyyy(periodEnd);
+  const me = mmddyyyy(periodEnd);
   const t = qap.totals;
   const coIsPerson = Boolean(co.taxpayerLastName || co.taxpayerFirstName);
   const coReg = coIsPerson ? "" : datText(co.registeredName ?? co.tradeName ?? "");
@@ -200,8 +141,8 @@ export function buildQapDat(co: DatCompany, qap: Qap): string {
     "H", "Q", coTin, coReg,
     datText(co.taxpayerLastName), datText(co.taxpayerFirstName), datText(co.taxpayerMiddleName),
     datText(co.tradeName), coAddr1, coAddr2,
-    amt(t.incomeTotal), amt(t.taxTotal),
-    digitsOnly(co.rdoCode), pe, H_TRAILER,
+    amt(t.income), amt(t.tax),
+    digitsOnly(co.rdoCode), me, H_TRAILER,
   ].join(",");
 
   const details = qap.rows.map((r, i) =>
@@ -210,9 +151,8 @@ export function buildQapDat(co: DatCompany, qap: Qap): string {
       r.isIndividual ? "" : datText(r.reg),
       datText(r.last), datText(r.first), datText(r.middle),
       datText(r.atcCode), datText(r.atcDescription), amt(r.ratePercent),
-      amt(r.income[0]), amt(r.income[1]), amt(r.income[2]), amt(r.incomeTotal),
-      amt(r.tax[0]), amt(r.tax[1]), amt(r.tax[2]), amt(r.taxTotal),
-      coTin, pe,
+      amt(r.income), amt(r.tax),
+      coTin, me,
     ].join(",")
   );
 

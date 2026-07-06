@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 
 type Row = {
@@ -13,26 +13,54 @@ type Row = {
   income: number;
   tax: number;
 };
-type Data = { year: number; quarter: number; rows: Row[]; totals: { income: number; tax: number } };
+type Data = { rows: Row[]; totals: { income: number; tax: number } };
+
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function monthRange(y: number, m: number) {
+  const last = new Date(y, m, 0).getDate();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return { from: `${y}-${p(m)}-01`, to: `${y}-${p(m)}-${p(last)}` };
+}
+function quarterRange(y: number, q: number) {
+  const sm = (q - 1) * 3 + 1;
+  const em = sm + 2;
+  const last = new Date(y, em, 0).getDate();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return { from: `${y}-${p(sm)}-01`, to: `${y}-${p(em)}-${p(last)}` };
+}
 
 export function SawtClient({ tin, registeredName }: { tin: string; registeredName: string }) {
   const now = new Date();
+  const [mode, setMode] = useState<"month" | "quarter" | "range">("quarter");
   const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
   const [quarter, setQuarter] = useState(Math.floor(now.getMonth() / 3) + 1);
+  const [from, setFrom] = useState(`${now.getFullYear()}-01-01`);
+  const [to, setTo] = useState(now.toISOString().slice(0, 10));
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const range = useMemo(() => {
+    if (mode === "month") return monthRange(year, month);
+    if (mode === "quarter") return quarterRange(year, quarter);
+    return { from, to };
+  }, [mode, year, month, quarter, from, to]);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetch(`/api/reports/bir/sawt?year=${year}&quarter=${quarter}`)
+    fetch(`/api/reports/bir/sawt?from=${range.from}&to=${range.to}`)
       .then((r) => r.json())
       .then((j) => active && setData(j))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [year, quarter]);
+  }, [range.from, range.to]);
 
   function exportCsv() {
     if (!data) return;
@@ -50,7 +78,7 @@ export function SawtClient({ tin, registeredName }: { tin: string; registeredNam
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `SAWT_${year}_Q${quarter}.csv`;
+    a.download = `SAWT_${range.from}_to_${range.to}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -72,39 +100,63 @@ export function SawtClient({ tin, registeredName }: { tin: string; registeredNam
 
       <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">
         <label className="text-xs text-neutral-500">
-          Year
-          <input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} className={`mt-1 block w-24 ${field}`} />
-        </label>
-        <label className="text-xs text-neutral-500">
-          Quarter
-          <select value={quarter} onChange={(e) => setQuarter(Number(e.target.value))} className={`mt-1 block ${field}`}>
-            {[1, 2, 3, 4].map((q) => (
-              <option key={q} value={q}>Q{q}</option>
-            ))}
+          Period
+          <select value={mode} onChange={(e) => setMode(e.target.value as typeof mode)} className={`mt-1 block ${field}`}>
+            <option value="month">Monthly</option>
+            <option value="quarter">Quarterly</option>
+            <option value="range">Date range</option>
           </select>
         </label>
+        {mode !== "range" && (
+          <label className="text-xs text-neutral-500">
+            Year
+            <input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} className={`mt-1 block w-24 ${field}`} />
+          </label>
+        )}
+        {mode === "month" && (
+          <label className="text-xs text-neutral-500">
+            Month
+            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className={`mt-1 block ${field}`}>
+              {MONTHS.map((m, i) => (<option key={m} value={i + 1}>{m}</option>))}
+            </select>
+          </label>
+        )}
+        {mode === "quarter" && (
+          <label className="text-xs text-neutral-500">
+            Quarter
+            <select value={quarter} onChange={(e) => setQuarter(Number(e.target.value))} className={`mt-1 block ${field}`}>
+              {[1, 2, 3, 4].map((q) => (<option key={q} value={q}>Q{q}</option>))}
+            </select>
+          </label>
+        )}
+        {mode === "range" && (
+          <>
+            <label className="text-xs text-neutral-500">
+              From
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={`mt-1 block ${field}`} />
+            </label>
+            <label className="text-xs text-neutral-500">
+              To
+              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={`mt-1 block ${field}`} />
+            </label>
+          </>
+        )}
+
         <div className="ml-auto flex gap-2">
-          <a
-            href={`/api/reports/bir/sawt/dat?year=${year}&quarter=${quarter}`}
-            className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
-          >
+          <a href={`/api/reports/bir/sawt/dat?from=${range.from}&to=${range.to}`} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
             Export BIR .DAT
           </a>
-          <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
-            Export CSV
-          </button>
-          <button onClick={() => window.print()} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
-            Print
-          </button>
+          <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Export CSV</button>
+          <button onClick={() => window.print()} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Print</button>
         </div>
       </div>
 
-      <p className="mt-3 text-xs text-neutral-400">{year} Q{quarter}.</p>
+      <p className="mt-3 text-xs text-neutral-400">Covering {range.from} to {range.to}.</p>
 
       {loading || !data ? (
         <p className="mt-6 text-sm text-neutral-400">Loading…</p>
       ) : data.rows.length === 0 ? (
-        <p className="mt-6 text-sm text-neutral-400">No creditable-withholding income in this quarter.</p>
+        <p className="mt-6 text-sm text-neutral-400">No creditable-withholding income in this period.</p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-lg border border-neutral-200">
           <table className="w-full text-sm">
