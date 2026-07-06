@@ -45,6 +45,7 @@ import {
   type NavSection,
 } from "@/lib/navigation";
 import { capabilitiesFor } from "@/lib/permissions";
+import { usePageStack } from "@/components/PageStack";
 
 const REVIEW_SECTION: NavSection = {
   title: "Review",
@@ -132,20 +133,28 @@ function SidebarBrand() {
   );
 }
 
+// Sections whose links open as stacked overlay pages (BC-style) rather than a
+// full navigation. Starting with Transactions; links inside a stacked page then
+// go deeper automatically (see EmbedLinkInterceptor).
+const STACKABLE_SECTIONS = new Set(["Transactions"]);
+
 function NavList({
   sections,
   pathname,
   openSections,
   toggleSection,
   dashboardHref,
+  onNavigate,
 }: {
   sections: NavSection[];
   pathname: string;
   openSections: Record<string, boolean>;
   toggleSection: (title: string) => void;
   dashboardHref: string;
+  onNavigate?: () => void;
 }) {
   const dashActive = pathname === dashboardHref;
+  const pageStack = usePageStack();
   return (
     <nav className="flex-1 overflow-y-auto px-3 py-4">
       {/* Prominent Dashboard button at the top of the nav pane. */}
@@ -181,10 +190,18 @@ function NavList({
                 {section.links.map((link) => {
                   const Icon = LINK_ICONS[link.icon];
                   const active = pathname === link.href;
+                  const stackable = pageStack && STACKABLE_SECTIONS.has(section.title);
                   return (
                     <li key={link.href}>
                       <a
                         href={link.href}
+                        onClick={(e) => {
+                          if (stackable) {
+                            e.preventDefault();
+                            pageStack!.open(link.href, link.label);
+                          }
+                          onNavigate?.();
+                        }}
                         className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
                           active
                             ? "bg-gradient-to-r from-brand-blue to-[#1668c9] font-medium text-white shadow-sm"
@@ -298,6 +315,7 @@ export function Sidebar({
               openSections={openSections}
               toggleSection={toggleSection}
               dashboardHref={dashboardHref}
+              onNavigate={onCloseMobile}
             />
             <SidebarBrand />
           </aside>

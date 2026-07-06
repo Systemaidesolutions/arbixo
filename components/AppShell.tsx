@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { Sidebar } from "@/components/Sidebar";
 import { Footer } from "@/components/Footer";
 import { HelpWidget } from "@/components/HelpWidget";
+import { PageStackProvider, EmbedLinkInterceptor } from "@/components/PageStack";
 import type { SessionPayload } from "@/lib/auth";
 import type { SubscriberSubtype } from "@prisma/client";
 import type { BrandingFlags } from "@/lib/branding";
@@ -36,8 +38,22 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  // When a page is opened inside the stack it loads with ?_embed=1 — render it
+  // chrome-less (no header/sidebar/footer) so only its content shows in the
+  // overlay, and intercept its links so they open deeper on the parent's stack.
+  const embedded = useSearchParams().get("_embed") === "1";
+
+  if (embedded) {
+    return (
+      <div className="min-h-screen">
+        <EmbedLinkInterceptor />
+        {children}
+      </div>
+    );
+  }
 
   return (
+    <PageStackProvider>
     <div className="flex h-screen flex-col">
       {/* Fixed page background — stays in place while content scrolls. */}
       <div
@@ -90,5 +106,6 @@ export function AppShell({
 
       <Footer />
     </div>
+    </PageStackProvider>
   );
 }
