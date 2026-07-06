@@ -13,8 +13,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "from and to (YYYY-MM-DD) are required" }, { status: 400 });
   }
 
+  const locationId = request.nextUrl.searchParams.get("locationId") || undefined;
   const toDate = new Date(`${to}T23:59:59.999`);
-  const slp = await getSummaryListOfPurchases(company.id, new Date(`${from}T00:00:00`), toDate);
+  const slp = await getSummaryListOfPurchases(company.id, new Date(`${from}T00:00:00`), toDate, locationId);
   const text = buildSlpDat(company, slp, toDate);
 
   return new NextResponse(text, {

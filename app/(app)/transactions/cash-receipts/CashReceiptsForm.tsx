@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
+import { useLastBranch } from "@/lib/useLastBranch";
 import type {
   Account,
   AtcCode,
@@ -63,7 +64,7 @@ export function CashReceiptsForm({
   suggestedDocumentNo: string;
 }) {
   const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
-  const [locationId, setLocationId] = useState(locations.find((l) => l.isDefault)?.id ?? "");
+  const [locationId, setLocationId] = useLastBranch(companyId, locations);
   const [documentNo, setDocumentNo] = useState(suggestedDocumentNo);
   const [counterpartyType, setCounterpartyType] = useState<CounterpartyType | null>("CUSTOMER");
   const [counterpartyId, setCounterpartyId] = useState<string | null>(null);

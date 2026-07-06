@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/currentUser";
 import { SawtClient } from "./SawtClient";
 
@@ -11,5 +12,16 @@ export default async function SawtPage() {
       </main>
     );
   }
-  return <SawtClient tin={company.tin} registeredName={company.registeredName ?? company.tradeName} />;
+  const locations = await prisma.location.findMany({
+    where: { companyId: company.id },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+  return (
+    <SawtClient
+      tin={company.tin}
+      registeredName={company.registeredName ?? company.tradeName}
+      locations={locations}
+    />
+  );
 }

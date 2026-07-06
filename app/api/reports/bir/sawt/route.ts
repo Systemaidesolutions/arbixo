@@ -12,10 +12,12 @@ export async function GET(request: NextRequest) {
   const to = request.nextUrl.searchParams.get("to");
   if (!from || !to) return NextResponse.json({ error: "from and to (YYYY-MM-DD) are required" }, { status: 400 });
 
+  const locationId = request.nextUrl.searchParams.get("locationId") || undefined;
   const sawt = await getSummaryAlphalistOfWithholdingTaxes(
     company.id,
     new Date(`${from}T00:00:00`),
-    new Date(`${to}T23:59:59.999`)
+    new Date(`${to}T23:59:59.999`),
+    locationId
   );
   return NextResponse.json(sawt);
 }

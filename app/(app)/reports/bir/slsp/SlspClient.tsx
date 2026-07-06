@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
+import { BranchFilter, type Branch } from "@/components/BranchFilter";
 
 type Row = Record<string, string | number> & { id: string; tin: string; name: string; address: string };
 type Data = { rows: Row[]; totals: Record<string, number> };
@@ -46,10 +47,12 @@ export function SlspClient({
   kind,
   tin,
   registeredName,
+  locations,
 }: {
   kind: "slp" | "sls";
   tin: string;
   registeredName: string;
+  locations: Branch[];
 }) {
   const now = new Date();
   const cols = kind === "slp" ? SLP_COLS : SLS_COLS;
@@ -62,6 +65,7 @@ export function SlspClient({
   const [quarter, setQuarter] = useState(Math.floor(now.getMonth() / 3) + 1);
   const [from, setFrom] = useState(`${now.getFullYear()}-01-01`);
   const [to, setTo] = useState(now.toISOString().slice(0, 10));
+  const [locationId, setLocationId] = useState("");
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -74,7 +78,7 @@ export function SlspClient({
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetch(`/api/reports/bir/${kind}?from=${range.from}&to=${range.to}`)
+    fetch(`/api/reports/bir/${kind}?from=${range.from}&to=${range.to}&locationId=${locationId}`)
       .then((r) => r.json())
       .then((j) => {
         if (active) setData(j);
@@ -83,7 +87,7 @@ export function SlspClient({
     return () => {
       active = false;
     };
-  }, [kind, range.from, range.to]);
+  }, [kind, range.from, range.to, locationId]);
 
   function exportCsv() {
     if (!data) return;
@@ -170,9 +174,11 @@ export function SlspClient({
           </>
         )}
 
+        <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
+
         <div className="ml-auto flex gap-2">
           <a
-            href={`/api/reports/bir/${kind}/dat?from=${range.from}&to=${range.to}`}
+            href={`/api/reports/bir/${kind}/dat?from=${range.from}&to=${range.to}&locationId=${locationId}`}
             className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
           >
             Export BIR .DAT

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
+import { BranchFilter, type Branch } from "@/components/BranchFilter";
 
 type Row = {
   id: string;
@@ -33,7 +34,7 @@ function quarterRange(y: number, q: number) {
   return { from: `${y}-${p(sm)}-01`, to: `${y}-${p(em)}-${p(last)}` };
 }
 
-export function QapClient({ tin, registeredName }: { tin: string; registeredName: string }) {
+export function QapClient({ tin, registeredName, locations }: { tin: string; registeredName: string; locations: Branch[] }) {
   const now = new Date();
   const [mode, setMode] = useState<"month" | "quarter" | "range">("quarter");
   const [year, setYear] = useState(now.getFullYear());
@@ -41,6 +42,7 @@ export function QapClient({ tin, registeredName }: { tin: string; registeredName
   const [quarter, setQuarter] = useState(Math.floor(now.getMonth() / 3) + 1);
   const [from, setFrom] = useState(`${now.getFullYear()}-01-01`);
   const [to, setTo] = useState(now.toISOString().slice(0, 10));
+  const [locationId, setLocationId] = useState("");
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -53,14 +55,14 @@ export function QapClient({ tin, registeredName }: { tin: string; registeredName
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetch(`/api/reports/bir/qap?from=${range.from}&to=${range.to}`)
+    fetch(`/api/reports/bir/qap?from=${range.from}&to=${range.to}&locationId=${locationId}`)
       .then((r) => r.json())
       .then((j) => active && setData(j))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [range.from, range.to]);
+  }, [range.from, range.to, locationId]);
 
   function exportCsv() {
     if (!data) return;
@@ -142,8 +144,10 @@ export function QapClient({ tin, registeredName }: { tin: string; registeredName
           </>
         )}
 
+        <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
+
         <div className="ml-auto flex gap-2">
-          <a href={`/api/reports/bir/qap/dat?from=${range.from}&to=${range.to}`} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
+          <a href={`/api/reports/bir/qap/dat?from=${range.from}&to=${range.to}&locationId=${locationId}`} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
             Export BIR .DAT
           </a>
           <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Export CSV</button>

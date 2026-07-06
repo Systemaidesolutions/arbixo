@@ -212,10 +212,11 @@ export function buildSlsDat(co: DatCompany, sls: Sls, periodEnd: Date): string {
   return [header, ...details].join("\r\n") + "\r\n";
 }
 
-export async function getSummaryListOfPurchases(companyId: string, from: Date, to: Date): Promise<Slp> {
+export async function getSummaryListOfPurchases(companyId: string, from: Date, to: Date, locationId?: string): Promise<Slp> {
   const lines = await prisma.ledgerEntry.findMany({
     where: {
       companyId,
+      ...(locationId ? { locationId } : {}),
       isCancelled: false,
       postingDate: { gte: from, lte: to },
       journalType: { in: ["PURCHASE_ON_ACCOUNT", "CASH_DISBURSEMENT"] },
@@ -290,10 +291,11 @@ export async function getSummaryListOfPurchases(companyId: string, from: Date, t
   return { rows, totals };
 }
 
-export async function getSummaryListOfSales(companyId: string, from: Date, to: Date): Promise<Sls> {
+export async function getSummaryListOfSales(companyId: string, from: Date, to: Date, locationId?: string): Promise<Sls> {
   const lines = await prisma.ledgerEntry.findMany({
     where: {
       companyId,
+      ...(locationId ? { locationId } : {}),
       isCancelled: false,
       postingDate: { gte: from, lte: to },
       journalType: { in: ["SALES_ON_ACCOUNT", "CASH_RECEIPT"] },

@@ -11,8 +11,9 @@ export async function GET(request: NextRequest) {
   const to = request.nextUrl.searchParams.get("to");
   if (!from || !to) return NextResponse.json({ error: "from and to (YYYY-MM-DD) are required" }, { status: 400 });
 
+  const locationId = request.nextUrl.searchParams.get("locationId") || undefined;
   const toDate = new Date(`${to}T23:59:59.999`);
-  const qap = await getAlphalistOfPayees(company.id, new Date(`${from}T00:00:00`), toDate);
+  const qap = await getAlphalistOfPayees(company.id, new Date(`${from}T00:00:00`), toDate, locationId);
   const text = buildQapDat(company, qap, toDate);
 
   return new NextResponse(text, {

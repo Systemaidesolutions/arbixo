@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/currentUser";
 import { QapClient } from "./QapClient";
 
@@ -11,5 +12,16 @@ export default async function QapPage() {
       </main>
     );
   }
-  return <QapClient tin={company.tin} registeredName={company.registeredName ?? company.tradeName} />;
+  const locations = await prisma.location.findMany({
+    where: { companyId: company.id },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+  return (
+    <QapClient
+      tin={company.tin}
+      registeredName={company.registeredName ?? company.tradeName}
+      locations={locations}
+    />
+  );
 }

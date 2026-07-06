@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/currentUser";
 import { SlspClient } from "../slsp/SlspClient";
 
@@ -11,5 +12,17 @@ export default async function SlpPage() {
       </main>
     );
   }
-  return <SlspClient kind="slp" tin={company.tin} registeredName={company.registeredName ?? company.tradeName} />;
+  const locations = await prisma.location.findMany({
+    where: { companyId: company.id },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+  return (
+    <SlspClient
+      kind="slp"
+      tin={company.tin}
+      registeredName={company.registeredName ?? company.tradeName}
+      locations={locations}
+    />
+  );
 }

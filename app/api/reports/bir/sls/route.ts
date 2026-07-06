@@ -12,10 +12,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "from and to (YYYY-MM-DD) are required" }, { status: 400 });
   }
 
+  const locationId = request.nextUrl.searchParams.get("locationId") || undefined;
   const result = await getSummaryListOfSales(
     company.id,
     new Date(`${from}T00:00:00`),
-    new Date(`${to}T23:59:59.999`)
+    new Date(`${to}T23:59:59.999`),
+    locationId
   );
   return NextResponse.json(result);
 }

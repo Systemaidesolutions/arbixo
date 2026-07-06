@@ -39,12 +39,14 @@ export type Sawt = {
 export async function getSummaryAlphalistOfWithholdingTaxes(
   companyId: string,
   from: Date,
-  to: Date
+  to: Date,
+  locationId?: string
 ): Promise<Sawt> {
   const [entries, atcCodes] = await Promise.all([
     prisma.ledgerEntry.findMany({
       where: {
         companyId,
+        ...(locationId ? { locationId } : {}),
         isCancelled: false,
         postingDate: { gte: from, lte: to },
         // The company is the payee here; its customers withheld from its income.

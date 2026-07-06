@@ -58,11 +58,12 @@ function payeeIdentity(p: PayeeLike, keyPrefix: string) {
   };
 }
 
-export async function getAlphalistOfPayees(companyId: string, from: Date, to: Date): Promise<Qap> {
+export async function getAlphalistOfPayees(companyId: string, from: Date, to: Date, locationId?: string): Promise<Qap> {
   const [entries, atcCodes] = await Promise.all([
     prisma.ledgerEntry.findMany({
       where: {
         companyId,
+        ...(locationId ? { locationId } : {}),
         isCancelled: false,
         postingDate: { gte: from, lte: to },
         // The company is the withholding agent on money it pays out.
