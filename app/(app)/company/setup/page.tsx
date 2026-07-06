@@ -6,7 +6,6 @@ import {
   TAX_CLASSIFICATION_LABELS,
 } from "@/lib/company";
 import { NumberSeriesSetup } from "@/components/NumberSeriesSetup";
-import { RenewFlow } from "./RenewFlow";
 
 // Subscribers see their company details read-only. Company records are
 // created and edited by an Arbixo admin (see /admin/companies), so there
@@ -15,7 +14,6 @@ export default async function CompanyDetailsPage() {
   const company = await getCurrentCompany();
   const capability = await getCurrentCapability();
   const canEditSeries = Boolean(capability && !capability.isReadOnly);
-  const canRenew = Boolean(capability?.canApprove);
 
   if (!company) {
     return (
@@ -100,8 +98,6 @@ export default async function CompanyDetailsPage() {
           </div>
         ))}
       </dl>
-
-      {canRenew && <RenewFlow />}
 
       <NumberSeriesSetup editable={canEditSeries} />
     </main>

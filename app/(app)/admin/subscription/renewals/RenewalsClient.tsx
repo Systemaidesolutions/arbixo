@@ -40,6 +40,21 @@ export function RenewalsClient() {
     setRowMsg(null);
   }
 
+  async function cancel(companyId: string, name: string) {
+    if (!window.confirm(`Cancel the subscription for "${name}"? It will read as no subscription. You can renew again anytime.`)) return;
+    const res = await fetch("/api/admin/subscription/renewals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyId, action: "cancel" }),
+    });
+    if (res.ok) {
+      setData((d) => (d ? { ...d, companies: d.companies.map((c) => (c.id === companyId ? { ...c, subscriptionEndsAt: null } : c)) } : d));
+      setOpenId((cur) => (cur === companyId ? null : cur));
+    } else {
+      window.alert((await res.json().catch(() => ({})))?.error ?? "Could not cancel.");
+    }
+  }
+
   async function renew(companyId: string) {
     setBusy(true);
     setRowMsg(null);
@@ -96,9 +111,16 @@ export function RenewalsClient() {
                     <td className="px-4 py-2">{c.subscriptionEndsAt ? c.subscriptionEndsAt.slice(0, 10) : "—"}</td>
                     <td className="px-4 py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span></td>
                     <td className="px-4 py-2 text-right">
-                      <button onClick={() => toggle(c.id)} disabled={!price} className="text-xs font-medium text-brand-blue hover:underline disabled:opacity-40">
-                        {isOpen ? "Close" : "Renew"}
-                      </button>
+                      <div className="flex items-center justify-end gap-3">
+                        {c.subscriptionEndsAt && (
+                          <button onClick={() => cancel(c.id, c.tradeName)} className="text-xs text-red-600 hover:underline">
+                            Cancel
+                          </button>
+                        )}
+                        <button onClick={() => toggle(c.id)} disabled={!price} className="text-xs font-medium text-brand-blue hover:underline disabled:opacity-40">
+                          {isOpen ? "Close" : "Renew"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                   {isOpen && price && (

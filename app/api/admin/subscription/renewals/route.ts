@@ -50,6 +50,15 @@ export async function POST(request: NextRequest) {
   const gcashRef = typeof body?.gcashRef === "string" ? body.gcashRef.trim() : "";
   if (!companyId) return NextResponse.json({ error: "companyId is required." }, { status: 400 });
 
+  // Cancel: clear the subscription so it reads as "none". Plain update (no
+  // transaction), so no audit-suppression is needed.
+  if (body?.action === "cancel") {
+    const exists = await prisma.company.findUnique({ where: { id: companyId }, select: { id: true } });
+    if (!exists) return NextResponse.json({ error: "Company not found." }, { status: 404 });
+    await prisma.company.update({ where: { id: companyId }, data: { subscriptionEndsAt: null } });
+    return NextResponse.json({ ok: true, subscriptionEndsAt: null });
+  }
+
   const [price, company] = await Promise.all([
     getCurrentPrice(),
     prisma.company.findUnique({ where: { id: companyId }, select: { subscriptionEndsAt: true, subscriptionStartedAt: true } }),
