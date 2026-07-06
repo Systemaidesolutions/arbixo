@@ -35,6 +35,9 @@ export function VouchersClient() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastCodes, setLastCodes] = useState<string[]>([]);
+  const [emailTo, setEmailTo] = useState("");
+  const [emailFeedback, setEmailFeedback] = useState<{ ok: boolean; text: string } | null>(null);
+  const [emailBusy, setEmailBusy] = useState(false);
 
   async function refresh() {
     const res = await fetch("/api/admin/subscription/vouchers");
@@ -74,6 +77,34 @@ export function VouchersClient() {
       body: JSON.stringify({ isActive: !v.isActive }),
     });
     if (res.ok) refresh();
+  }
+
+  async function sendEmail(codes: string[], to: string, note?: string | null) {
+    const res = await fetch("/api/admin/subscription/vouchers/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: to, codes, note: note ?? null }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, error: data?.error as string | undefined };
+  }
+
+  async function emailLastCodes() {
+    if (!emailTo.trim()) return;
+    setEmailBusy(true);
+    setEmailFeedback(null);
+    const { ok, error } = await sendEmail(lastCodes, emailTo.trim());
+    setEmailBusy(false);
+    setEmailFeedback(ok ? { ok: true, text: `Sent to ${emailTo.trim()}.` } : { ok: false, text: error ?? "Could not send." });
+    if (ok) setEmailTo("");
+  }
+
+  // Per-row: prompt for an address and email that single code.
+  async function emailOne(code: string) {
+    const to = window.prompt(`Email voucher ${code} to:`);
+    if (!to) return;
+    const { ok, error } = await sendEmail([code], to.trim());
+    window.alert(ok ? `Voucher emailed to ${to.trim()}.` : error ?? "Could not send.");
   }
 
   const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
@@ -132,6 +163,36 @@ export function VouchersClient() {
                 <span key={c} className="rounded bg-white px-2 py-1 ring-1 ring-green-200">{c}</span>
               ))}
             </div>
+
+            {/* Option to email the just-generated code(s) to an address. */}
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-green-200 pt-3">
+              <input
+                type="email"
+                value={emailTo}
+                onChange={(e) => setEmailTo(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    emailLastCodes();
+                  }
+                }}
+                placeholder="Email the code(s) to…"
+                className="w-56 rounded border border-green-300 bg-white px-2 py-1 text-xs"
+              />
+              <button
+                type="button"
+                onClick={emailLastCodes}
+                disabled={emailBusy || !emailTo.trim()}
+                className="rounded bg-brand-navy px-3 py-1 text-xs text-white hover:bg-brand-navyLight disabled:opacity-50"
+              >
+                {emailBusy ? "Sending…" : "Email codes"}
+              </button>
+              {emailFeedback && (
+                <span className={`text-xs ${emailFeedback.ok ? "text-green-700" : "text-red-600"}`}>
+                  {emailFeedback.text}
+                </span>
+              )}
+            </div>
           </div>
         )}
       </form>
@@ -164,11 +225,18 @@ export function VouchersClient() {
                     </td>
                     <td className="px-4 py-2 text-xs text-neutral-500">{v.createdAt.slice(0, 10)}</td>
                     <td className="px-4 py-2 text-right">
-                      {!v.redeemedAt && (
-                        <button onClick={() => toggle(v)} className="text-xs text-brand-blue hover:underline">
-                          {v.isActive ? "Disable" : "Enable"}
-                        </button>
-                      )}
+                      <div className="flex items-center justify-end gap-3">
+                        {s === "active" && (
+                          <button onClick={() => emailOne(v.code)} className="text-xs text-brand-blue hover:underline">
+                            Email
+                          </button>
+                        )}
+                        {!v.redeemedAt && (
+                          <button onClick={() => toggle(v)} className="text-xs text-brand-blue hover:underline">
+                            {v.isActive ? "Disable" : "Enable"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

@@ -165,3 +165,57 @@ export async function sendSubscriptionReminderEmail(
   }
   return { sent: true };
 }
+
+/**
+ * Emails one or more voucher codes to a recipient (admin-initiated from the
+ * Vouchers page). Always logged so it's recoverable from Vercel's function logs
+ * if Resend isn't configured; returns whether it actually sent.
+ */
+export async function sendVoucherEmail(
+  email: string,
+  codes: string[],
+  note?: string | null
+): Promise<{ sent: boolean }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM ?? "Arbixo <onboarding@resend.dev>";
+
+  console.log(`[mail] Voucher code(s) for ${email}: ${codes.join(", ")}`);
+
+  if (!apiKey || codes.length === 0) {
+    if (!apiKey) console.warn("[mail] RESEND_API_KEY not set — voucher email not sent, only logged.");
+    return { sent: false };
+  }
+
+  const codeList = codes
+    .map(
+      (c) =>
+        `<p style="font-size:22px; font-weight:600; letter-spacing:3px; color:#0B2A5E; margin:6px 0;">${c}</p>`
+    )
+    .join("");
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from,
+      to: email,
+      subject: codes.length > 1 ? "Your Arbixo voucher codes" : "Your Arbixo voucher code",
+      html: `
+        <div style="font-family: sans-serif; max-width: 460px; margin: 0 auto;">
+          <h2 style="color: #0B2A5E;">Arbixo voucher${codes.length > 1 ? "s" : ""}</h2>
+          ${note ? `<p>${note}</p>` : ""}
+          <p>Use ${codes.length > 1 ? "these codes" : "this code"} on the subscription payment page:</p>
+          ${codeList}
+          <p style="color: #666; font-size: 13px;">Each voucher can be used once.</p>
+        </div>
+      `,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error(`[mail] Resend rejected the voucher email (${res.status}): ${body}`);
+    return { sent: false };
+  }
+  return { sent: true };
+}
