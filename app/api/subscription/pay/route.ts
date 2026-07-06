@@ -4,6 +4,7 @@ import { getCurrentUserRecord } from "@/lib/currentUser";
 import { capabilitiesFor } from "@/lib/permissions";
 import { getCurrentPrice } from "@/lib/subscriptionPricing";
 import { voucherDiscount, voucherStatus } from "@/lib/vouchers";
+import { setAuditSuppressed } from "@/lib/auditContext";
 
 function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -33,6 +34,10 @@ export async function POST(request: NextRequest) {
   }
   const base = Number(price.amount);
 
+  // Suppress auto-audit during the transaction — see the note in the admin
+  // renew route: the extension's out-of-band write deadlocks the transaction on
+  // the connection-limited pooler.
+  setAuditSuppressed(true);
   try {
     const payment = await prisma.$transaction(async (tx) => {
       let discount = 0;
@@ -71,5 +76,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[subscription/pay] failed:", err);
     return NextResponse.json({ error: "Could not record the payment." }, { status: 500 });
+  } finally {
+    setAuditSuppressed(false);
   }
 }

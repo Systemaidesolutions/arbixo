@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/currentUser";
 import { getCurrentPrice } from "@/lib/subscriptionPricing";
 import { voucherDiscount, voucherStatus } from "@/lib/vouchers";
+import { setAuditSuppressed } from "@/lib/auditContext";
 
 function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -62,6 +63,11 @@ export async function POST(request: NextRequest) {
   const periodStart = currentEnd && currentEnd.getTime() > now.getTime() ? currentEnd : now;
   const periodEnd = addOneMonth(periodStart);
 
+  // Suppress auto-audit during the transaction: the extension's out-of-band
+  // audit write needs a second DB connection, which deadlocks against the
+  // transaction on the connection-limited production pooler. The
+  // SubscriptionPayment row is itself the record of this action.
+  setAuditSuppressed(true);
   try {
     await prisma.$transaction(async (tx) => {
       let discount = 0;
@@ -102,5 +108,7 @@ export async function POST(request: NextRequest) {
     if (err instanceof VoucherError) return NextResponse.json({ error: err.message }, { status: 400 });
     console.error("[admin renew] failed:", err);
     return NextResponse.json({ error: "Could not renew." }, { status: 500 });
+  } finally {
+    setAuditSuppressed(false);
   }
 }

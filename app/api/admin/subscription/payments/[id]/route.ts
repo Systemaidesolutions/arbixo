@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/currentUser";
+import { setAuditSuppressed } from "@/lib/auditContext";
 
 function addOneMonth(d: Date): Date {
   const out = new Date(d);
@@ -26,43 +27,50 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     return NextResponse.json({ error: `This payment is already ${payment.status.toLowerCase()}.` }, { status: 400 });
   }
 
-  const result = await prisma.$transaction(async (tx) => {
-    if (status === "VERIFIED") {
-      const company = await tx.company.findUnique({
-        where: { id: payment.companyId },
-        select: { subscriptionEndsAt: true, subscriptionStartedAt: true },
-      });
-      const now = new Date();
-      const currentEnd = company?.subscriptionEndsAt ? new Date(company.subscriptionEndsAt) : null;
-      // Extend from the later of today or the current end, so paying early stacks.
-      const periodStart = currentEnd && currentEnd.getTime() > now.getTime() ? currentEnd : now;
-      const periodEnd = addOneMonth(periodStart);
+  // Suppress auto-audit during the transaction — the extension's out-of-band
+  // audit write deadlocks the transaction on the connection-limited pooler.
+  setAuditSuppressed(true);
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      if (status === "VERIFIED") {
+        const company = await tx.company.findUnique({
+          where: { id: payment.companyId },
+          select: { subscriptionEndsAt: true, subscriptionStartedAt: true },
+        });
+        const now = new Date();
+        const currentEnd = company?.subscriptionEndsAt ? new Date(company.subscriptionEndsAt) : null;
+        // Extend from the later of today or the current end, so paying early stacks.
+        const periodStart = currentEnd && currentEnd.getTime() > now.getTime() ? currentEnd : now;
+        const periodEnd = addOneMonth(periodStart);
 
-      await tx.company.update({
-        where: { id: payment.companyId },
-        data: {
-          subscriptionEndsAt: periodEnd,
-          subscriptionStartedAt: company?.subscriptionStartedAt ?? now,
-        },
-      });
+        await tx.company.update({
+          where: { id: payment.companyId },
+          data: {
+            subscriptionEndsAt: periodEnd,
+            subscriptionStartedAt: company?.subscriptionStartedAt ?? now,
+          },
+        });
+        return tx.subscriptionPayment.update({
+          where: { id: payment.id },
+          data: { status: "VERIFIED", verifiedById: admin.id, verifiedAt: now, periodStart, periodEnd },
+        });
+      }
+
+      // REJECTED — free the voucher back up if one was used.
+      if (payment.voucherCode) {
+        await tx.voucher.updateMany({
+          where: { code: payment.voucherCode },
+          data: { redeemedAt: null, redeemedByCompanyId: null, isActive: true },
+        });
+      }
       return tx.subscriptionPayment.update({
         where: { id: payment.id },
-        data: { status: "VERIFIED", verifiedById: admin.id, verifiedAt: now, periodStart, periodEnd },
+        data: { status: "REJECTED", verifiedById: admin.id, verifiedAt: new Date() },
       });
-    }
-
-    // REJECTED — free the voucher back up if one was used.
-    if (payment.voucherCode) {
-      await tx.voucher.updateMany({
-        where: { code: payment.voucherCode },
-        data: { redeemedAt: null, redeemedByCompanyId: null, isActive: true },
-      });
-    }
-    return tx.subscriptionPayment.update({
-      where: { id: payment.id },
-      data: { status: "REJECTED", verifiedById: admin.id, verifiedAt: new Date() },
     });
-  });
 
-  return NextResponse.json({ payment: result });
+    return NextResponse.json({ payment: result });
+  } finally {
+    setAuditSuppressed(false);
+  }
 }

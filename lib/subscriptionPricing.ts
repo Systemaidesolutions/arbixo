@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { setAuditSuppressed } from "@/lib/auditContext";
 import type { SubscriptionPrice } from "@prisma/client";
 
 export type PriceStatus = "current" | "upcoming" | "expired";
@@ -44,20 +45,27 @@ export async function addPrice(input: {
   const from = new Date(input.effectiveFrom);
   const dayBefore = new Date(from.getTime() - 24 * 60 * 60 * 1000);
 
-  return prisma.$transaction(async (tx) => {
-    const open = await tx.subscriptionPrice.findMany({ where: { effectiveTo: null } });
-    for (const p of open) {
-      if (new Date(p.effectiveFrom).getTime() < from.getTime()) {
-        await tx.subscriptionPrice.update({ where: { id: p.id }, data: { effectiveTo: dayBefore } });
+  // Suppress auto-audit: the extension's out-of-band write deadlocks the
+  // transaction on the connection-limited production pooler.
+  setAuditSuppressed(true);
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const open = await tx.subscriptionPrice.findMany({ where: { effectiveTo: null } });
+      for (const p of open) {
+        if (new Date(p.effectiveFrom).getTime() < from.getTime()) {
+          await tx.subscriptionPrice.update({ where: { id: p.id }, data: { effectiveTo: dayBefore } });
+        }
       }
-    }
-    return tx.subscriptionPrice.create({
-      data: {
-        name: input.name.trim(),
-        amount: input.amount,
-        currency: (input.currency || "PHP").trim(),
-        effectiveFrom: from,
-      },
+      return tx.subscriptionPrice.create({
+        data: {
+          name: input.name.trim(),
+          amount: input.amount,
+          currency: (input.currency || "PHP").trim(),
+          effectiveFrom: from,
+        },
+      });
     });
-  });
+  } finally {
+    setAuditSuppressed(false);
+  }
 }
