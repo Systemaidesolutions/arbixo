@@ -73,6 +73,18 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: "Books of Accounts",
+    icon: "reports",
+    links: [
+      { href: "/books/cash-receipts", label: "Cash Receipts Journal", icon: "cashIn" },
+      { href: "/books/cash-disbursement", label: "Cash Disbursement Journal", icon: "cashOut" },
+      { href: "/books/general-journal", label: "General Journal", icon: "journal" },
+      { href: "/books/general-ledger", label: "General Ledger", icon: "generalLedger" },
+      { href: "/books/sales", label: "Sales Subsidiary Journal", icon: "sales" },
+      { href: "/books/purchases", label: "Purchase Subsidiary Journal", icon: "purchases" },
+    ],
+  },
+  {
     title: "Master Data",
     icon: "settings",
     links: [
