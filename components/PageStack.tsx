@@ -77,17 +77,15 @@ export function PageStackProvider({ children }: { children: React.ReactNode }) {
   return (
     <Ctx.Provider value={{ stack, open, close, closeAll }}>
       {children}
+      {/* Overlays start to the RIGHT of the sidebar (lg:left-64) so the
+          navigation stays visible and clickable — you can open another page on
+          top while one is open, Business-Central style. */}
       {stack.map((e, i) => (
-        <div key={e.id} className="fixed inset-0 print:hidden" style={{ zIndex: 50 + i }}>
-          <div className="absolute inset-0 bg-black/25" onClick={() => close(e.id)} aria-hidden />
+        <div key={e.id} className="fixed inset-y-0 left-0 right-0 lg:left-64 print:hidden" style={{ zIndex: 50 + i }}>
+          <div className="absolute inset-0 bg-black/10" onClick={() => close(e.id)} aria-hidden />
           <div
             className="absolute flex flex-col overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-black/10"
-            style={{
-              top: `${3 + i * 1.2}vh`,
-              bottom: `${3}vh`,
-              left: `max(1rem, ${4 + i * 1.2}vw)`,
-              right: `max(1rem, ${4 - i * 1.2}vw)`,
-            }}
+            style={{ top: `${8 + i * 10}px`, left: `${8 + i * 10}px`, right: "8px", bottom: "8px" }}
           >
             <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-50 px-4 py-2">
               <span className="truncate text-sm font-medium text-neutral-800">{e.title}</span>
