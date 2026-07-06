@@ -65,6 +65,36 @@ export function BalanceSheetClient({
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const isBalanced = sheet ? Math.round((sheet.totalAssets - sheet.totalLiabilitiesAndEquity) * 100) === 0 : true;
 
+  function exportCsv() {
+    if (!sheet) return;
+    const esc = (v: string | number) => {
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows: (string | number)[][] = [
+      ["Balance Sheet", `As of ${asOfDate}`],
+      [],
+      ["Section", "Code", "Account", "Amount"],
+    ];
+    for (const l of sheet.assets) rows.push(["Assets", l.code, l.title, l.amount.toFixed(2)]);
+    rows.push(["Assets", "", "Total assets", sheet.totalAssets.toFixed(2)]);
+    for (const l of sheet.liabilities) rows.push(["Liabilities", l.code, l.title, l.amount.toFixed(2)]);
+    rows.push(["Liabilities", "", "Total liabilities", sheet.totalLiabilities.toFixed(2)]);
+    for (const l of sheet.equity) rows.push(["Equity", l.code, l.title, l.amount.toFixed(2)]);
+    rows.push(["Equity", "", "Current period earnings", sheet.currentPeriodEarnings.toFixed(2)]);
+    rows.push(["Equity", "", "Prior unclosed earnings", sheet.priorUnclosedEarnings.toFixed(2)]);
+    rows.push(["Equity", "", "Total equity & earnings", sheet.totalEquityAndEarnings.toFixed(2)]);
+    rows.push(["", "", "Total liabilities & equity", sheet.totalLiabilitiesAndEquity.toFixed(2)]);
+
+    const blob = new Blob(["﻿" + rows.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `balance-sheet_${asOfDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-8">
       <h1 className="text-xl font-medium text-neutral-900">Balance sheet</h1>
@@ -104,6 +134,14 @@ export function BalanceSheetClient({
               );
             })()}
           </div>
+        </div>
+        <div className="ml-auto flex gap-2">
+          <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
+            Export to Excel
+          </button>
+          <button onClick={() => window.print()} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
+            Print
+          </button>
         </div>
       </div>
 

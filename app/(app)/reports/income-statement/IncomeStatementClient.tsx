@@ -52,6 +52,32 @@ export function IncomeStatementClient({ companyId }: { companyId: string }) {
     };
   }, [companyId, range.from, range.to]);
 
+  function exportCsv() {
+    if (!statement) return;
+    const esc = (v: string | number) => {
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows: (string | number)[][] = [
+      ["Income Statement", range.label],
+      [],
+      ["Section", "Code", "Account", "Amount"],
+    ];
+    for (const l of statement.revenue) rows.push(["Revenue", l.code, l.title, l.amount.toFixed(2)]);
+    rows.push(["Revenue", "", "Total revenue", statement.totalRevenue.toFixed(2)]);
+    for (const l of statement.expense) rows.push(["Expenses", l.code, l.title, l.amount.toFixed(2)]);
+    rows.push(["Expenses", "", "Total expenses", statement.totalExpense.toFixed(2)]);
+    rows.push(["", "", statement.netIncome >= 0 ? "Net income" : "Net loss", Math.abs(statement.netIncome).toFixed(2)]);
+
+    const blob = new Blob(["﻿" + rows.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `income-statement_${range.from}_to_${range.to}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
 
   return (
@@ -103,9 +129,14 @@ export function IncomeStatementClient({ companyId }: { companyId: string }) {
             </label>
           </>
         )}
-        <button onClick={() => window.print()} className="ml-auto rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
-          Print
-        </button>
+        <div className="ml-auto flex gap-2">
+          <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
+            Export to Excel
+          </button>
+          <button onClick={() => window.print()} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
+            Print
+          </button>
+        </div>
       </div>
 
       {loading || !statement ? (
