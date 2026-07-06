@@ -113,6 +113,41 @@ export function PageStackOverlay() {
   );
 }
 
+function isStackableLink(a: HTMLAnchorElement): boolean {
+  const href = a.getAttribute("href") ?? "";
+  return (
+    href.startsWith("/") &&
+    !href.startsWith("//") &&
+    a.target !== "_blank" &&
+    !a.hasAttribute("download") &&
+    a.dataset.noStack === undefined
+  );
+}
+
+/**
+ * Base-page interceptor: makes internal links inside the main content area
+ * (dashboard tiles, report links, table drill-downs, …) open as a stacked page
+ * too, so the whole app behaves consistently. Sidebar links are handled
+ * separately; header links are left alone (they're outside <main>).
+ */
+export function BaseLinkInterceptor() {
+  const ps = usePageStack();
+  useEffect(() => {
+    if (!ps) return;
+    const open = ps.open;
+    function onClick(ev: MouseEvent) {
+      if (ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey) return;
+      const a = (ev.target as HTMLElement)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || !a.closest("main") || !isStackableLink(a)) return;
+      ev.preventDefault();
+      open(a.getAttribute("href")!, (a.textContent || "").trim() || "Page");
+    }
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, [ps]);
+  return null;
+}
+
 /**
  * Rendered inside embedded (iframed) pages. Intercepts internal link clicks so
  * they open a NEW page on the parent's stack (deeper) instead of navigating
@@ -123,20 +158,10 @@ export function EmbedLinkInterceptor() {
     function onClick(ev: MouseEvent) {
       if (ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey) return;
       const a = (ev.target as HTMLElement)?.closest?.("a[href]") as HTMLAnchorElement | null;
-      if (!a) return;
-      const href = a.getAttribute("href") ?? "";
-      if (
-        !href.startsWith("/") || // only internal, root-relative links
-        href.startsWith("//") ||
-        a.target === "_blank" ||
-        a.hasAttribute("download") ||
-        a.dataset.noStack !== undefined
-      ) {
-        return;
-      }
+      if (!a || !isStackableLink(a)) return;
       ev.preventDefault();
       window.parent?.postMessage(
-        { type: "stack:open", href, title: (a.textContent || "").trim() || "Page" },
+        { type: "stack:open", href: a.getAttribute("href"), title: (a.textContent || "").trim() || "Page" },
         window.location.origin
       );
     }

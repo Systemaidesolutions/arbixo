@@ -133,11 +133,6 @@ function SidebarBrand() {
   );
 }
 
-// Sections whose links open as stacked overlay pages (BC-style) rather than a
-// full navigation. Starting with Transactions; links inside a stacked page then
-// go deeper automatically (see EmbedLinkInterceptor).
-const STACKABLE_SECTIONS = new Set(["Transactions"]);
-
 function NavList({
   sections,
   pathname,
@@ -190,7 +185,7 @@ function NavList({
                 {section.links.map((link) => {
                   const Icon = LINK_ICONS[link.icon];
                   const active = pathname === link.href;
-                  const stackable = pageStack && STACKABLE_SECTIONS.has(section.title);
+                  const stackable = Boolean(pageStack);
                   return (
                     <li key={link.href}>
                       <a
