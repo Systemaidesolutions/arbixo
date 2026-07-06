@@ -53,6 +53,7 @@ const REVIEW_SECTION: NavSection = {
 };
 
 const COMPANY_BACKUP_LINK = { href: "/utility/backup", label: "Backup this company", icon: "backup" } as const;
+const SUBSCRIPTION_PAYMENTS_LINK = { href: "/subscription/payments", label: "Subscription payments", icon: "payments" } as const;
 
 // Builds the nav a subscriber sees based on their subtype: Report Creator
 // (read-only) loses the Transactions section; a Manager gains the History
@@ -73,7 +74,7 @@ function sectionsFor(role: "ADMIN" | "USER", subtype: SubscriberSubtype | null):
   for (const s of sections) {
     if (s.title === "Setup") {
       managerSections.push(HISTORY_SECTION);
-      managerSections.push({ ...s, links: [...s.links, COMPANY_BACKUP_LINK] });
+      managerSections.push({ ...s, links: [...s.links, COMPANY_BACKUP_LINK, SUBSCRIPTION_PAYMENTS_LINK] });
     } else {
       managerSections.push(s);
     }

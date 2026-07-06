@@ -137,6 +137,8 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
     links: [
       { href: "/admin/subscription/pricing", label: "Pricing", icon: "pricing" },
       { href: "/admin/subscription/vouchers", label: "Vouchers", icon: "voucher" },
+      { href: "/admin/subscription/gcash", label: "GCash account", icon: "gcash" },
+      { href: "/subscription/payments", label: "Payments", icon: "payments" },
     ],
   },
   UTILITY_SECTION,
