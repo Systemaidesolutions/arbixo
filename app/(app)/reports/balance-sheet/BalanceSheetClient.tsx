@@ -11,6 +11,23 @@ function fiscalYearStartFor(asOfDate: string, fiscalMonthEnd: number): string {
   return new Date(year, startMonth, 1).toISOString().slice(0, 10);
 }
 
+const p2 = (n: number) => String(n).padStart(2, "0");
+// Period-end dates relative to today, for the quick "as of" presets.
+function periodEnds() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  const q = Math.floor(now.getMonth() / 3) + 1;
+  const monthLast = new Date(y, m, 0).getDate();
+  const qEndMonth = q * 3;
+  const qLast = new Date(y, qEndMonth, 0).getDate();
+  return {
+    month: `${y}-${p2(m)}-${p2(monthLast)}`,
+    quarter: `${y}-${p2(qEndMonth)}-${p2(qLast)}`,
+    year: `${y}-12-31`,
+  };
+}
+
 export function BalanceSheetClient({
   companyId,
   fiscalMonthEnd,
@@ -72,6 +89,22 @@ export function BalanceSheetClient({
             className={`mt-1 block ${field}`}
           />
         </label>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-neutral-500">Quick as-of</span>
+          <div className="flex gap-1">
+            {(() => {
+              const pe = periodEnds();
+              const btn = "rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50";
+              return (
+                <>
+                  <button type="button" onClick={() => setAsOfDate(pe.month)} className={btn}>Month-end</button>
+                  <button type="button" onClick={() => setAsOfDate(pe.quarter)} className={btn}>Quarter-end</button>
+                  <button type="button" onClick={() => setAsOfDate(pe.year)} className={btn}>Year-end</button>
+                </>
+              );
+            })()}
+          </div>
+        </div>
       </div>
 
       {loading || !sheet ? (
