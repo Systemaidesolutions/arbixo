@@ -147,7 +147,7 @@ export function QapClient({ tin, registeredName, locations }: { tin: string; reg
         <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
 
         <div className="ml-auto flex gap-2">
-          <a href={`/api/reports/bir/qap/dat?from=${range.from}&to=${range.to}&locationId=${locationId}`} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
+          <a href={`/api/reports/bir/qap/dat?from=${range.from}&to=${range.to}&locationId=${locationId}`} download className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
             Export BIR .DAT
           </a>
           <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Export CSV</button>

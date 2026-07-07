@@ -176,6 +176,7 @@ export function SliClient({ tin, registeredName }: { tin: string; registeredName
         <div className="ml-auto flex gap-2">
           <a
             href={`/api/reports/bir/sli/dat?from=${range.from}&to=${range.to}`}
+            download
             className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
           >
             Export BIR .DAT

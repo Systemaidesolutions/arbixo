@@ -179,6 +179,7 @@ export function SlspClient({
         <div className="ml-auto flex gap-2">
           <a
             href={`/api/reports/bir/${kind}/dat?from=${range.from}&to=${range.to}&locationId=${locationId}`}
+            download
             className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
           >
             Export BIR .DAT
