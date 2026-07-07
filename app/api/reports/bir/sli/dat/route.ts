@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentCompany } from "@/lib/currentUser";
-import { getSummaryListOfImportations, buildSliDat } from "@/lib/slsp";
+import { getSummaryListOfImportations, buildSliDat, reliefDatFilename } from "@/lib/slsp";
 
 // Downloads the BIR RELIEF SLI file (H + D records) for the caller's company.
 export async function GET(request: NextRequest) {
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(text, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
-      "Content-Disposition": `attachment; filename="SLI_${from}_to_${to}.DAT"`,
+      "Content-Disposition": `attachment; filename="${reliefDatFilename(company.tin, "I", toDate)}"`,
     },
   });
 }

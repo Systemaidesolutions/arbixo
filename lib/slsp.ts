@@ -144,6 +144,16 @@ export function mmddyyyy(d: Date): string {
 }
 
 /**
+ * BIR RELIEF upload filename, ready to submit: 9-digit TIN + type letter
+ * (S = Sales, P = Purchases, I = Importation) + 2-digit month + 4-digit year
+ * of the covered tax period. e.g. 123456789S012026.DAT
+ */
+export function reliefDatFilename(tin: string, kind: "S" | "P" | "I", periodEnd: Date): string {
+  const mm = String(periodEnd.getMonth() + 1).padStart(2, "0");
+  return `${datTin(tin)}${kind}${mm}${periodEnd.getFullYear()}.DAT`;
+}
+
+/**
  * Generates the BIR RELIEF SLP file text: one H (taxpayer + grand totals)
  * record followed by one D record per supplier, comma-delimited, matching the
  * client's sample layout.

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentCompany } from "@/lib/currentUser";
-import { getSummaryListOfPurchases, buildSlpDat } from "@/lib/slsp";
+import { getSummaryListOfPurchases, buildSlpDat, reliefDatFilename } from "@/lib/slsp";
 
 // Downloads the BIR RELIEF SLP file (H + D records) for the caller's company.
 export async function GET(request: NextRequest) {
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(text, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
-      "Content-Disposition": `attachment; filename="SLP_${from}_to_${to}.DAT"`,
+      "Content-Disposition": `attachment; filename="${reliefDatFilename(company.tin, "P", toDate)}"`,
     },
   });
 }
