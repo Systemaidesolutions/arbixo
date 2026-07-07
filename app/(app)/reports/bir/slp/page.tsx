@@ -15,7 +15,7 @@ export default async function SlpPage() {
   const locations = await prisma.location.findMany({
     where: { companyId: company.id },
     orderBy: { name: "asc" },
-    select: { id: true, name: true },
+    select: { id: true, name: true, branchCode: true },
   });
   return (
     <SlspClient

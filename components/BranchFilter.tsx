@@ -1,6 +1,8 @@
 "use client";
 
-export type Branch = { id: string; name: string };
+import { branchOptionLabel } from "@/lib/branchLabel";
+
+export type Branch = { id: string; name: string; branchCode: string | null };
 
 /**
  * Branch (Location) picker for BIR reports. Defaults to "All branches"
@@ -27,7 +29,7 @@ export function BranchFilter({
         <option value="">All branches</option>
         {locations.map((l) => (
           <option key={l.id} value={l.id}>
-            {l.name}
+            {branchOptionLabel(l)}
           </option>
         ))}
       </select>

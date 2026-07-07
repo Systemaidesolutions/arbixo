@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { useLastBranch } from "@/lib/useLastBranch";
+import { branchOptionLabel } from "@/lib/branchLabel";
 import type {
   Account,
   AtcCode,
@@ -208,12 +209,12 @@ export function CashDisbursementForm({
             <input value={checkNo} onChange={(e) => setCheckNo(e.target.value)} className={field} />
           </label>
           <label className={label}>
-            Location (optional)
+            Branch
             <select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={field}>
               <option value="">—</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
-                  {l.name}
+                  {branchOptionLabel(l)}
                 </option>
               ))}
             </select>

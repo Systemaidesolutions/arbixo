@@ -5,7 +5,7 @@ import { AdminCompanyForm } from "../AdminCompanyForm";
 import { AuditToggle } from "../AuditToggle";
 import { SubscriptionPanel } from "../SubscriptionPanel";
 import { LogoField } from "../LogoField";
-import { AdminBranches } from "../AdminBranches";
+import { BranchesManager } from "@/components/BranchesManager";
 
 export default async function EditCompanyPage({ params }: { params: { id: string } }) {
   await requireAdmin();
@@ -78,7 +78,7 @@ export default async function EditCompanyPage({ params }: { params: { id: string
 
       {/* Branches (Location rows) — per-branch reporting + upload filenames */}
       <div className="mt-6">
-        <AdminBranches companyId={company.id} initial={branches} />
+        <BranchesManager endpoint={`/api/admin/companies/${company.id}/branches`} initial={branches} canEdit />
       </div>
 
       {/* Settings — audit logging on/off */}

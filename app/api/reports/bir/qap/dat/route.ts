@@ -17,18 +17,19 @@ export async function GET(request: NextRequest) {
   const qap = await getAlphalistOfPayees(company.id, new Date(`${from}T00:00:00`), toDate, locationId);
   const text = buildQapDat(company, qap, toDate);
 
-  // Branch code for the filename: an explicit branch code on the selected
-  // branch wins; otherwise its TIN suffix; otherwise the company's own
-  // (head office → 000).
+  // Branch code for the filename. For a single selected branch: its explicit
+  // branch code, else its TIN suffix. For the consolidated file (all branches):
+  // the company's default branch code (head office → 000). Falls back to the
+  // company's own TIN suffix if no branch/default is set.
   let branchCode = tinBranchCode(company.tin);
-  if (locationId) {
-    const loc = await prisma.location.findUnique({
-      where: { id: locationId },
-      select: { branchCode: true, tin: true },
-    });
-    const explicit = (loc?.branchCode ?? "").replace(/\D/g, "");
+  const loc = await prisma.location.findFirst({
+    where: locationId ? { id: locationId, companyId: company.id } : { companyId: company.id, isDefault: true },
+    select: { branchCode: true, tin: true },
+  });
+  if (loc) {
+    const explicit = (loc.branchCode ?? "").replace(/\D/g, "");
     if (explicit) branchCode = explicit;
-    else if (loc?.tin) branchCode = tinBranchCode(loc.tin);
+    else if (loc.tin) branchCode = tinBranchCode(loc.tin);
   }
   const filename = qapDatFilename(company.tin, branchCode, toDate);
 

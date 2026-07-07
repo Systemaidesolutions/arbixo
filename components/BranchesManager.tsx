@@ -12,10 +12,23 @@ export type Branch = {
   isDefault: boolean;
 };
 
-type Form = { name: string; branchCode: string; tin: string; address: string; isDefault: boolean };
-const blank = (): Form => ({ name: "", branchCode: "", tin: "", address: "", isDefault: false });
+type Form = { name: string; tin: string; branchCode: string; address: string; isDefault: boolean };
+const blank = (): Form => ({ name: "", tin: "", branchCode: "", address: "", isDefault: false });
 
-export function AdminBranches({ companyId, initial }: { companyId: string; initial: Branch[] }) {
+/**
+ * Create / edit / delete a company's branches (Location rows). Used on both the
+ * admin company page and the subscriber Setup > Branches page — `endpoint` is
+ * the CRUD route and `canEdit` gates the controls (read-only otherwise).
+ */
+export function BranchesManager({
+  endpoint,
+  initial,
+  canEdit,
+}: {
+  endpoint: string;
+  initial: Branch[];
+  canEdit: boolean;
+}) {
   const router = useRouter();
   // Which row is open: a branch id, "new", or null (list only).
   const [editing, setEditing] = useState<string | null>(null);
@@ -29,7 +42,7 @@ export function AdminBranches({ companyId, initial }: { companyId: string; initi
     setError(null);
   }
   function startEdit(b: Branch) {
-    setForm({ name: b.name, branchCode: b.branchCode ?? "", tin: b.tin ?? "", address: b.address ?? "", isDefault: b.isDefault });
+    setForm({ name: b.name, tin: b.tin ?? "", branchCode: b.branchCode ?? "", address: b.address ?? "", isDefault: b.isDefault });
     setEditing(b.id);
     setError(null);
   }
@@ -46,15 +59,15 @@ export function AdminBranches({ companyId, initial }: { companyId: string; initi
     setBusy(true);
     setError(null);
     const isNew = editing === "new";
-    const res = await fetch(`/api/admin/companies/${companyId}/branches`, {
+    const res = await fetch(endpoint, {
       method: isNew ? "POST" : "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...(isNew ? {} : { branchId: editing }),
         name: form.name,
-        address: form.address,
         tin: form.tin,
         branchCode: form.branchCode,
+        address: form.address,
         isDefault: form.isDefault,
       }),
     });
@@ -72,7 +85,7 @@ export function AdminBranches({ companyId, initial }: { companyId: string; initi
     if (!confirm(`Delete branch "${b.name}"? This can't be undone.`)) return;
     setBusy(true);
     setError(null);
-    const res = await fetch(`/api/admin/companies/${companyId}/branches`, {
+    const res = await fetch(endpoint, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ branchId: b.id }),
@@ -99,6 +112,10 @@ export function AdminBranches({ companyId, initial }: { companyId: string; initi
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Head Office / Makati branch" className={field} />
           </label>
           <label className={label}>
+            TIN (optional)
+            <input value={form.tin} onChange={(e) => setForm({ ...form, tin: e.target.value })} placeholder="000-000-000-000" className={field} />
+          </label>
+          <label className={label}>
             Branch code
             <input
               value={form.branchCode}
@@ -108,10 +125,6 @@ export function AdminBranches({ companyId, initial }: { companyId: string; initi
               className={field}
             />
             <span className="mt-0.5 block text-[11px] text-neutral-400">3 or 5 digits — head office is 000.</span>
-          </label>
-          <label className={label}>
-            TIN (optional)
-            <input value={form.tin} onChange={(e) => setForm({ ...form, tin: e.target.value })} placeholder="000-000-000-000" className={field} />
           </label>
           <label className={label}>
             Address (optional)
@@ -142,22 +155,24 @@ export function AdminBranches({ companyId, initial }: { companyId: string; initi
           <h2 className="text-sm font-medium text-neutral-800">Branches</h2>
           <p className="text-xs text-neutral-500">Tag where entries originate; used for per-branch BIR reports and their upload filenames.</p>
         </div>
-        {editing !== "new" && (
+        {canEdit && editing !== "new" && (
           <button onClick={startAdd} className="rounded border border-brand-blue px-3 py-1.5 text-xs font-medium text-brand-blue hover:bg-blue-50">
             + Add branch
           </button>
         )}
       </div>
 
-      {editing === "new" && <EditForm />}
+      {canEdit && editing === "new" && <EditForm />}
 
       <ul className="mt-3 divide-y divide-neutral-100">
         {initial.length === 0 && editing !== "new" && (
-          <li className="py-3 text-sm text-neutral-400">No branches yet. Add one to enable per-branch reporting.</li>
+          <li className="py-3 text-sm text-neutral-400">
+            No branches yet.{canEdit ? " Add one to enable per-branch reporting." : ""}
+          </li>
         )}
         {initial.map((b) => (
           <li key={b.id} className="py-2">
-            {editing === b.id ? (
+            {canEdit && editing === b.id ? (
               <EditForm />
             ) : (
               <div className="flex items-center justify-between gap-3">
@@ -171,10 +186,12 @@ export function AdminBranches({ companyId, initial }: { companyId: string; initi
                     {b.tin && <> · TIN <span className="font-mono">{b.tin}</span></>}
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button onClick={() => startEdit(b)} className="rounded px-2 py-1 text-xs text-brand-blue hover:bg-blue-50">Edit</button>
-                  <button onClick={() => remove(b)} disabled={busy} className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50">Delete</button>
-                </div>
+                {canEdit && (
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button onClick={() => startEdit(b)} className="rounded px-2 py-1 text-xs text-brand-blue hover:bg-blue-50">Edit</button>
+                    <button onClick={() => remove(b)} disabled={busy} className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50">Delete</button>
+                  </div>
+                )}
               </div>
             )}
           </li>
