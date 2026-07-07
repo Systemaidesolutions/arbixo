@@ -15,6 +15,72 @@ export type Branch = {
 type Form = { name: string; tin: string; branchCode: string; address: string; isDefault: boolean };
 const blank = (): Form => ({ name: "", tin: "", branchCode: "", address: "", isDefault: false });
 
+const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
+const labelCls = "block text-xs text-neutral-500";
+
+// Kept at module scope (not nested in BranchesManager) so React doesn't remount
+// it — and drop input focus — on every keystroke.
+function BranchForm({
+  form,
+  setForm,
+  onSave,
+  onCancel,
+  busy,
+  error,
+  isNew,
+}: {
+  form: Form;
+  setForm: (f: Form) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  busy: boolean;
+  error: string | null;
+  isNew: boolean;
+}) {
+  return (
+    <div className="mt-2 rounded-lg border border-brand-blue/30 bg-blue-50/40 p-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className={labelCls}>
+          Branch name
+          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Head Office / Makati branch" className={field} />
+        </label>
+        <label className={labelCls}>
+          TIN (optional)
+          <input value={form.tin} onChange={(e) => setForm({ ...form, tin: e.target.value })} placeholder="000-000-000-000" className={field} />
+        </label>
+        <label className={labelCls}>
+          Branch code
+          <input
+            value={form.branchCode}
+            onChange={(e) => setForm({ ...form, branchCode: e.target.value.replace(/\D/g, "").slice(0, 5) })}
+            placeholder="000"
+            inputMode="numeric"
+            className={field}
+          />
+          <span className="mt-0.5 block text-[11px] text-neutral-400">3 or 5 digits — head office is 000.</span>
+        </label>
+        <label className={labelCls}>
+          Address (optional)
+          <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className={field} />
+        </label>
+      </div>
+      <label className="mt-3 flex items-center gap-2 text-xs text-neutral-600">
+        <input type="checkbox" checked={form.isDefault} onChange={(e) => setForm({ ...form, isDefault: e.target.checked })} />
+        Default branch (pre-selected when encoding)
+      </label>
+      <div className="mt-3 flex items-center gap-2">
+        <button onClick={onSave} disabled={busy} className="rounded bg-brand-navy px-3 py-1.5 text-sm text-white hover:bg-brand-navyLight disabled:opacity-50">
+          {isNew ? "Add branch" : "Save"}
+        </button>
+        <button onClick={onCancel} disabled={busy} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50">
+          Cancel
+        </button>
+        {error && <span className="text-xs text-red-600">{error}</span>}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Create / edit / delete a company's branches (Location rows). Used on both the
  * admin company page and the subscriber Setup > Branches page — `endpoint` is
@@ -100,54 +166,6 @@ export function BranchesManager({
     router.refresh();
   }
 
-  const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
-  const label = "block text-xs text-neutral-500";
-
-  function EditForm() {
-    return (
-      <div className="mt-2 rounded-lg border border-brand-blue/30 bg-blue-50/40 p-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className={label}>
-            Branch name
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Head Office / Makati branch" className={field} />
-          </label>
-          <label className={label}>
-            TIN (optional)
-            <input value={form.tin} onChange={(e) => setForm({ ...form, tin: e.target.value })} placeholder="000-000-000-000" className={field} />
-          </label>
-          <label className={label}>
-            Branch code
-            <input
-              value={form.branchCode}
-              onChange={(e) => setForm({ ...form, branchCode: e.target.value.replace(/\D/g, "").slice(0, 5) })}
-              placeholder="000"
-              inputMode="numeric"
-              className={field}
-            />
-            <span className="mt-0.5 block text-[11px] text-neutral-400">3 or 5 digits — head office is 000.</span>
-          </label>
-          <label className={label}>
-            Address (optional)
-            <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className={field} />
-          </label>
-        </div>
-        <label className="mt-3 flex items-center gap-2 text-xs text-neutral-600">
-          <input type="checkbox" checked={form.isDefault} onChange={(e) => setForm({ ...form, isDefault: e.target.checked })} />
-          Default branch (pre-selected when encoding)
-        </label>
-        <div className="mt-3 flex items-center gap-2">
-          <button onClick={save} disabled={busy} className="rounded bg-brand-navy px-3 py-1.5 text-sm text-white hover:bg-brand-navyLight disabled:opacity-50">
-            {editing === "new" ? "Add branch" : "Save"}
-          </button>
-          <button onClick={cancel} disabled={busy} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50">
-            Cancel
-          </button>
-          {error && <span className="text-xs text-red-600">{error}</span>}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <section className="rounded-lg border border-neutral-200 p-4">
       <div className="flex items-center justify-between">
@@ -162,7 +180,9 @@ export function BranchesManager({
         )}
       </div>
 
-      {canEdit && editing === "new" && <EditForm />}
+      {canEdit && editing === "new" && (
+        <BranchForm form={form} setForm={setForm} onSave={save} onCancel={cancel} busy={busy} error={error} isNew />
+      )}
 
       <ul className="mt-3 divide-y divide-neutral-100">
         {initial.length === 0 && editing !== "new" && (
@@ -173,7 +193,7 @@ export function BranchesManager({
         {initial.map((b) => (
           <li key={b.id} className="py-2">
             {canEdit && editing === b.id ? (
-              <EditForm />
+              <BranchForm form={form} setForm={setForm} onSave={save} onCancel={cancel} busy={busy} error={error} isNew={false} />
             ) : (
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
