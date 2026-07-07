@@ -5,6 +5,7 @@ import { AdminCompanyForm } from "../AdminCompanyForm";
 import { AuditToggle } from "../AuditToggle";
 import { SubscriptionPanel } from "../SubscriptionPanel";
 import { LogoField } from "../LogoField";
+import { AdminBranches } from "../AdminBranches";
 
 export default async function EditCompanyPage({ params }: { params: { id: string } }) {
   await requireAdmin();
@@ -14,6 +15,12 @@ export default async function EditCompanyPage({ params }: { params: { id: string
     include: { users: { select: { id: true, email: true } } },
   });
   if (!company) notFound();
+
+  const branches = await prisma.location.findMany({
+    where: { companyId: params.id },
+    orderBy: [{ isDefault: "desc" }, { name: "asc" }],
+    select: { id: true, name: true, address: true, tin: true, branchCode: true, isDefault: true },
+  });
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-12">
@@ -67,6 +74,11 @@ export default async function EditCompanyPage({ params }: { params: { id: string
       {/* Company logo */}
       <div className="mt-6">
         <LogoField companyId={company.id} initial={company.logoUrl} />
+      </div>
+
+      {/* Branches (Location rows) — per-branch reporting + upload filenames */}
+      <div className="mt-6">
+        <AdminBranches companyId={company.id} initial={branches} />
       </div>
 
       {/* Settings — audit logging on/off */}

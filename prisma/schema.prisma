@@ -310,6 +310,9 @@ model Location {
   tin         String?
   machineIdNo String?
   branchClass String?
+  // BIR 3- or 5-digit branch code (head office = 000). Used in the branch's
+  // alphalist/RELIEF filenames; falls back to the branch/company TIN suffix.
+  branchCode  String?
   isDefault   Boolean  @default(false)
 
   ledgerEntries LedgerEntry[]

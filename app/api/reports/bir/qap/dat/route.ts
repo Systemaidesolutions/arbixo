@@ -17,14 +17,20 @@ export async function GET(request: NextRequest) {
   const qap = await getAlphalistOfPayees(company.id, new Date(`${from}T00:00:00`), toDate, locationId);
   const text = buildQapDat(company, qap, toDate);
 
-  // Branch code for the filename: the selected branch's TIN when filtering by
-  // one, otherwise the company's own TIN (head office → 000).
-  let branchTin: string | null = company.tin;
+  // Branch code for the filename: an explicit branch code on the selected
+  // branch wins; otherwise its TIN suffix; otherwise the company's own
+  // (head office → 000).
+  let branchCode = tinBranchCode(company.tin);
   if (locationId) {
-    const loc = await prisma.location.findUnique({ where: { id: locationId }, select: { tin: true } });
-    if (loc?.tin) branchTin = loc.tin;
+    const loc = await prisma.location.findUnique({
+      where: { id: locationId },
+      select: { branchCode: true, tin: true },
+    });
+    const explicit = (loc?.branchCode ?? "").replace(/\D/g, "");
+    if (explicit) branchCode = explicit;
+    else if (loc?.tin) branchCode = tinBranchCode(loc.tin);
   }
-  const filename = qapDatFilename(company.tin, tinBranchCode(branchTin), toDate);
+  const filename = qapDatFilename(company.tin, branchCode, toDate);
 
   return new NextResponse(text, {
     headers: {
