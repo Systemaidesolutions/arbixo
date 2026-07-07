@@ -13,6 +13,26 @@ function num(d: unknown): number {
   return Number(d ?? 0);
 }
 
+/**
+ * The branch-code portion of a TIN (the digits after the 9-digit base — 3 or 5
+ * digits). Head office / a base-only TIN yields "000".
+ */
+export function tinBranchCode(tin: string | null | undefined): string {
+  return digitsOnly(tin).slice(9) || "000";
+}
+
+/**
+ * BIR Alphalist QAP upload filename, ready to submit:
+ * <9-digit TIN><branch code><MM><YY>1601EQ.DAT — MM/YY are the covered
+ * quarter's ending month + 2-digit year. e.g. TIN 123456789, head office
+ * (000), Q1 2026 → 12345678900003261601EQ.DAT
+ */
+export function qapDatFilename(tin: string, branchCode: string, periodEnd: Date): string {
+  const mm = String(periodEnd.getMonth() + 1).padStart(2, "0");
+  const yy = String(periodEnd.getFullYear() % 100).padStart(2, "0");
+  return `${datTin(tin)}${branchCode}${mm}${yy}1601EQ.DAT`;
+}
+
 export type QapRow = {
   id: string;
   tin: string;
