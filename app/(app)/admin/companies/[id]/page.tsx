@@ -6,6 +6,7 @@ import { AuditToggle } from "../AuditToggle";
 import { SubscriptionPanel } from "../SubscriptionPanel";
 import { LogoField } from "../LogoField";
 import { BranchesManager } from "@/components/BranchesManager";
+import { DeleteCompanyButton } from "../DeleteCompanyButton";
 
 export default async function EditCompanyPage({ params }: { params: { id: string } }) {
   await requireAdmin();
@@ -88,6 +89,8 @@ export default async function EditCompanyPage({ params }: { params: { id: string
 
       <h2 className="mt-8 text-sm font-medium text-neutral-700">Update details</h2>
       <AdminCompanyForm mode="edit" companyId={company.id} initialCompany={company} />
+
+      <DeleteCompanyButton companyId={company.id} tradeName={company.tradeName} />
     </main>
   );
 }

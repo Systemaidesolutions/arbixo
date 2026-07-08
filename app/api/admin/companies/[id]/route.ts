@@ -3,7 +3,21 @@ import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/currentUser";
 import { validateCompanyPayload, type CompanyFormPayload } from "@/lib/company";
 import { invalidateAuditCache } from "@/lib/auditSettings";
+import { deleteCompany } from "@/lib/deleteCompany";
 import type { Prisma } from "@prisma/client";
+
+// Permanently delete a company and all of its data. Admin-only; the UI gates
+// this behind two confirmations.
+export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+  const admin = await getAdminUser();
+  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const existing = await prisma.company.findUnique({ where: { id: params.id }, select: { id: true } });
+  if (!existing) return NextResponse.json({ error: "Company not found" }, { status: 404 });
+
+  await deleteCompany(params.id);
+  return NextResponse.json({ ok: true });
+}
 
 type SettingsPayload = {
   auditLogEnabled?: boolean;
