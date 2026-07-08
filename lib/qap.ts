@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { partyName, datText, datTin, amt, digitsOnly, mmddyyyy, H_TRAILER, type DatCompany } from "@/lib/slsp";
+import { partyName, datText, datTin, amt, digitsOnly, datRdo, mmddyyyy, H_TRAILER, type DatCompany } from "@/lib/slsp";
 
 // BIR Quarterly Alphalist of Payees (QAP) — payees the company withheld
 // expanded withholding tax (EWT) from (the withholding-agent side of purchases /
@@ -163,7 +163,7 @@ export function buildQapDat(co: DatCompany, qap: Qap, periodEnd: Date): string {
     datText(co.taxpayerLastName), datText(co.taxpayerFirstName), datText(co.taxpayerMiddleName),
     datText(co.tradeName), coAddr1, coAddr2,
     amt(t.income), amt(t.tax),
-    digitsOnly(co.rdoCode), me, H_TRAILER,
+    datRdo(co.rdoCode), me, H_TRAILER,
   ].join(",");
 
   const details = qap.rows.map((r, i) =>

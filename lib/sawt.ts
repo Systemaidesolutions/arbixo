@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { partyName, type DatCompany } from "@/lib/slsp";
+import { partyName, datRdo, type DatCompany } from "@/lib/slsp";
 
 // BIR SAWT (Summary Alphalist of Withholding Taxes) — the creditable withholding
 // tax the company had withheld FROM it by its customers/payors on income
@@ -111,7 +111,6 @@ const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
 const tin9 = (s: string | null | undefined) => digits(s).slice(0, 9);
 const branch4 = (s: string | null | undefined) => digits(s).slice(9, 13).padEnd(4, "0");
 const amt2 = (n: number) => n.toFixed(2);
-const rdoCode = (s: string | null | undefined) => (s ?? "").trim().match(/^[0-9A-Za-z]+/)?.[0] ?? "";
 
 /**
  * Builds the BIR Alphalist SAWT file: an H (taxpayer header) record, one D
@@ -129,7 +128,7 @@ export function buildSawtDat(co: DatCompany, sawt: Sawt, periodEnd: Date): strin
   const header = [
     "HSAWT", `H${SAWT_FORM}`, coTin, coBranch,
     qAlways(coReg), qAlways(co.taxpayerLastName), qAlways(co.taxpayerFirstName), qAlways(co.taxpayerMiddleName),
-    period, rdoCode(co.rdoCode),
+    period, datRdo(co.rdoCode),
   ].join(",");
 
   const details = sawt.rows.map((r, i) =>

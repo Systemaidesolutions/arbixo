@@ -136,6 +136,12 @@ export const datText = (s: string | null | undefined) =>
 // itself named "<9-digit TIN>...". Branch codes are not part of the TIN field,
 // so use only the first 9 digits.
 export const datTin = (s: string | null | undefined) => digitsOnly(s).slice(0, 9);
+// RDO code for BIR files. RDO codes are ALPHANUMERIC (e.g. 037, 54A, 54B), so
+// take the leading alphanumeric token — not just digits — and uppercase it.
+// Handles bare codes ("54B"), lowercase ("54b" -> "54B") and "code — name"
+// strings ("54B — Kawit, West Cavite" -> "54B").
+export const datRdo = (s: string | null | undefined) =>
+  ((s ?? "").trim().match(/^[0-9A-Za-z]+/)?.[0] ?? "").toUpperCase();
 // Match the sample's number style: integers plain, otherwise 2 decimals.
 export const amt = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(2));
 export function mmddyyyy(d: Date): string {
@@ -173,7 +179,7 @@ export function buildSlpDat(co: DatCompany, slp: Slp, periodEnd: Date): string {
     datText(co.tradeName), coAddr1, coAddr2,
     amt(t.exempt), amt(t.zeroRated), amt(t.services), amt(t.capitalGoods), amt(t.goods),
     amt(t.inputTax), amt(t.inputTax), "0",
-    digitsOnly(co.rdoCode), me, H_TRAILER,
+    datRdo(co.rdoCode), me, H_TRAILER,
   ].join(",");
 
   const details = slp.rows.map((r) =>
@@ -208,7 +214,7 @@ export function buildSlsDat(co: DatCompany, sls: Sls, periodEnd: Date): string {
     datText(co.taxpayerLastName), datText(co.taxpayerFirstName), datText(co.taxpayerMiddleName),
     datText(co.tradeName), coAddr1, coAddr2,
     amt(t.exempt), amt(t.zeroRated), amt(t.taxable), amt(t.outputTax),
-    digitsOnly(co.rdoCode), me, H_TRAILER,
+    datRdo(co.rdoCode), me, H_TRAILER,
   ].join(",");
 
   const details = sls.rows.map((r) =>
@@ -436,7 +442,7 @@ export function buildSliDat(co: DatCompany, sli: Sli, periodEnd: Date): string {
     datText(co.taxpayerLastName), datText(co.taxpayerFirstName), datText(co.taxpayerMiddleName),
     datText(co.tradeName), coAddr1, coAddr2,
     amt(t.dutiableValue), amt(t.charges), amt(t.exempt), amt(t.taxableGoods), amt(t.vat),
-    digitsOnly(co.rdoCode), me, H_TRAILER,
+    datRdo(co.rdoCode), me, H_TRAILER,
   ].join(",");
 
   const details = sli.rows.map((r, i) =>
