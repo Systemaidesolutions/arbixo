@@ -53,11 +53,11 @@ function BranchForm({
           <input
             value={form.branchCode}
             onChange={(e) => setForm({ ...form, branchCode: e.target.value.replace(/\D/g, "").slice(0, 5) })}
-            placeholder="000"
+            placeholder="00000"
             inputMode="numeric"
             className={field}
           />
-          <span className="mt-0.5 block text-[11px] text-neutral-400">3 or 5 digits — head office is 000.</span>
+          <span className="mt-0.5 block text-[11px] text-neutral-400">5 digits — head office is 00000.</span>
         </label>
         <label className={labelCls}>
           Address (optional)
@@ -202,7 +202,7 @@ export function BranchesManager({
                     {b.isDefault && <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">Default</span>}
                   </div>
                   <div className="text-xs text-neutral-500">
-                    Branch code <span className="font-mono">{(b.branchCode ?? "").replace(/\D/g, "") || "000"}</span>
+                    Branch code <span className="font-mono">{((b.branchCode ?? "").replace(/\D/g, "") || "0").padStart(5, "0")}</span>
                     {b.tin && <> · TIN <span className="font-mono">{b.tin}</span></>}
                   </div>
                 </div>

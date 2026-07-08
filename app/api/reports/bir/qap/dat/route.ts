@@ -31,7 +31,9 @@ export async function GET(request: NextRequest) {
     if (explicit) branchCode = explicit;
     else if (loc.tin) branchCode = tinBranchCode(loc.tin);
   }
-  const filename = qapDatFilename(company.tin, branchCode, toDate);
+  // Reports use only the LAST 4 characters of the 5-digit branch code.
+  const report4 = branchCode.replace(/\D/g, "").padStart(5, "0").slice(-4);
+  const filename = qapDatFilename(company.tin, report4, toDate);
 
   return new NextResponse(text, {
     headers: {

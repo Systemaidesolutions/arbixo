@@ -18,8 +18,12 @@ export type BranchInput = {
 export type BranchResult = { status: number; error?: string; branch?: unknown; ok?: boolean };
 
 const clean = (v: string | null | undefined) => (v ?? "").trim() || null;
-// Branch code: BIR uses 3 or 5 digits; keep digits only, blank -> null.
-const codeOf = (v: string | null | undefined) => (v ?? "").replace(/\D/g, "") || null;
+// Branch code: stored as 5 digits (head office 00000). Keep digits only, cap at
+// 5, left-pad short entries with zeros; blank -> null.
+const codeOf = (v: string | null | undefined) => {
+  const d = (v ?? "").replace(/\D/g, "").slice(0, 5);
+  return d ? d.padStart(5, "0") : null;
+};
 
 // Only one branch per company may be the default.
 async function clearOtherDefaults(companyId: string, keepId?: string) {

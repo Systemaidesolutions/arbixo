@@ -24,8 +24,9 @@ export function tinBranchCode(tin: string | null | undefined): string {
 /**
  * BIR Alphalist QAP upload filename, ready to submit:
  * <9-digit TIN><branch code><MM><YY>1601EQ.DAT — MM/YY are the covered
- * quarter's ending month + 2-digit year. e.g. TIN 123456789, head office
- * (000), Q1 2026 → 12345678900003261601EQ.DAT
+ * quarter's ending month + 2-digit year. `branchCode` here is the report
+ * branch code (the last 4 chars of the branch's 5-digit code). e.g. TIN
+ * 123456789, head office (0000), Q1 2026 → 123456789000003261601EQ.DAT
  */
 export function qapDatFilename(tin: string, branchCode: string, periodEnd: Date): string {
   const mm = String(periodEnd.getMonth() + 1).padStart(2, "0");
