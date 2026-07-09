@@ -94,6 +94,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/agents/vendors", label: "Vendors", icon: "vendors" },
       { href: "/agents/employees", label: "Employees", icon: "employees" },
       { href: "/agents/contacts", label: "Contacts", icon: "contacts" },
+      { href: "/items", label: "Items", icon: "purchases" },
     ],
   },
   {
@@ -104,7 +105,6 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/company/branches", label: "Branches", icon: "companies" },
       { href: "/company/tax-posting-setup", label: "Tax posting setup", icon: "tax" },
       { href: "/accounts", label: "Chart of accounts", icon: "accounts" },
-      { href: "/items", label: "Items", icon: "purchases" },
     ],
   },
 ];
