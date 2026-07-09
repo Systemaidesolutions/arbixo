@@ -49,7 +49,8 @@ export const NAV_SECTIONS: NavSection[] = [
     links: [
       { href: "/transactions/cash-disbursement", label: "Cash disbursement", icon: "cashOut" },
       { href: "/transactions/cash-receipts", label: "Cash receipts", icon: "cashIn" },
-      { href: "/transactions/sales", label: "Sales on account", icon: "sales" },
+      { href: "/transactions/sales", label: "Sales Journal", icon: "sales" },
+      { href: "/transactions/sales-order", label: "Sales Order", icon: "sales" },
       { href: "/transactions/purchases", label: "Purchase Journal", icon: "purchases" },
       { href: "/transactions/purchase-on-account", label: "Purchase Order", icon: "purchases" },
       { href: "/transactions/importations", label: "Importations", icon: "importations" },
@@ -65,6 +66,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/reports/subsidiary-ledger", label: "Debtors' / creditors' ledger", icon: "subsidiary" },
       { href: "/reports/income-statement", label: "Income statement", icon: "income" },
       { href: "/reports/balance-sheet", label: "Balance sheet", icon: "balance" },
+      { href: "/reports/inventory", label: "Inventory / Stock", icon: "purchases" },
       { href: "/reports/bir/vat-return", label: "Monthly VAT return (BIR 2550M)", icon: "vat" },
       { href: "/reports/bir/sls", label: "Summary List of Sales (SLS)", icon: "sales" },
       { href: "/reports/bir/slp", label: "Summary List of Purchases (SLP)", icon: "purchases" },

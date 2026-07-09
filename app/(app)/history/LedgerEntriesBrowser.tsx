@@ -7,7 +7,7 @@ import type { JournalType } from "@prisma/client";
 const JOURNAL_LABELS: Record<JournalType, string> = {
   CASH_DISBURSEMENT: "Cash Disbursement",
   CASH_RECEIPT: "Cash Receipt",
-  SALES_ON_ACCOUNT: "Sales on Account",
+  SALES_ON_ACCOUNT: "Sales Journal",
   PURCHASE_ON_ACCOUNT: "Purchase Journal",
   GENERAL_JOURNAL: "General Journal",
 };
