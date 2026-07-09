@@ -1,11 +1,10 @@
-// Standard BIR Expanded Withholding Tax (EWT) Alphanumeric Tax Codes (ATC).
-// Codes are GLOBAL (shared by every company). This is a CURATED common set, not
-// the complete BIR catalogue — load the full official list via Admin → ATC codes
-// → Import (CSV). Rates follow RR 2-98 as amended (incl. RR 11-2018 / TRAIN);
-// BIR revises them, so an admin should VERIFY each rate against the latest BIR
-// issuance. `incomePaymentType` (GOODS/SERVICES/BOTH) drives the Nature filter on
-// transaction lines. Seeding upserts with `update:{}`, so admin edits are never
-// overwritten.
+// BIR Expanded Withholding Tax (EWT) Alphanumeric Tax Codes (ATC), extracted
+// from the official BIR ATC table provided by the client. GLOBAL (shared by all
+// companies). Descriptions combine the category + income-threshold detail;
+// incomePaymentType (GOODS/SERVICES/BOTH) drives the Nature filter on lines and
+// is inferred from the description (default BOTH). Rates are current as of the
+// source file — an admin can verify/adjust and bulk re-import from
+// Admin -> ATC codes. Seeding upserts with update:{} so admin edits aren't lost.
 
 export type AtcSeed = {
   code: string;
@@ -15,34 +14,113 @@ export type AtcSeed = {
 };
 
 export const STANDARD_ATC_CODES: AtcSeed[] = [
-  // Existing starter codes (kept as-is).
-  { code: "WC100", description: "Rentals — real/personal property, poles, satellites & transmission facilities, billboards — Corporate", ratePercent: 5, incomePaymentType: "BOTH" },
-  { code: "WC158", description: "Income payments by a Top Withholding Agent to local/resident suppliers of GOODS — Corporate", ratePercent: 1, incomePaymentType: "GOODS" },
-  { code: "WC160", description: "Income payments by a Top Withholding Agent to local/resident suppliers of SERVICES — Corporate", ratePercent: 2, incomePaymentType: "SERVICES" },
-  { code: "WI158", description: "Income payments by a Top Withholding Agent to local/resident suppliers of GOODS — Individual", ratePercent: 1, incomePaymentType: "GOODS" },
-  { code: "WV010", description: "Income payments by a Top Withholding Agent to local/resident suppliers of GOODS (VAT supplier)", ratePercent: 1, incomePaymentType: "GOODS" },
-
-  // Professional / talent fees.
-  { code: "WI010", description: "Professional/talent fees, etc. — Individual (gross income for the year ≤ ₱3M)", ratePercent: 5, incomePaymentType: "SERVICES" },
-  { code: "WI011", description: "Professional/talent fees, etc. — Individual (gross income > ₱3M or VAT-registered)", ratePercent: 10, incomePaymentType: "SERVICES" },
-  { code: "WC010", description: "Professional/talent fees, etc. — Corporate (gross income for the year ≤ ₱720K)", ratePercent: 10, incomePaymentType: "SERVICES" },
-  { code: "WC011", description: "Professional/talent fees, etc. — Corporate (gross income > ₱720K)", ratePercent: 15, incomePaymentType: "SERVICES" },
-
-  // Professional fees paid to medical practitioners.
-  { code: "WI152", description: "Professional fees paid to medical practitioners — Individual (≤ ₱3M)", ratePercent: 5, incomePaymentType: "SERVICES" },
-  { code: "WC152", description: "Professional fees paid to medical practitioners — Corporate (≤ ₱720K)", ratePercent: 10, incomePaymentType: "SERVICES" },
-
-  // Rentals — individual counterpart of WC100.
-  { code: "WI100", description: "Rentals — real/personal property, poles, satellites & transmission facilities, billboards — Individual", ratePercent: 5, incomePaymentType: "BOTH" },
-
-  // Cinematographic film rentals.
-  { code: "WI120", description: "Cinematographic film rentals & other payments — Individual", ratePercent: 5, incomePaymentType: "SERVICES" },
-  { code: "WC120", description: "Cinematographic film rentals & other payments — Corporate", ratePercent: 5, incomePaymentType: "SERVICES" },
-
-  // Contractors / sub-contractors.
-  { code: "WI157", description: "Income payments to certain contractors (general engineering/building, specialty, other) — Individual", ratePercent: 2, incomePaymentType: "SERVICES" },
-  { code: "WC157", description: "Income payments to certain contractors (general engineering/building, specialty, other) — Corporate", ratePercent: 2, incomePaymentType: "SERVICES" },
-
-  // Top Withholding Agent — services, individual counterpart of WC160.
-  { code: "WI160", description: "Income payments by a Top Withholding Agent to local/resident suppliers of SERVICES — Individual", ratePercent: 2, incomePaymentType: "SERVICES" },
+  { code: "WC010", description: "Professional fees (Lawyers, CPAs, Engineers, etc.) - if gross income for the current year did not exceed ₱ 720,000.00", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WC011", description: "Professional fees (Lawyers, CPAs, Engineers, etc.) - if gross income exceeds ₱ 720,000.00", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC020", description: "Professional entertainer such as, but not limited to actors and actresses, singers, lyricist, composers, emcees - if gross income for the current year did not exceed ₱ 720,000.00", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WC021", description: "Professional entertainer such as, but not limited to actors and actresses, singers, lyricist, composers, emcees - if gross income exceeds ₱ 720,000.00", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC030", description: "Professional athletes including basketball players, pelotaris and jockeys - if gross income for the current year did not exceed ₱ 720,000.00", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WC031", description: "Professional athletes including basketball players, pelotaris and jockeys - if gross income exceeds ₱ 720,000.00", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC040", description: "All directors and producers involved in movies, stage, television and musical productions - if gross income for the current year did not exceed ₱ 720,000.00", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WC041", description: "All directors and producers involved in movies, stage, television and musical productions - if gross income exceeds ₱ 720,000.00", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC050", description: "Management and technical consultants - if gross income for the current year did not exceed ₱ 720,000.00", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WC051", description: "Management and technical consultants - if gross income exceeds ₱ 720,000.00", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC060", description: "Business and Bookkeeping agents and agencies - if gross income for the current year did not exceed ₱ 720,000.00", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WC061", description: "Business and Bookkeeping agents and agencies - if gross income exceeds ₱ 720,000.00", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC070", description: "Insurance agents and insurance adjusters - if gross income for the current year did not exceed ₱ 720,000.00", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WC071", description: "Insurance agents and insurance adjusters - if gross income exceeds ₱ 720,000.00", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC080", description: "Other Recipients of Talent Fees - if gross income for the current year did not exceed ₱ 720,000.00", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WC081", description: "Other Recipients of Talent Fees - if gross income exceeds ₱ 720,000.00", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC100", description: "Rentals: On gross rental or lease for the continued use or possession of personal property in excess of ₱ 10,000.00 annually and real property used in business which the payor or obligor has not taken title or is not taking title, or in which has no ", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WC110", description: "Cinematographic film rentals and other payments to resident individuals and corporate cinematographic film owners, lessors and distributors", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WC120", description: "Income payments to certain contractors", ratePercent: 2, incomePaymentType: "BOTH" },
+  { code: "WC139", description: "Gross Commission of service fees of customs, insurance, stock, immigration and commercial brokers, fees of agents of professional entertainers and real estate service practitioners (RESPs)(i.e. real estate consultants, real estate appraisers and real", ratePercent: 10, incomePaymentType: "SERVICES" },
+  { code: "WC140", description: "Gross Commission of service fees of customs, insurance, stock, immigration and commercial brokers, fees of agents of professional entertainers and real estate service practitioners (RESPs)(i.e. real estate consultants, real estate appraisers and real", ratePercent: 15, incomePaymentType: "SERVICES" },
+  { code: "WC150", description: "Professional fees paid to medical practitioners (includes doctors of medicine, doctors of veterinary science & dentist) by hospitals & clinics or paid directly by HMO and/or other similar establishments - if gross income exceeds ₱ 720,000.00", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC151", description: "Professional fees paid to medical practitioners (includes doctors of medicine, doctors of veterinary science & dentist) by hospitals & clinics or paid directly by HMO and/or other similar establishments - if gross income for the current year did not ", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WC156", description: "Income payments made by credit card companies", ratePercent: 0.5, incomePaymentType: "BOTH" },
+  { code: "WC157", description: "Income Payment made by NGAs, LGU, & etc to its local/resident suppliers of services other than those covered by other rates of withholding tax", ratePercent: 2, incomePaymentType: "SERVICES" },
+  { code: "WC158", description: "Income Payment made by top withholding agents to their local/resident suppliers of goods other than those covered by other rates of withholding tax", ratePercent: 1, incomePaymentType: "GOODS" },
+  { code: "WC160", description: "Income Payment made by top withholding agents to their local/resident suppliers of services other than those covered by other rates of withholding tax", ratePercent: 2, incomePaymentType: "SERVICES" },
+  { code: "WC535", description: "Payments made by pre-need companies to funeral parlors", ratePercent: 1, incomePaymentType: "BOTH" },
+  { code: "WC540", description: "Tolling fees paid to refineries", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WC610", description: "Income payments made to suppliers of agricultural supplier products in excess of cumulative amount of ₱ 300,000 within the same taxable year", ratePercent: 1, incomePaymentType: "BOTH" },
+  { code: "WC630", description: "Income payments on purchases of minerals, mineral products and quarry resources, such as but not limited to silver, gold, granite, gravel, sand, boulders and other mineral products except purchases by Bangko Sentral ng Pilipinas", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WC632", description: "Income payments on purchases of minerals, mineral products and quarry resources by Bangko Sentral ng Pilipinas ((BSP) from gold miners/suppliers under PD 1899, as amended by RA No. 7076", ratePercent: 1, incomePaymentType: "BOTH" },
+  { code: "WC640", description: "Income Payment made by NGAs, LGU, & etc to its local/resident suppliers of goods other than those covered by other rates of withholding tax", ratePercent: 1, incomePaymentType: "GOODS" },
+  { code: "WC650", description: "On gross amount of refund given by MERALCO to customers with active contracts as classified by MERALCO", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC651", description: "On gross amount of refund given by MERALCO to customers with terminated contracts as classified by MERALCO", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC660", description: "On gross amount of interest on the refund of meter deposits whether paid directly to the customers or applied against customer's billings of Residential and General Service customers whose monthly electricity consumption exceeds 200 kwh as classified", ratePercent: 10, incomePaymentType: "SERVICES" },
+  { code: "WC661", description: "On gross amount of interest on the refund of meter deposits whether paid directly to the customers or applied against customer's billings of Non-Residential customers whose monthly electricity consumption exceeds 200 kwh as classified by MERALCO", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC662", description: "On gross amount of interest on the refund of meter deposits whether paid directly to the customers or applied against customer's billings of Residential and General Service customers whose monthly electricity consumption exceeds 200 kwh as classified", ratePercent: 10, incomePaymentType: "SERVICES" },
+  { code: "WC663", description: "On gross amount of interest on the refund of meter deposits whether paid directly to the customers or applied against customer's billings of Non-Residential customers whose monthly electricity consumption exceeds 200 kwh as classified by other electr", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC680", description: "Income payments made by political parties and candidates of local and national elections on all their purchases of goods and services related to campaign expenditures, and income payments made by individuals or juridical persons for their purchases o", ratePercent: 5, incomePaymentType: "GOODS" },
+  { code: "WC690", description: "Income payments received by Real Estate Investment Trust (REIT)", ratePercent: 1, incomePaymentType: "BOTH" },
+  { code: "WC710", description: "Interest income derived from any other debt instruments not within the coverage of deposit substitutes and Revenue Regulations 14-2012", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC720", description: "Income payments on locally produced raw sugar", ratePercent: 1, incomePaymentType: "BOTH" },
+  { code: "WC770", description: "Income payments made by joint ventures, whether incorporated or not, taxable or non-taxable, to their local/resident supplier of goods", ratePercent: 1, incomePaymentType: "GOODS" },
+  { code: "WC780", description: "Income payments made by joint ventures, whether incorporated or not, taxable or non-taxable, to their local/resident supplier of services", ratePercent: 2, incomePaymentType: "SERVICES" },
+  { code: "WC790", description: "On the share of each co-venturer/member from the net income of the joint venture/consortium not taxable as corporation prior to actual or constructive distribution thereof", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WC820", description: "On the gross remittances by e-marketplace operators to the sellers/merchants for the goods or services sold/paid through their platform/facility", ratePercent: 0.5, incomePaymentType: "GOODS" },
+  { code: "WC830", description: "On the gross remittances by digital financial services providers to the sellers/merchants for the goods or services sold/paid through their platform/facility", ratePercent: 0.5, incomePaymentType: "GOODS" },
+  { code: "WC840", description: "Income payments made by top withholding agents, either private corporations or individuals, to the manufacturers and direct importers of motor vehicles in Completely Built Units (CBUs) or Semi-Knockdown (SKD) units, motor vehicle parts and accessorie", ratePercent: 0.5, incomePaymentType: "BOTH" },
+  { code: "WC850", description: "Income payments made by top withholding agents, either private corporations or individuals, to the manufacturers and direct importers of medicine/pharmaceutical products", ratePercent: 0.5, incomePaymentType: "BOTH" },
+  { code: "WC860", description: "Income payments made by top withholding agents, either private corporations or individuals, to the manufacturers and direct importers of solid or liquid fuels and related products", ratePercent: 0.5, incomePaymentType: "BOTH" },
+  { code: "WI010", description: "Professional fees (Lawyers, CPAs, Engineers, etc.) - if the gross income for the current year did not exceed ₱ 3M", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI011", description: "Professional fees (Lawyers, CPAs, Engineers, etc.) - if gross income is more than ₱ 3M or VAT registered regardlessof amount", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WI020", description: "Professional entertainer such as, but not limited to actors and actresses, singers, lyricist, composers, emcees - if the gross income for the current year did not exceed ₱ 3M", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI021", description: "Professional entertainer such as, but not limited to actors and actresses, singers, lyricist, composers, emcees - if gross income is more than ₱ 3M or VAT registered regardless of amount", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WI030", description: "Professional athletes including basketball players, pelotaris and jockeys - if the gross income for the current year did not exceed ₱ 3M", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI031", description: "Professional athletes including basketball players, pelotaris and jockeys - if gross income is more than ₱ 3M or VAT registered regardless of amount", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WI040", description: "All directors and producers involved in movies, stage, television and musical productions - if the gross income for the current year did not exceed ₱ 3M", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI041", description: "All directors and producers involved in movies, stage, television and musical productions - if gross income is more than ₱ 3M or VAT registered regardless of amount", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WI050", description: "Management and technical consultants - if the gross income for the current year did not exceed ₱ 3M", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI051", description: "Management and technical consultants - if gross income is more than ₱ 3M or VAT registered regardless of amount", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WI060", description: "Business and Bookkeeping agents and agencies - if the gross income for the current year did not exceed ₱ 3M", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI061", description: "Business and Bookkeeping agents and agencies - if gross income is more than ₱ 3M or VAT registered regardless of amount", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WI070", description: "Insurance agents and insurance adjusters - if the gross income for the current year did not exceed ₱ 3M", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI071", description: "Insurance agents and insurance adjusters - if gross income is more than ₱ 3M or VAT registered regardless of amount", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WI080", description: "Other Recipients of Talent Fees - if the gross income for the current year did not exceed ₱ 3M", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI081", description: "Other Recipients of Talent Fees - if gross income is more than ₱ 3M or VAT registered regardless of amount", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WI090", description: "Fees of Director who are not employees of the company - if the gross income for the current year did not exceed ₱ 3M", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI091", description: "Fees of Director who are not employees of the company - if gross income is more than ₱ 3M or VAT registered regardless of amount", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WI100", description: "Rentals: On gross rental or lease for the continued use or possession of personal property in excess of ₱ 10,000.00 annually and real property used in business which the payor or obligor has not taken title or is not taking title, or in which has no ", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI110", description: "Cinematographic film rentals and other payments to resident individuals and corporate cinematographic film owners, lessors and distributors", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI120", description: "Income payments to certain contractors", ratePercent: 2, incomePaymentType: "BOTH" },
+  { code: "WI130", description: "Income distribution to the beneficiaries of estate and trusts", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WI139", description: "Gross Commission of service fees of customs, insurance, stock, immigration and commercial brokers, fees of agents of professional entertainers and real estate service practitioners (RESPs)(i.e. real estate consultants, real estate appraisers and real", ratePercent: 5, incomePaymentType: "SERVICES" },
+  { code: "WI140", description: "Gross Commission of service fees of customs, insurance, stock, immigration and commercial brokers, fees of agents of professional entertainers and real estate service practitioners (RESPs)(i.e. real estate consultants, real estate appraisers and real", ratePercent: 10, incomePaymentType: "SERVICES" },
+  { code: "WI150", description: "Professional fees paid to medical practitioners (includes doctors of medicine, doctors of veterinary science & dentist) by hospitals & clinics or paid directly by HMO and/or other similar establishments - if gross income is more than ₱ 3M or VAT regi", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WI151", description: "Professional fees paid to medical practitioners (includes doctors of medicine, doctors of veterinary science & dentist) by hospitals & clinics or paid directly by HMO and/or other similar establishments - if the gross income for the current year did ", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI152", description: "Payment by the General Professional Partnership (GPPs) to its partners - if gross income for the current year did not exceed ₱ 720,000.00", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WI153", description: "Payment by the General Professional Partnership (GPPs) to its partners - if gross income exceeds ₱ 720,000.00", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WI156", description: "Income payments made by credit card companies", ratePercent: 0.5, incomePaymentType: "BOTH" },
+  { code: "WI157", description: "Income Payment made by NGAs, LGU, & etc to its local/resident suppliers of services other than those covered by other rates of withholding tax", ratePercent: 2, incomePaymentType: "SERVICES" },
+  { code: "WI158", description: "Income Payment made by top withholding agents to their local/resident suppliers of goods other than those covered by other rates of withholding tax", ratePercent: 1, incomePaymentType: "GOODS" },
+  { code: "WI159", description: "Additional Income Payments to govt personnel from importers, shipping and airline companies or their agents for overtime services", ratePercent: 15, incomePaymentType: "SERVICES" },
+  { code: "WI160", description: "Income Payment made by top withholding agents to their local/resident suppliers of services other than those covered by other rates of withholding tax", ratePercent: 2, incomePaymentType: "SERVICES" },
+  { code: "WI515", description: "Commissions, rebates, discounts and other similar considerations paid/granted to independent and/or exclusive sales representatives and marketing agents and sub-agents of companies, including multi-level marketing companies - if the gross income for ", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI516", description: "Commissions, rebates, discounts and other similar considerations paid/granted to independent and/or exclusive sales representatives and marketing agents and sub-agents of companies, including multi-level marketing companies - if the gross income is m", ratePercent: 10, incomePaymentType: "BOTH" },
+  { code: "WI530", description: "Gross payments to embalmers by funeral parlors", ratePercent: 1, incomePaymentType: "BOTH" },
+  { code: "WI535", description: "Payments made by pre-need companies to funeral parlors", ratePercent: 1, incomePaymentType: "BOTH" },
+  { code: "WI540", description: "Tolling fees paid to refineries", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI610", description: "Income payments made to suppliers of agricultural supplier products in excess of cumulative amount of ₱ 300,000 within the same taxable year", ratePercent: 1, incomePaymentType: "BOTH" },
+  { code: "WI630", description: "Income payments on purchases of minerals, mineral products and quarry resources, such as but not limited to silver, gold, granite, gravel, sand, boulders and other mineral products except purchases by Bangko Sentral ng Pilipinas", ratePercent: 5, incomePaymentType: "BOTH" },
+  { code: "WI632", description: "Income payments on purchases of minerals, mineral products and quarry resources by Bangko Sentral ng Pilipinas ((BSP) from gold miners/suppliers under PD 1899, as amended by RA No. 7076", ratePercent: 1, incomePaymentType: "BOTH" },
+  { code: "WI640", description: "Income Payment made by NGAs, LGU, & etc to its local/resident suppliers of goods other than those covered by other rates of withholding tax", ratePercent: 1, incomePaymentType: "GOODS" },
+  { code: "WI650", description: "On gross amount of refund given by MERALCO to customers with active contracts as classified by MERALCO", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WI651", description: "On gross amount of refund given by MERALCO to customers with terminated contracts as classified by MERALCO", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WI660", description: "On gross amount of interest on the refund of meter deposits whether paid directly to the customers or applied against customer's billings of Residential and General Service customers whose monthly electricity consumption exceeds 200 kwh as classified", ratePercent: 10, incomePaymentType: "SERVICES" },
+  { code: "WI661", description: "On gross amount of interest on the refund of meter deposits whether paid directly to the customers or applied against customer's billings of Non-Residential customers whose monthly electricity consumption exceeds 200 kwh as classified by MERALCO", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WI662", description: "On gross amount of interest on the refund of meter deposits whether paid directly to the customers or applied against customer's billings of Residential and General Service customers whose monthly electricity consumption exceeds 200 kwh as classified", ratePercent: 10, incomePaymentType: "SERVICES" },
+  { code: "WI663", description: "On gross amount of interest on the refund of meter deposits whether paid directly to the customers or applied against customer's billings of Non-Residential customers whose monthly electricity consumption exceeds 200 kwh as classified by other electr", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WI680", description: "Income payments made by political parties and candidates of local and national elections on all their purchases of goods and services related to campaign expenditures, and income payments made by individuals or juridical persons for their purchases o", ratePercent: 5, incomePaymentType: "GOODS" },
+  { code: "WI710", description: "Interest income derived from any other debt instruments not within the coverage of deposit substitutes and Revenue Regulations 14-2012", ratePercent: 15, incomePaymentType: "BOTH" },
+  { code: "WI720", description: "Income payments on locally produced raw sugar", ratePercent: 1, incomePaymentType: "BOTH" },
+  { code: "WI770", description: "Income payments made by joint ventures, whether incorporated or not, taxable or non-taxable, to their local/resident supplier of goods", ratePercent: 1, incomePaymentType: "GOODS" },
+  { code: "WI780", description: "Income payments made by joint ventures, whether incorporated or not, taxable or non-taxable, to their local/resident supplier of services", ratePercent: 2, incomePaymentType: "SERVICES" },
+  { code: "WI820", description: "On the gross remittances by e-marketplace operators to the sellers/merchants for the goods or services sold/paid through their platform/facility", ratePercent: 0.5, incomePaymentType: "GOODS" },
+  { code: "WI830", description: "On the gross remittances by digital financial services providers to the sellers/merchants for the goods or services sold/paid through their platform/facility", ratePercent: 0.5, incomePaymentType: "GOODS" },
+  { code: "WI840", description: "Income payments made by top withholding agents, either private corporations or individuals, to the manufacturers and direct importers of motor vehicles in Completely Built Units (CBUs) or Semi-Knockdown (SKD) units, motor vehicle parts and accessorie", ratePercent: 0.5, incomePaymentType: "BOTH" },
+  { code: "WI850", description: "Income payments made by top withholding agents, either private corporations or individuals, to the manufacturers and direct importers of medicine/pharmaceutical products", ratePercent: 0.5, incomePaymentType: "BOTH" },
+  { code: "WI860", description: "Income payments made by top withholding agents, either private corporations or individuals, to the manufacturers and direct importers of solid or liquid fuels and related products", ratePercent: 0.5, incomePaymentType: "BOTH" },
 ];
