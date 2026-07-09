@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getAdminUser } from "@/lib/currentUser";
 import type { IncomePaymentType } from "@prisma/client";
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+  if (!(await getAdminUser())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const existing = await prisma.atcCode.findUnique({ where: { id: params.id } });
   if (!existing) return NextResponse.json({ error: "ATC code not found" }, { status: 404 });
 

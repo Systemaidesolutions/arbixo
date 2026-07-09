@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { formatPeso } from "@/lib/format";
-import type { AtcCode, VatType } from "@prisma/client";
+import type { AtcCode, TaxSource, VatType } from "@prisma/client";
 import { computeVat, computeWithholding } from "@/lib/vat";
 
 const VAT_TYPE_LABELS: Record<VatType, string> = {
@@ -41,6 +41,7 @@ export function VatComputationFields({
   atcCodeId,
   onAtcCodeChange,
   onChange,
+  taxSource,
 }: {
   vatType: VatType;
   onVatTypeChange: (v: VatType) => void;
@@ -52,8 +53,20 @@ export function VatComputationFields({
   atcCodeId: string | null;
   onAtcCodeChange: (id: string | null) => void;
   onChange?: (value: VatComputationValue) => void;
+  taxSource?: TaxSource;
 }) {
   const selectedAtc = atcCodes.find((a) => a.id === atcCodeId) ?? null;
+
+  // Narrow the ATC list to the line's Nature (Goods vs Services) using each
+  // code's incomePaymentType. BOTH always shows; the currently-selected code
+  // always stays visible; with no Nature given, the full list shows.
+  const visibleAtc = useMemo(() => {
+    if (!taxSource) return atcCodes;
+    const wanted = taxSource === "SERVICE" ? "SERVICES" : "GOODS"; // CAPITAL_GOODS counts as goods
+    return atcCodes.filter(
+      (a) => a.incomePaymentType === "BOTH" || a.incomePaymentType === wanted || a.id === atcCodeId
+    );
+  }, [atcCodes, taxSource, atcCodeId]);
 
   const vatResult = useMemo(
     () => computeVat({ vatType, amount: amount || 0, amountIsGross }),
@@ -153,7 +166,7 @@ export function VatComputationFields({
           className={field}
         >
           <option value="">None</option>
-          {atcCodes.map((atc) => (
+          {visibleAtc.map((atc) => (
             <option key={atc.id} value={atc.id}>
               {atc.code} — {atc.description} ({Number(atc.ratePercent)}%)
             </option>

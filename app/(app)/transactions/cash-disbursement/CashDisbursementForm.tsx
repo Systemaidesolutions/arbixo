@@ -333,6 +333,7 @@ export function CashDisbursementForm({
                 atcCodeId={line.atcCodeId}
                 onAtcCodeChange={(id) => updateLine(line.key, { atcCodeId: id })}
                 onChange={(computed) => updateLine(line.key, { computed })}
+                taxSource={line.taxSource}
               />
             </div>
           ))}

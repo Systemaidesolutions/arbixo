@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getAdminUser } from "@/lib/currentUser";
 import type { IncomePaymentType } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
@@ -12,6 +13,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // ATC codes are global reference data — admin-only writes.
+  if (!(await getAdminUser())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
 
