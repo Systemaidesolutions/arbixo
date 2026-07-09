@@ -177,10 +177,20 @@ export function CashDisbursementForm({
 
   return (
     <main className="mx-auto max-w-4xl p-4 sm:p-8">
-      <h1 className="text-xl font-medium text-neutral-900">Cash disbursement</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        Every peso paid out — check disbursements, cash purchases, expense payments.
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-medium text-neutral-900">Cash disbursement</h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            Every peso paid out — check disbursements, cash purchases, expense payments.
+          </p>
+        </div>
+        <a
+          href="/transactions/cash-disbursement/import"
+          className="shrink-0 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+        >
+          Import from Excel
+        </a>
+      </div>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
         {/* Header */}
