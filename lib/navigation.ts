@@ -102,6 +102,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/company/branches", label: "Branches", icon: "companies" },
       { href: "/company/tax-posting-setup", label: "Tax posting setup", icon: "tax" },
       { href: "/accounts", label: "Chart of accounts", icon: "accounts" },
+      { href: "/items", label: "Items", icon: "purchases" },
     ],
   },
 ];

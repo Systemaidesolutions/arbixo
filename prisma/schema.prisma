@@ -254,6 +254,9 @@ model Company {
   numberSeries  NumberSeries[]
   importations  Importation[]
   subscriptionPayments SubscriptionPayment[]
+  items          Item[]
+  purchaseDocs   PurchaseDoc[]
+  stockMovements StockMovement[]
 }
 
 // Importation record for the BIR Summary List of Importations (SLI). Kept as a
@@ -785,3 +788,151 @@ model AuditLog {
 //   rows) and isDirectPostingAllowed. Revisit if you want subtotal
 //   rows in the Chart of Accounts tree.
 // ============================================================
+
+// ============================================================
+// Inventory + Purchase-on-Account document module (new).
+// Perpetual inventory, MOVING WEIGHTED AVERAGE costing: each Item keeps a
+// running quantityOnHand + avgCost, recomputed on every stock-in. Inventory
+// items post their cost to the Inventory ASSET account (perpetual); non-inventory
+// and service items post directly to an expense account. Account references are
+// stored as plain IDs (validated in code) to avoid widening Account/Vendor with
+// many back-relations.
+// ============================================================
+enum ItemType {
+  INVENTORY // stock-tracked, valued as an asset
+  NON_INVENTORY // consumable/expensed on purchase, qty optional
+  SERVICE // no stock, expensed on purchase
+}
+
+enum PurchaseDocStatus {
+  DRAFT
+  FOR_APPROVAL
+  APPROVED
+  POSTED
+  CANCELLED
+}
+
+enum StockMovementType {
+  PURCHASE
+  PURCHASE_RETURN
+  SALE
+  SALE_RETURN
+  ADJUSTMENT
+}
+
+model Item {
+  id          String   @id @default(cuid())
+  company     Company  @relation(fields: [companyId], references: [id])
+  companyId   String
+  code        String
+  description String
+  type        ItemType @default(INVENTORY)
+  uom         String? // unit of measure, e.g. "pcs", "ream"
+  vatType     VatType  @default(VAT_12)
+  defaultCost Decimal  @db.Decimal(18, 4) @default(0) // last/default purchase cost
+
+  // Perpetual inventory running state (moving weighted average).
+  quantityOnHand Decimal @db.Decimal(18, 4) @default(0)
+  avgCost        Decimal @db.Decimal(18, 4) @default(0)
+
+  // Posting accounts (plain IDs referencing Account).
+  inventoryAccountId String? // Inventory asset (INVENTORY items)
+  expenseAccountId   String? // COGS / expense (all types on issue or on purchase for non-inventory)
+  incomeAccountId    String? // sales income (used later by the Sales document)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  movements StockMovement[]
+
+  @@unique([companyId, code])
+}
+
+model PurchaseDoc {
+  id         String            @id @default(cuid())
+  company    Company           @relation(fields: [companyId], references: [id])
+  companyId  String
+  status     PurchaseDocStatus @default(DRAFT)
+
+  transactionNo   String // POA-2026-000001
+  transactionDate DateTime
+  vendorId        String?
+  supplierTin     String?
+  locationId      String? // branch (Location)
+  terms           String? // "30 Days"
+  dueDate         DateTime?
+  referenceNo     String? // supplier invoice no.
+  purchaseOrderNo String?
+  currency        String    @default("PHP")
+  remarks         String?
+
+  payableAccountId String? // AP account credited on post
+  vatInclusive     Boolean @default(true)
+
+  // Denormalized totals snapshot.
+  totalBeforeVat Decimal @db.Decimal(18, 2) @default(0)
+  discountAmount Decimal @db.Decimal(18, 2) @default(0)
+  otherCharges   Decimal @db.Decimal(18, 2) @default(0)
+  totalVat       Decimal @db.Decimal(18, 2) @default(0)
+  totalAmount    Decimal @db.Decimal(18, 2) @default(0)
+
+  // Posting link — the ledger documentNo used when POSTED (= transactionNo).
+  postedAt    DateTime?
+  createdById String?
+  postedById  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  lines PurchaseDocLine[]
+
+  @@unique([companyId, transactionNo])
+  @@index([companyId, status])
+}
+
+model PurchaseDocLine {
+  id     String      @id @default(cuid())
+  doc    PurchaseDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+  docId  String
+  lineNo Int
+
+  itemId      String? // Item reference (null for a free-text/memo line)
+  itemCode    String? // snapshot
+  description String
+  quantity    Decimal @db.Decimal(18, 4) @default(1)
+  uom         String?
+  unitCost    Decimal @db.Decimal(18, 4) @default(0)
+  discountPercent Decimal @db.Decimal(9, 4) @default(0)
+  vatType     VatType @default(VAT_12)
+
+  // Computed line figures (net + VAT).
+  amount    Decimal @db.Decimal(18, 2) @default(0) // net, before VAT
+  vatAmount Decimal @db.Decimal(18, 2) @default(0)
+  accountId String? // inventory or expense account this line posts to
+
+  @@index([docId])
+}
+
+model StockMovement {
+  id           String            @id @default(cuid())
+  company      Company           @relation(fields: [companyId], references: [id])
+  companyId    String
+  item         Item              @relation(fields: [itemId], references: [id])
+  itemId       String
+  type         StockMovementType
+  movementDate DateTime
+
+  quantity  Decimal @db.Decimal(18, 4) // signed: + in, - out
+  unitCost  Decimal @db.Decimal(18, 4)
+  totalCost Decimal @db.Decimal(18, 2)
+
+  // Running balances AFTER this movement (moving weighted average).
+  balanceQty     Decimal @db.Decimal(18, 4)
+  balanceAvgCost Decimal @db.Decimal(18, 4)
+
+  sourceType String? // e.g. "PURCHASE_DOC"
+  sourceId   String? // PurchaseDoc id
+  createdAt  DateTime @default(now())
+
+  @@index([companyId, itemId, movementDate])
+}

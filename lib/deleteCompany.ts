@@ -18,6 +18,11 @@ export async function deleteCompany(companyId: string): Promise<void> {
     await prisma.$transaction(
       async (tx) => {
         await tx.ledgerEntry.deleteMany({ where: { companyId } });
+        // Inventory module: stock movements reference items; purchase-doc lines
+        // cascade with their doc.
+        await tx.stockMovement.deleteMany({ where: { companyId } });
+        await tx.purchaseDoc.deleteMany({ where: { companyId } });
+        await tx.item.deleteMany({ where: { companyId } });
         await tx.taxPostingSetup.deleteMany({ where: { companyId } });
         await tx.numberSeries.deleteMany({ where: { companyId } });
         await tx.importation.deleteMany({ where: { companyId } });
