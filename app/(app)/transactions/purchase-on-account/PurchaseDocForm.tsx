@@ -139,7 +139,7 @@ export function PurchaseDocForm({
   return (
     <main className="mx-auto max-w-6xl p-4 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-medium text-neutral-900">Purchase on Account {initial ? `· ${initial.transactionNo}` : ""}</h1>
+        <h1 className="text-xl font-medium text-neutral-900">Purchase Order {initial ? `· ${initial.transactionNo}` : ""}</h1>
         <div className="flex gap-2">
           <button onClick={() => router.push("/transactions/purchase-on-account")} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Cancel</button>
           <button onClick={() => submit(false)} disabled={!!busy} className="rounded border border-brand-blue px-3 py-1.5 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">{busy === "draft" ? "Saving…" : "Save Draft"}</button>

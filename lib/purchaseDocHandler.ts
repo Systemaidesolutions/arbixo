@@ -23,7 +23,7 @@ export async function savePurchaseDoc(request: NextRequest, id: string | null) {
     await logAudit({
       companyId: p.companyId,
       username: p.email,
-      action: `Posted Purchase on Account ${(body.transactionNo ?? "").trim()}`,
+      action: `Posted Purchase Order ${(body.transactionNo ?? "").trim()}`,
       ipAddress: getClientIp(request),
     });
     return NextResponse.json({ id: saved.id, status: "POSTED" });

@@ -23,7 +23,7 @@ export default async function PurchaseDocPage({ params }: { params: { id: string
       <main className="mx-auto max-w-3xl p-4 sm:p-8">
         <a href="/transactions/purchase-on-account" className="text-sm text-neutral-500 hover:text-neutral-900">← Back</a>
         <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-xl font-medium text-neutral-900">Purchase on Account · {doc.transactionNo}</h1>
+          <h1 className="text-xl font-medium text-neutral-900">Purchase Order · {doc.transactionNo}</h1>
           <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Posted</span>
         </div>
         <div className="mt-4 rounded-lg border border-neutral-200 p-4 text-sm text-neutral-700">

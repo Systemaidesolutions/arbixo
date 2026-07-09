@@ -15,7 +15,7 @@ export default async function PurchaseDocsListPage() {
   if (!company) {
     return (
       <main className="mx-auto max-w-4xl p-4 sm:p-8">
-        <h1 className="text-xl font-medium text-neutral-900">Purchase on Account</h1>
+        <h1 className="text-xl font-medium text-neutral-900">Purchase Order</h1>
         <p className="mt-2 text-neutral-600">Complete company setup first.</p>
       </main>
     );
@@ -31,7 +31,7 @@ export default async function PurchaseDocsListPage() {
     <main className="mx-auto max-w-5xl p-4 sm:p-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-medium text-neutral-900">Purchase on Account</h1>
+          <h1 className="text-xl font-medium text-neutral-900">Purchase Order</h1>
           <p className="mt-1 text-sm text-neutral-500">Item-based supplier bills with inventory. Drafts can be edited; posted documents are final.</p>
         </div>
         <a href="/transactions/purchase-on-account/new" className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73]">+ New</a>
