@@ -3,7 +3,7 @@ import { DuplicateDocumentError, UnbalancedEntryError } from "@/lib/ledgerPostin
 import { resolvePoster } from "@/lib/currentUser";
 import { logAudit, getClientIp } from "@/lib/audit";
 import { MissingPostingAccountError, type ExpandInputLine } from "@/lib/vatLineExpansion";
-import { postCashDisbursement, ZeroCashError } from "@/lib/cashDisbursementPosting";
+import { postVatJournal, ZeroBalanceError } from "@/lib/vatJournals";
 import { firstSpecialCharError } from "@/lib/textValidation";
 import type { CounterpartyType } from "@prisma/client";
 
@@ -38,8 +38,9 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    const created = await postCashDisbursement(
+    const created = await postVatJournal(
       companyId,
+      "CASH_DISBURSEMENT",
       {
         locationId: body.locationId ?? null,
         documentNo,
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
         postingDate: new Date(postingDate),
         counterpartyType: body.counterpartyType ?? null,
         counterpartyId: body.counterpartyId ?? null,
-        cashAccountId,
+        balancingAccountId: cashAccountId,
         particulars: body.particulars ?? null,
         lines,
       },
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     if (
       err instanceof MissingPostingAccountError ||
-      err instanceof ZeroCashError ||
+      err instanceof ZeroBalanceError ||
       err instanceof UnbalancedEntryError ||
       err instanceof DuplicateDocumentError
     ) {

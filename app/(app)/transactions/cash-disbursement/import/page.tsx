@@ -1,5 +1,5 @@
 import { requirePostingCompany } from "@/lib/currentUser";
-import { ImportClient } from "./ImportClient";
+import { TransactionImportClient } from "@/components/TransactionImportClient";
 
 export default async function CashDisbursementImportPage() {
   const company = await requirePostingCompany();
@@ -11,5 +11,13 @@ export default async function CashDisbursementImportPage() {
       </main>
     );
   }
-  return <ImportClient />;
+  return (
+    <TransactionImportClient
+      endpoint="/api/ledger-entries/cash-disbursement/import"
+      templateUrl="/api/ledger-entries/cash-disbursement/import/template"
+      title="Import Cash Disbursement"
+      subtitle="Upload a .csv or .xlsx to post many vouchers at once. One row per expense line; rows sharing a CV no. combine into one voucher."
+      refLabel="CV no."
+    />
+  );
 }

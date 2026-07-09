@@ -171,7 +171,10 @@ export function GeneralJournalForm({
 
   return (
     <main className="mx-auto max-w-4xl p-4 sm:p-8">
-      <h1 className="text-xl font-medium text-neutral-900">General journal</h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-xl font-medium text-neutral-900">General journal</h1>
+        <a href="/transactions/general-journal/import" className="shrink-0 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Import from Excel</a>
+      </div>
       <p className="mt-1 text-sm text-neutral-500">
         Anything not covered by the other four journals — depreciation, capital goods purchases,
         importation, closing Input/Output VAT to VAT Payable. Pick both sides of the entry

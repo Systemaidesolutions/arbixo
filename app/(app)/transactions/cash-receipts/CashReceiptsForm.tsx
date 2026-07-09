@@ -169,7 +169,10 @@ export function CashReceiptsForm({
 
   return (
     <main className="mx-auto max-w-4xl p-4 sm:p-8">
-      <h1 className="text-xl font-medium text-neutral-900">Cash receipts</h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-xl font-medium text-neutral-900">Cash receipts</h1>
+        <a href="/transactions/cash-receipts/import" className="shrink-0 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Import from Excel</a>
+      </div>
       <p className="mt-1 text-sm text-neutral-500">
         Every peso received — cash sales, collections on account, other income.
       </p>

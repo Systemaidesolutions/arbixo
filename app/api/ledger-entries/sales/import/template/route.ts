@@ -1,5 +1,5 @@
 import { vatJournalTemplate } from "@/lib/vatJournalImport";
 
 export async function GET() {
-  return vatJournalTemplate("CASH_DISBURSEMENT");
+  return vatJournalTemplate("SALES_ON_ACCOUNT");
 }

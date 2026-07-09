@@ -115,7 +115,10 @@ export function ImportationsForm({ companyId, canPost }: { companyId: string; ca
 
   return (
     <main className="mx-auto max-w-6xl p-4 sm:p-8">
-      <h1 className="text-xl font-medium text-neutral-900">Importations</h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-xl font-medium text-neutral-900">Importations</h1>
+        <a href="/transactions/importations/import" className="shrink-0 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Import from Excel</a>
+      </div>
       <p className="mt-1 text-sm text-neutral-500">
         Record importations for the BIR Summary List of Importations (SLI). The taxable/exempt base is
         the dutiable value plus all charges before release; VAT is 12% of that base when taxable.

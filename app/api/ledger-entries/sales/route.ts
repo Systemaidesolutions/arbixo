@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { postDocument, DuplicateDocumentError, UnbalancedEntryError } from "@/lib/ledgerPosting";
+import { DuplicateDocumentError, UnbalancedEntryError } from "@/lib/ledgerPosting";
 import { resolvePoster } from "@/lib/currentUser";
 import { logAudit, getClientIp } from "@/lib/audit";
-import {
-  expandVatLines,
-  counterpartyFields,
-  flipLines,
-  MissingPostingAccountError,
-  type ExpandInputLine,
-} from "@/lib/vatLineExpansion";
+import { MissingPostingAccountError, type ExpandInputLine } from "@/lib/vatLineExpansion";
+import { postVatJournal, ZeroBalanceError } from "@/lib/vatJournals";
 import { firstSpecialCharError } from "@/lib/textValidation";
 import type { CounterpartyType } from "@prisma/client";
 
@@ -34,10 +29,7 @@ export async function POST(request: NextRequest) {
   if (textErr) return NextResponse.json({ error: textErr }, { status: 400 });
   if (!companyId || !documentNo || !receivableAccountId || !postingDate || !lines?.length) {
     return NextResponse.json(
-      {
-        error:
-          "companyId, documentNo, receivableAccountId, postingDate, and at least one line are required",
-      },
+      { error: "companyId, documentNo, receivableAccountId, postingDate, and at least one line are required" },
       { status: 400 }
     );
   }
@@ -45,65 +37,38 @@ export async function POST(request: NextRequest) {
   const auth = await resolvePoster(companyId, "canPost");
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const counterparty = counterpartyFields(body.counterpartyType ?? "CUSTOMER", body.counterpartyId);
-  let glLines, receivableAmount: number;
-
   try {
-    // CREDIT direction: same as Cash Receipts — Sales/Output VAT are
-    // credited, withholding companion is a debit (asset).
-    const result = await expandVatLines(companyId, lines, "CREDIT", counterparty, body.particulars, documentNo);
-    glLines = result.glLines;
-    receivableAmount = result.balancingAmount;
-  } catch (err) {
-    if (err instanceof MissingPostingAccountError) {
-      return NextResponse.json({ error: err.message }, { status: 400 });
-    }
-    throw err;
-  }
-
-  if (receivableAmount <= 0) {
-    return NextResponse.json(
-      { error: "Computed receivable amount is zero or negative — check the line amounts." },
-      { status: 400 }
-    );
-  }
-
-  // Balancing line: unlike Cash Receipts, no cash moves yet — the full
-  // amount owed (net of any withholding pre-recorded) becomes a
-  // receivable, collected later via a Cash Receipts entry against this
-  // same customer.
-  glLines.push({
-    accountId: receivableAccountId,
-    debitAmount: receivableAmount,
-    description: body.particulars ?? null,
-    ...counterparty,
-  });
-
-  // A Sales Return is the same entry, reversed — not a separate rule set.
-  const finalLines = body.isReturn ? flipLines(glLines) : glLines;
-
-  try {
-    const created = await postDocument({
+    const created = await postVatJournal(
       companyId,
-      locationId: body.locationId ?? null,
-      journalType: "SALES_ON_ACCOUNT",
-      documentType: body.isReturn ? "CREDIT_MEMO" : "INVOICE",
-      documentNo,
-      postingDate: new Date(postingDate),
-      isReturn: body.isReturn ?? false,
-      lines: finalLines,
-      createdById: auth.user.id,
-      isApproved: auth.capability.canApprove,
-    });
+      "SALES_ON_ACCOUNT",
+      {
+        locationId: body.locationId ?? null,
+        documentNo,
+        postingDate: new Date(postingDate),
+        counterpartyType: body.counterpartyType ?? "CUSTOMER",
+        counterpartyId: body.counterpartyId ?? null,
+        balancingAccountId: receivableAccountId,
+        particulars: body.particulars ?? null,
+        isReturn: body.isReturn ?? false,
+        lines,
+      },
+      auth.user.id,
+      auth.capability.canApprove
+    );
     await logAudit({
       companyId,
       username: auth.user.email,
       action: `Posted ${body.isReturn ? "Sales Return" : "Sales"} ${documentNo}`,
       ipAddress: getClientIp(request),
     });
-    return NextResponse.json({ entries: created, receivableAmount }, { status: 201 });
+    return NextResponse.json({ entries: created }, { status: 201 });
   } catch (err) {
-    if (err instanceof UnbalancedEntryError || err instanceof DuplicateDocumentError) {
+    if (
+      err instanceof MissingPostingAccountError ||
+      err instanceof ZeroBalanceError ||
+      err instanceof UnbalancedEntryError ||
+      err instanceof DuplicateDocumentError
+    ) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
     throw err;
