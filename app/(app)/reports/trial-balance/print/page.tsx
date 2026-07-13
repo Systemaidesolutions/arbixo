@@ -62,12 +62,12 @@ export default async function TrialBalancePrintPage({
             {company.tin && <div className="text-[11px] text-neutral-600">TIN: {company.tin}</div>}
           </div>
         </div>
-        <div className="mt-3 text-lg font-semibold">Trial Balance</div>
-        <div className="text-xs text-neutral-600">{coverage}</div>
+        <div className="mt-4 text-center text-2xl font-bold uppercase tracking-[0.2em] text-neutral-900">Trial Balance</div>
+        <div className="mt-1 text-center text-xs text-neutral-600">{coverage}</div>
       </header>
 
       {/* Table */}
-      <table className="mt-4 w-full text-sm">
+      <table className="mt-4 w-full text-sm" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
         <thead>
           <tr className="border-b border-neutral-400 text-xs uppercase tracking-wide text-neutral-600">
             <th className="py-1 text-left">Code</th>
@@ -80,23 +80,26 @@ export default async function TrialBalancePrintPage({
           {result.rows.length === 0 ? (
             <tr><td colSpan={4} className="py-4 text-center text-neutral-400">No balances for this period</td></tr>
           ) : (
-            Array.from(groups.entries()).map(([classification, rows]) => (
-              <Fragment key={classification}>
-                <tr>
-                  <td colSpan={4} className="pt-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                    {CLASSIFICATION_LABELS[classification as AccountClassification] ?? classification}
-                  </td>
-                </tr>
-                {rows.map((row) => (
-                  <tr key={row.accountId} className="border-b border-neutral-100">
-                    <td className="py-1 pr-2 font-mono text-neutral-500">{row.code}</td>
-                    <td className="py-1 pr-2">{row.title}</td>
-                    <td className="py-1 text-right font-mono">{row.debit > 0 ? formatPeso(row.debit) : ""}</td>
-                    <td className="py-1 text-right font-mono">{row.credit > 0 ? formatPeso(row.credit) : ""}</td>
+            (() => {
+              let i = 0; // running index for continuous zebra shading across groups
+              return Array.from(groups.entries()).map(([classification, rows]) => (
+                <Fragment key={classification}>
+                  <tr>
+                    <td colSpan={4} className="pt-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                      {CLASSIFICATION_LABELS[classification as AccountClassification] ?? classification}
+                    </td>
                   </tr>
-                ))}
-              </Fragment>
-            ))
+                  {rows.map((row) => (
+                    <tr key={row.accountId} className={i++ % 2 === 1 ? "bg-neutral-100" : "bg-white"}>
+                      <td className="py-1 pl-2 pr-2 font-mono text-neutral-500">{row.code}</td>
+                      <td className="py-1 pr-2">{row.title}</td>
+                      <td className="py-1 pr-2 text-right font-mono">{row.debit > 0 ? formatPeso(row.debit) : ""}</td>
+                      <td className="py-1 pr-2 text-right font-mono">{row.credit > 0 ? formatPeso(row.credit) : ""}</td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ));
+            })()
           )}
         </tbody>
         <tfoot>
