@@ -32,17 +32,9 @@ export default async function CashDisbursementPage() {
       suggestNextDocumentNo(company.id, "CASH_DISBURSEMENT"),
     ]);
 
-  const companyPayor = {
-    name: company.registeredName || company.tradeName,
-    tin: company.tin ?? "",
-    address: [company.businessAddress, company.barangay, company.city, company.province].filter(Boolean).join(", "),
-    zip: company.zipCode ?? "",
-  };
-
   return (
     <CashDisbursementForm
       companyId={company.id}
-      companyPayor={companyPayor}
       accounts={toPlain(accounts)}
       cashAccounts={toPlain(cashAccounts)}
       vendors={vendors}

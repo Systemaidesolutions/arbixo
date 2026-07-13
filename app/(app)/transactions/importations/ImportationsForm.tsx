@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { formatPeso } from "@/lib/format";
 
 type Importation = {
@@ -49,6 +50,7 @@ function fmtDate(iso: string) {
 }
 
 export function ImportationsForm({ companyId, canPost }: { companyId: string; canPost: boolean }) {
+  const router = useRouter();
   const [items, setItems] = useState<Importation[]>([]);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [saving, setSaving] = useState(false);
@@ -101,7 +103,8 @@ export function ImportationsForm({ companyId, canPost }: { companyId: string; ca
       return;
     }
     setForm(emptyForm());
-    refresh();
+    // The importation is typically paid next — go straight to Cash Disbursement.
+    router.push("/transactions/cash-disbursement");
   }
 
   async function handleDelete(im: Importation) {

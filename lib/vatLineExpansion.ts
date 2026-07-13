@@ -13,6 +13,9 @@ export type ExpandInputLine = {
   atcCodeId?: string | null;
   // Goods / Service / Capital Goods — BIR SLP taxable breakdown (purchases).
   taxSource?: TaxSource | null;
+  // Optional per-line party (overrides the document counterparty on this line).
+  counterpartyType?: CounterpartyType | null;
+  counterpartyId?: string | null;
 };
 
 export type CounterpartyFields = Pick<
@@ -94,11 +97,18 @@ export async function expandVatLines(
     const atc = line.atcCodeId ? atcById.get(line.atcCodeId) : null;
     const withholdingAmt = atc ? computeWithholding(vat.netAmount, Number(atc.ratePercent)) : 0;
 
+    // A per-line party (if set) overrides the document counterparty for this
+    // line's main account entry.
+    const lineCounterparty =
+      line.counterpartyType && line.counterpartyId
+        ? counterpartyFields(line.counterpartyType, line.counterpartyId)
+        : counterparty;
+
     const mainLine: LedgerLineInput = {
       accountId: line.accountId,
       description: line.description ?? fallbackDescription ?? null,
       referenceNo: line.referenceNo ?? null,
-      ...counterparty,
+      ...lineCounterparty,
       vatType,
       grossAmount: vatType ? vat.grossAmount : null,
       netAmount: vatType ? vat.netAmount : null,
