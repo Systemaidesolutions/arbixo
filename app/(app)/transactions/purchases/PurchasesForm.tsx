@@ -1,27 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { useLastBranch } from "@/lib/useLastBranch";
 import { branchOptionLabel } from "@/lib/branchLabel";
 import { computeVat, computeWithholding } from "@/lib/vat";
-import type { Account, AtcCode, Location, TaxSource, Vendor, VatType } from "@prisma/client";
+import type { Account, AtcCode, Contact, CounterpartyType, Customer, Employee, Location, TaxSource, Vendor, VatType } from "@prisma/client";
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
 import { TransactionSearch } from "@/components/TransactionSearch";
 import { computeDueDate } from "@/lib/paymentTerms";
 
-type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; taxSource: TaxSource; referenceNo: string; lineDescription: string };
+type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; taxSource: TaxSource; referenceNo: string; lineDescription: string; expanded: boolean; showParty: boolean; counterpartyType: CounterpartyType | null; counterpartyId: string | null };
 type Attachment = { fileName: string; contentType: string; sizeBytes: number; data: string };
 
 const VAT_LABEL: Partial<Record<VatType, string>> = { VAT_12: "12% VAT", ZERO_RATED: "Zero-Rated", VAT_EXEMPT: "VAT Exempt", NON_VAT: "Non-VAT" };
 const NATURE_LABEL: Record<TaxSource, string> = { GOODS: "Goods", SERVICE: "Services", CAPITAL_GOODS: "Capital Goods" };
 const uid = () => crypto.randomUUID();
-const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT", amount: 0, amountIsGross: true, atcCodeId: null, taxSource: "GOODS", referenceNo: "", lineDescription: "" });
+const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT", amount: 0, amountIsGross: true, atcCodeId: null, taxSource: "GOODS", referenceNo: "", lineDescription: "", expanded: false, showParty: false, counterpartyType: null, counterpartyId: null });
 const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const MAX_FILE = 3_000_000;
 
-export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, atcCodes, locations, suggestedDocumentNo }: {
-  companyId: string; accounts: Account[]; payableAccounts: Account[]; vendors: Vendor[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
+export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, employees, contacts, customers, atcCodes, locations, suggestedDocumentNo }: {
+  companyId: string; accounts: Account[]; payableAccounts: Account[]; vendors: Vendor[]; employees: Employee[]; contacts: Contact[]; customers: Customer[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
 }) {
   const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
   const [locationId, setLocationId] = useLastBranch(companyId, locations);
@@ -40,8 +40,17 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, a
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [vendorList, setVendorList] = useState(vendors);
+  const [employeeList, setEmployeeList] = useState(employees);
+  const [contactList, setContactList] = useState(contacts);
+  const [customerList, setCustomerList] = useState(customers);
 
   const atcById = useMemo(() => new Map(atcCodes.map((a) => [a.id, a])), [atcCodes]);
+  function appendParty(type: CounterpartyType, record: Vendor | Employee | Contact | Customer) {
+    if (type === "VENDOR") setVendorList((l) => [...l, record as Vendor]);
+    else if (type === "EMPLOYEE") setEmployeeList((l) => [...l, record as Employee]);
+    else if (type === "CONTACT") setContactList((l) => [...l, record as Contact]);
+    else setCustomerList((l) => [...l, record as Customer]);
+  }
   const onDateChange = (v: string) => { setPostingDate(v); setDueDate(computeDueDate(v, paymentTerms)); };
   const onTermsChange = (v: string) => { setPaymentTerms(v); setDueDate(computeDueDate(postingDate, v)); };
   const onVendorChange = (id: string | null) => {
@@ -101,7 +110,7 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, a
     const payload = {
       companyId, locationId: locationId || null, documentNo, postingDate, isReturn,
       counterpartyType: "VENDOR" as const, counterpartyId: vendorId, payableAccountId, particulars, paymentTerms: paymentTerms || null, dueDate: dueDate || null,
-      lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, taxSource: l.taxSource, referenceNo: l.referenceNo || null, lineDescription: l.lineDescription || null })),
+      lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, taxSource: l.taxSource, referenceNo: l.referenceNo || null, lineDescription: l.lineDescription || null, counterpartyType: l.showParty ? l.counterpartyType : null, counterpartyId: l.showParty ? l.counterpartyId : null })),
       attachments,
     };
     const res = await fetch("/api/ledger-entries/purchases", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -184,12 +193,13 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, a
               <thead>
                 <tr className="bg-neutral-50 text-left text-neutral-500">
                   <th className={cell}>Purchase / expense account</th><th className={cell}>Ref No.</th><th className={cell}>Description</th><th className={cell}>Nature</th><th className={cell}>VAT</th><th className={cell}>Amount</th><th className={cell}>Gross/Net</th><th className={cell}>ATC</th>
-                  <th className={`${cell} text-right`}>Net</th><th className={`${cell} text-right`}>VAT</th><th className={`${cell} text-right`}>W/tax</th><th className={`${cell} text-right`}><button type="button" onClick={clearLines} className="font-medium text-red-600 hover:underline">Clear</button></th>
+                  <th className={`${cell} text-right`}>Net</th><th className={`${cell} text-right`}>VAT</th><th className={`${cell} text-right`}>W/tax</th><th className={cell}>Details</th><th className={`${cell} text-right`}><button type="button" onClick={clearLines} className="font-medium text-red-600 hover:underline">Clear</button></th>
                 </tr>
               </thead>
               <tbody>
                 {computed.rows.map((r) => (
-                  <tr key={r.key}>
+                  <Fragment key={r.key}>
+                  <tr>
                     <td className={cell}><select required value={r.accountId} onChange={(e) => updateLine(r.key, { accountId: e.target.value })} className="w-44 rounded border border-neutral-300 px-1 py-1"><option value="">Select…</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></td>
                     <td className={cell}><input value={r.referenceNo} onChange={(e) => updateLine(r.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><input value={r.lineDescription} onChange={(e) => updateLine(r.key, { lineDescription: e.target.value })} className="w-40 rounded border border-neutral-300 px-1 py-1" /></td>
@@ -201,8 +211,22 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, a
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.net)}</td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.vat)}</td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.withholdingAmt)}</td>
+                    <td className={cell}><button type="button" onClick={() => updateLine(r.key, { expanded: !r.expanded })} className="rounded border border-neutral-300 px-2 py-0.5 text-neutral-600 hover:bg-neutral-50">{r.expanded ? "Hide" : "⋯"}{r.showParty && r.counterpartyId && !r.expanded ? " •" : ""}</button></td>
                     <td className={cell}>{lines.length > 1 && <button type="button" onClick={() => removeLine(r.key)} className="text-red-500 hover:text-red-700">✕</button>}</td>
                   </tr>
+                  {r.expanded && (
+                    <tr>
+                      <td className="border-b border-neutral-100 bg-neutral-50/60 px-3 py-3" colSpan={13}>
+                        <button type="button" onClick={() => updateLine(r.key, { showParty: !r.showParty, ...(r.showParty ? { counterpartyType: null, counterpartyId: null } : {}) })} className="text-xs text-neutral-600 hover:text-neutral-900">{r.showParty ? "− remove party" : "+ attach party"}</button>
+                        {r.showParty && (
+                          <div className="mt-3">
+                            <CounterpartyPicker counterpartyType={r.counterpartyType} counterpartyId={r.counterpartyId} onTypeChange={(t) => updateLine(r.key, { counterpartyType: t })} onIdChange={(id) => updateLine(r.key, { counterpartyId: id })} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} label="Line party" companyId={companyId} onCreated={(type, record) => { appendParty(type, record); updateLine(r.key, { counterpartyType: type, counterpartyId: record.id }); }} />
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
               <tfoot>
@@ -210,7 +234,7 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, a
                   <td className={cell} colSpan={8}>Totals</td>
                   <td className={`${cell} text-right font-mono`} colSpan={2}>Debit {formatPeso(computed.totalDebit)}</td>
                   <td className={`${cell} text-right font-mono`}>{formatPeso(computed.totalWithholding)}</td>
-                  <td className={cell}></td>
+                  <td className={cell} colSpan={2}></td>
                 </tr>
               </tfoot>
             </table>
