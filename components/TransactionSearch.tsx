@@ -39,6 +39,7 @@ export function TransactionSearch({
 
   async function run() {
     const term = q.trim();
+    if (!term) return; // blank search does nothing — use the History pages to browse all
     setOpen(true);
     setLoading(true);
     setSearched(term);
@@ -89,7 +90,7 @@ export function TransactionSearch({
               run();
             }
           }}
-          placeholder="Search — or Enter for all…"
+          placeholder="Search transactions…"
           className="w-48 rounded border border-neutral-300 py-1.5 pl-8 pr-2 text-sm placeholder:text-neutral-400 focus:w-64 focus:outline-none focus:ring-1 focus:ring-brand-blue"
         />
         <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400">⌕</span>
