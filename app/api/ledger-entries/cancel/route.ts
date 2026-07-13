@@ -41,12 +41,15 @@ export async function POST(request: NextRequest) {
   }
 
   // Mirror each line with debit/credit flipped. Amounts/counterparty are
-  // carried over; the VAT/withholding breakdown is left off — a reversal is
-  // a plain reversing GL entry, and it never reaches the tax reports anyway.
+  // Negative mirror: each line keeps the original's debit/credit column but
+  // negated, so account-by-account the reversal cancels the original to zero.
+  // The VAT/withholding breakdown is carried over negated too, keeping the
+  // reversal a faithful negative copy.
+  const neg = (v: unknown) => (v == null ? null : -Number(v));
   const reversalLines: LedgerLineInput[] = entries.map((e) => ({
     accountId: e.accountId,
-    debitAmount: Number(e.creditAmount),
-    creditAmount: Number(e.debitAmount),
+    debitAmount: -Number(e.debitAmount),
+    creditAmount: -Number(e.creditAmount),
     description: `Cancellation of ${documentNo}: ${reason}`,
     referenceNo: e.referenceNo,
     counterpartyType: e.counterpartyType,
@@ -54,6 +57,14 @@ export async function POST(request: NextRequest) {
     vendorId: e.vendorId,
     employeeId: e.employeeId,
     contactId: e.contactId,
+    vatType: e.vatType,
+    grossAmount: neg(e.grossAmount),
+    netAmount: neg(e.netAmount),
+    vatAmount: neg(e.vatAmount),
+    taxSource: e.taxSource,
+    atcCode: e.atcCode,
+    atcDescription: e.atcDescription,
+    withholdingAmt: neg(e.withholdingAmt),
     checkNo: e.checkNo,
   }));
 
@@ -67,7 +78,7 @@ export async function POST(request: NextRequest) {
       documentType: entries[0].documentType,
       documentNo: reversalDocumentNo,
       postingDate: new Date(),
-      isReturn: true,
+      isReturn: false,
       lines: reversalLines,
       createdById: auth.user.id,
       isApproved: auth.capability.canApprove,
