@@ -17,17 +17,23 @@ const uid = () => crypto.randomUUID();
 const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT", amount: 0, amountIsGross: true, atcCodeId: null, referenceNo: "" });
 const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const MAX_FILE = 3_000_000;
+// Local (not UTC) YYYY-MM-DD so the date defaults to the user's today.
+const todayLocal = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 export function SalesForm({ companyId, accounts, receivableAccounts, customers, atcCodes, locations, suggestedDocumentNo }: {
   companyId: string; accounts: Account[]; receivableAccounts: Account[]; customers: Customer[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
 }) {
-  const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
+  const [postingDate, setPostingDate] = useState(todayLocal());
   const [locationId, setLocationId] = useLastBranch(companyId, locations);
   const [documentNo, setDocumentNo] = useState(suggestedDocumentNo);
   const [isReturn, setIsReturn] = useState(false);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [receivableAccountId, setReceivableAccountId] = useState(receivableAccounts[0]?.id ?? "");
   const [particulars, setParticulars] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState("");
   const [lines, setLines] = useState<LineState[]>([newLine()]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
@@ -70,7 +76,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
       companyId, locationId: locationId || null, documentNo, postingDate, isReturn,
-      counterpartyType: "CUSTOMER" as const, counterpartyId: customerId, receivableAccountId, particulars,
+      counterpartyType: "CUSTOMER" as const, counterpartyId: customerId, receivableAccountId, particulars, paymentTerms: paymentTerms || null,
       lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, referenceNo: l.referenceNo || null })),
       attachments,
     };
@@ -83,7 +89,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
     const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=SALES_ON_ACCOUNT`);
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
-    setCustomerId(null); setParticulars(""); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setCustomerId(null); setParticulars(""); setPaymentTerms(""); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
   }
   function handleSubmit(e: React.FormEvent) { e.preventDefault(); post(false); }
 
@@ -117,6 +123,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
             <CounterpartyPicker counterpartyType="CUSTOMER" counterpartyId={customerId} onTypeChange={() => {}} onIdChange={setCustomerId} vendors={[]} employees={[]} contacts={[]} customers={customerList} types={["CUSTOMER"]} label="Customer" companyId={companyId} onCreated={(_t, record) => { setCustomerList((l) => [...l, record as (typeof customerList)[number]]); setCustomerId(record.id); }} />
           </div>
           <label className={label}>Receivable account<select required value={receivableAccountId} onChange={(e) => setReceivableAccountId(e.target.value)} className={field}>{receivableAccounts.length === 0 && <option value="">No A/R accounts yet</option>}{receivableAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
+          <label className={label}>Payment terms<input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="e.g. Net 30, COD" className={field} /></label>
           <label className="block text-xs text-neutral-500 sm:col-span-3">Income description<input value={particulars} onChange={(e) => setParticulars(e.target.value)} className={field} /></label>
 
           {/* Attachments */}

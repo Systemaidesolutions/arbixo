@@ -38,7 +38,6 @@ export function TransactionSearch({
 
   async function run() {
     const term = q.trim();
-    if (!term) return;
     setOpen(true);
     setLoading(true);
     setSearched(term);
@@ -59,6 +58,12 @@ export function TransactionSearch({
     window.open(`/transactions/view/${journalType}/${encodeURIComponent(docNo)}?_embed=1`, "_blank");
   }
 
+  function exportExcel() {
+    const params = new URLSearchParams({ companyId, journalType });
+    if (searched) params.set("q", searched);
+    window.open(`/api/ledger-entries/export?${params.toString()}`, "_blank");
+  }
+
   const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
 
   return (
@@ -73,7 +78,7 @@ export function TransactionSearch({
               run();
             }
           }}
-          placeholder="Search transactions…"
+          placeholder="Search — or Enter for all…"
           className="w-48 rounded border border-neutral-300 py-1.5 pl-8 pr-2 text-sm placeholder:text-neutral-400 focus:w-64 focus:outline-none focus:ring-1 focus:ring-brand-blue"
         />
         <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400">⌕</span>
@@ -92,16 +97,30 @@ export function TransactionSearch({
               <div>
                 <h2 className="text-sm font-medium text-neutral-900">{title}</h2>
                 <p className="text-xs text-neutral-500">
-                  {loading ? "Searching…" : `${results.length} match${results.length === 1 ? "" : "es"} for “${searched}”`}
+                  {loading
+                    ? "Searching…"
+                    : searched
+                      ? `${results.length} match${results.length === 1 ? "" : "es"} for “${searched}”`
+                      : `${results.length} transaction${results.length === 1 ? "" : "s"}`}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded px-2 py-1 text-neutral-500 hover:bg-neutral-100"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={exportExcel}
+                  disabled={loading || results.length === 0}
+                  className="rounded border border-neutral-300 px-2.5 py-1 text-xs text-neutral-700 hover:bg-neutral-50 disabled:opacity-40"
+                >
+                  Export to Excel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded px-2 py-1 text-neutral-500 hover:bg-neutral-100"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div className="overflow-auto">

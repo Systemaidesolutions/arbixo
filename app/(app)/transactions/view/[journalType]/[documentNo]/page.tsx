@@ -49,6 +49,7 @@ export default async function TransactionViewPage({ params }: { params: { journa
     (withParty?.employee ? `${withParty.employee.firstName} ${withParty.employee.lastName}` : null) ||
     [p?.lastName, p?.firstName].filter(Boolean).join(", ") || "—";
   const checkNo = entries.find((e) => e.checkNo)?.checkNo ?? "";
+  const paymentTerms = entries.find((e) => e.paymentTerms)?.paymentTerms ?? "";
   const particulars = entries.find((e) => e.description)?.description ?? "";
 
   const capability = await getCurrentCapability();
@@ -71,6 +72,7 @@ export default async function TransactionViewPage({ params }: { params: { journa
     ["Branch", first.location ? branchOptionLabel(first.location) : "—"],
   ];
   if (journalType === "CASH_DISBURSEMENT") info.push(["Check no.", checkNo || "—"]);
+  if (paymentTerms) info.push(["Payment terms", paymentTerms]);
 
   return (
     <main className="mx-auto max-w-5xl p-4 sm:p-8">

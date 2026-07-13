@@ -716,6 +716,7 @@ model LedgerEntry {
   checkNo      String? // Cash Disbursement only
   isCancelled  Boolean @default(false)
   cancellationReason String? // set on the original + its reversal when cancelled
+  paymentTerms String? // Sales on Account — e.g. "Net 30" (document-level, carried on the A/R line)
 
   // Maker-checker review. A document posted by a subscriber "User" starts
   // unapproved (pending a Manager's review); one posted by a Manager is
