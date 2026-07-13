@@ -55,8 +55,8 @@ export function TransactionSearch({
     }
   }
 
-  function openVoucher(docNo: string) {
-    window.open(`/transactions/voucher/${journalType}/${encodeURIComponent(docNo)}?_embed=1`, "_blank");
+  function openDocument(docNo: string) {
+    window.open(`/transactions/view/${journalType}/${encodeURIComponent(docNo)}?_embed=1`, "_blank");
   }
 
   const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
@@ -85,7 +85,7 @@ export function TransactionSearch({
           onClick={() => setOpen(false)}
         >
           <div
-            className="mt-8 flex max-h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl"
+            className="mt-8 flex max-h-[80vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
@@ -115,6 +115,9 @@ export function TransactionSearch({
                       <th className="px-3 py-2">Date</th>
                       <th className="px-3 py-2">Party</th>
                       <th className="px-3 py-2">Particulars</th>
+                      <th className="px-3 py-2 text-right">Net</th>
+                      <th className="px-3 py-2 text-right">VAT</th>
+                      <th className="px-3 py-2 text-right">W/tax</th>
                       <th className="px-3 py-2 text-right">Amount</th>
                     </tr>
                   </thead>
@@ -122,16 +125,19 @@ export function TransactionSearch({
                     {results.map((d) => (
                       <tr
                         key={d.documentNo}
-                        onClick={() => openVoucher(d.documentNo)}
+                        onClick={() => openDocument(d.documentNo)}
                         className="cursor-pointer border-b border-neutral-100 hover:bg-blue-50"
                       >
-                        <td className="px-3 py-2 font-mono">
+                        <td className="px-3 py-2 font-mono whitespace-nowrap">
                           {d.documentNo}
                           {d.isCancelled && <span className="ml-1 text-red-500">(cancelled)</span>}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">{fmtDate(d.postingDate)}</td>
                         <td className="px-3 py-2">{d.counterpartyName ?? "—"}</td>
-                        <td className="px-3 py-2 max-w-[220px] truncate">{d.particulars ?? "—"}</td>
+                        <td className="px-3 py-2 max-w-[180px] truncate">{d.particulars ?? "—"}</td>
+                        <td className="px-3 py-2 text-right font-mono">{formatPeso(d.totalNet)}</td>
+                        <td className="px-3 py-2 text-right font-mono">{formatPeso(d.totalVat)}</td>
+                        <td className="px-3 py-2 text-right font-mono">{formatPeso(d.totalWithholding)}</td>
                         <td className="px-3 py-2 text-right font-mono">
                           {formatPeso(Math.max(d.totalDebit, d.totalCredit))}
                         </td>
@@ -143,7 +149,7 @@ export function TransactionSearch({
             </div>
 
             <div className="border-t border-neutral-200 px-4 py-2 text-right text-[11px] text-neutral-400">
-              Click a row to open its voucher
+              Click a row to open the transaction
             </div>
           </div>
         </div>
