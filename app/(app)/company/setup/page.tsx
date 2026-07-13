@@ -58,6 +58,8 @@ export default async function CompanyDetailsPage() {
     ["Line of business", company.lineOfBusiness],
     ["Telephone", company.telNo],
     ["Fax", company.faxNo],
+    ["Website", company.website],
+    ["Email", company.email],
     ["Authorized representative", company.authorizedRep],
     ["Position", company.authorizedRepPosition],
     [

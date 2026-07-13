@@ -211,6 +211,8 @@ model Company {
   lineOfBusiness       String?
   telNo                String?
   faxNo                String?
+  website              String?
+  email                String?
   authorizedRep        String?
   authorizedRepPosition String?
 

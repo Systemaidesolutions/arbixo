@@ -43,6 +43,8 @@ export type CompanyFormPayload = {
   lineOfBusiness?: string | null;
   telNo?: string | null;
   faxNo?: string | null;
+  website?: string | null;
+  email?: string | null;
   authorizedRep?: string | null;
   authorizedRepPosition?: string | null;
 };

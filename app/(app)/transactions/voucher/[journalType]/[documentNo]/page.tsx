@@ -83,7 +83,8 @@ export default async function VoucherPage({ params }: { params: { journalType: s
             {addrLine1 && <div className="text-[10px]">{addrLine1}</div>}
             {addrLine2 && <div className="text-[10px]">{addrLine2}</div>}
             {company.tin && <div className="text-[10px]">TIN: {company.tin}</div>}
-            {(company.telNo || company.faxNo) && <div className="text-[10px] text-blue-700">Contact: {[company.telNo, company.faxNo].filter(Boolean).join(" | ")}</div>}
+            {company.website && <div className="text-[10px] text-blue-700">Website: {company.website}</div>}
+            {(company.email || company.telNo || company.faxNo) && <div className="text-[10px] text-blue-700">Contact: {[company.email, company.telNo, company.faxNo].filter(Boolean).join(" | ")}</div>}
           </div>
         </div>
         <div className="text-right">

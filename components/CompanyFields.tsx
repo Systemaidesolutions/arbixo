@@ -247,6 +247,27 @@ export function CompanyFields({
             className={field}
           />
         </label>
+        <label className={label}>
+          Website (optional)
+          <input
+            disabled={readOnly}
+            value={form.website ?? ""}
+            onChange={(e) => onChange("website", e.target.value)}
+            placeholder="www.example.com"
+            className={field}
+          />
+        </label>
+        <label className={label}>
+          Email (optional)
+          <input
+            disabled={readOnly}
+            type="email"
+            value={form.email ?? ""}
+            onChange={(e) => onChange("email", e.target.value)}
+            placeholder="info@example.com"
+            className={field}
+          />
+        </label>
       </div>
 
       {/* Authorized representative */}
@@ -298,6 +319,8 @@ export function toCompanyFormState(
     lineOfBusiness: company?.lineOfBusiness ?? "",
     telNo: company?.telNo ?? "",
     faxNo: company?.faxNo ?? "",
+    website: company?.website ?? "",
+    email: company?.email ?? "",
     authorizedRep: company?.authorizedRep ?? "",
     authorizedRepPosition: company?.authorizedRepPosition ?? "",
   };
