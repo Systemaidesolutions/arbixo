@@ -46,6 +46,13 @@ export function TrialBalanceClient({ companyId }: { companyId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, asOfDate, dateFrom, dateTo]);
 
+  function exportExcel() {
+    const params = new URLSearchParams({ companyId, mode });
+    if (mode === "YEAR_TO_DATE") params.set("asOfDate", asOfDate);
+    else { params.set("dateFrom", dateFrom); params.set("dateTo", dateTo); }
+    window.open(`/api/reports/trial-balance/export?${params}`, "_blank");
+  }
+
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const isBalanced = Math.round((totals.totalDebit - totals.totalCredit) * 100) === 0;
 
@@ -59,14 +66,20 @@ export function TrialBalanceClient({ companyId }: { companyId: string }) {
 
   return (
     <main className="mx-auto max-w-3xl p-4 sm:p-8">
-      <h1 className="text-xl font-medium text-neutral-900">Trial balance</h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-xl font-medium text-neutral-900">Trial balance</h1>
+        <div className="flex shrink-0 gap-2 print:hidden">
+          <button onClick={() => window.print()} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Print</button>
+          <button onClick={exportExcel} disabled={loading || rows.length === 0} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
+        </div>
+      </div>
       <p className="mt-1 text-sm text-neutral-500">
         Year-to-Date includes each account's opening balance plus every entry ever posted up to
         the date shown — this is what should tie out to the Balance Sheet. Current Net Change
         shows only movement within the period, with no opening balance.
       </p>
 
-      <div className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4">
+      <div className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">
         <label className="text-xs text-neutral-500">
           Mode
           <select
