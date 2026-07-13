@@ -111,7 +111,7 @@ export default async function TrialBalancePrintPage({
         </tfoot>
       </table>
 
-      <p className="mt-4 text-[10px] text-neutral-400">Generated {new Date().toLocaleString("en-PH")}</p>
+      <footer className="mt-6 text-center text-[10px] text-neutral-500">Page 1 of 1</footer>
     </main>
   );
 }
