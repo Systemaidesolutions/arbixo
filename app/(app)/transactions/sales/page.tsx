@@ -28,9 +28,16 @@ export default async function SalesPage() {
     suggestNextDocumentNo(company.id, "SALES_ON_ACCOUNT"),
   ]);
 
+  const companyPayee = {
+    name: company.registeredName || company.tradeName,
+    tin: company.tin ?? "",
+    address: [company.businessAddress, company.barangay, company.city, company.province, company.zipCode].filter(Boolean).join(", "),
+  };
+
   return (
     <SalesForm
       companyId={company.id}
+      companyPayee={companyPayee}
       accounts={toPlain(accounts)}
       receivableAccounts={toPlain(receivableAccounts)}
       customers={customers}

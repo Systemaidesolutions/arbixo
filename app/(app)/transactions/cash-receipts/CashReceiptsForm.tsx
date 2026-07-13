@@ -18,8 +18,10 @@ const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT
 const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const MAX_FILE = 3_000_000;
 
-export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, employees, contacts, customers, atcCodes, locations, suggestedDocumentNo }: {
-  companyId: string; accounts: Account[]; cashAccounts: Account[]; vendors: Vendor[]; employees: Employee[]; contacts: Contact[]; customers: Customer[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
+type Payee = { name: string; tin: string; address: string };
+
+export function CashReceiptsForm({ companyId, companyPayee, accounts, cashAccounts, vendors, employees, contacts, customers, atcCodes, locations, suggestedDocumentNo }: {
+  companyId: string; companyPayee: Payee; accounts: Account[]; cashAccounts: Account[]; vendors: Vendor[]; employees: Employee[]; contacts: Contact[]; customers: Customer[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
 }) {
   const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
   const [locationId, setLocationId] = useLastBranch(companyId, locations);
@@ -74,7 +76,38 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
     }
   }
 
-  async function post(print2307: boolean) {
+  // Print the 2307 from the currently-entered data without posting.
+  function print2307() {
+    const map = new Map<string, { atc: string; description: string; income: number; tax: number }>();
+    for (const r of computed.rows) {
+      if (!r.atcCodeId || r.withholdingAmt <= 0) continue;
+      const atc = atcById.get(r.atcCodeId);
+      const key = atc?.code ?? "—";
+      const existing = map.get(key);
+      if (existing) { existing.income += r.net; existing.tax += r.withholdingAmt; }
+      else map.set(key, { atc: atc?.code ?? "", description: atc?.description ?? "", income: r.net, tax: r.withholdingAmt });
+    }
+    const lists: Record<string, Array<Record<string, unknown>>> = {
+      CUSTOMER: customerList as unknown as Array<Record<string, unknown>>,
+      VENDOR: vendorList as unknown as Array<Record<string, unknown>>,
+      EMPLOYEE: employeeList as unknown as Array<Record<string, unknown>>,
+      CONTACT: contactList as unknown as Array<Record<string, unknown>>,
+    };
+    const party = counterpartyType && counterpartyId ? lists[counterpartyType]?.find((x) => x.id === counterpartyId) : null;
+    const s = (v: unknown) => (typeof v === "string" ? v : "");
+    const payorObj = party
+      ? {
+          name: s(party.registeredName) || s(party.tradeName) || [s(party.lastName), s(party.firstName)].filter(Boolean).join(", "),
+          tin: s(party.tin),
+          address: s(party.address),
+        }
+      : { name: "", tin: "", address: "" };
+    const payload = { payee: companyPayee, payor: payorObj, postingDate, documentNo, rows: [...map.values()] };
+    localStorage.setItem("arbixo_2307_preview", JSON.stringify(payload));
+    window.open("/transactions/2307/preview?_embed=1", "_blank");
+  }
+
+  async function post() {
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
       companyId, locationId: locationId || null, documentNo, postingDate,
@@ -87,13 +120,12 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
     if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error ?? "Something went wrong posting this entry."); return; }
     const postedDocNo = documentNo;
     setSuccess(`Posted OR ${postedDocNo}.`);
-    if (print2307) window.open(`/transactions/2307/CASH_RECEIPT/${encodeURIComponent(postedDocNo)}?_embed=1`, "_blank");
     const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=CASH_RECEIPT`);
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
     setCounterpartyId(null); setParticulars(""); setLines([newLine()]); setAttachments([]); setAttachError(null);
   }
-  function handleSubmit(e: React.FormEvent) { e.preventDefault(); post(false); }
+  function handleSubmit(e: React.FormEvent) { e.preventDefault(); post(); }
 
   const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const label = "block text-xs text-neutral-500";
@@ -186,7 +218,7 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
 
         <div className="flex gap-2">
           <button type="submit" disabled={saving} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save & new"}</button>
-          <button type="button" onClick={() => post(true)} disabled={saving} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save &amp; Print 2307</button>
+          <button type="button" onClick={print2307} disabled={saving} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Print 2307</button>
         </div>
       </form>
     </main>

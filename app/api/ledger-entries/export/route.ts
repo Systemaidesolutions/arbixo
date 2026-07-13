@@ -41,8 +41,7 @@ export async function GET(request: NextRequest) {
     { header: "Net", key: "net", width: 14 },
     { header: "VAT", key: "vat", width: 14 },
     { header: "W/Tax", key: "wtax", width: 14 },
-    { header: "Debit", key: "debit", width: 14 },
-    { header: "Credit", key: "credit", width: 14 },
+    { header: "Amount", key: "amount", width: 14 },
     { header: "Status", key: "status", width: 12 },
     { header: "Attachments", key: "attachments", width: 40 },
   ];
@@ -57,14 +56,13 @@ export async function GET(request: NextRequest) {
       net: d.totalNet,
       vat: d.totalVat,
       wtax: d.totalWithholding,
-      debit: d.totalDebit,
-      credit: d.totalCredit,
+      amount: Math.max(d.totalDebit, d.totalCredit),
       status: d.isCancelled ? "Cancelled" : "Posted",
       attachments: (attByDoc[d.documentNo] ?? []).map((a) => a.fileName).join("; "),
     });
   }
 
-  ["net", "vat", "wtax", "debit", "credit"].forEach((key) => {
+  ["net", "vat", "wtax", "amount"].forEach((key) => {
     ws.getColumn(key).numFmt = "#,##0.00";
   });
 

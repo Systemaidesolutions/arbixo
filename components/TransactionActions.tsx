@@ -13,6 +13,7 @@ export function TransactionActions({
   isCancelled,
   canCancel,
   showPrint,
+  show2307,
 }: {
   companyId: string;
   journalType: string;
@@ -20,6 +21,7 @@ export function TransactionActions({
   isCancelled: boolean;
   canCancel: boolean;
   showPrint: boolean;
+  show2307?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -29,6 +31,10 @@ export function TransactionActions({
 
   function printVoucher() {
     window.open(`/transactions/voucher/${journalType}/${encodeURIComponent(documentNo)}?_embed=1`, "_blank");
+  }
+
+  function print2307() {
+    window.open(`/transactions/2307/${journalType}/${encodeURIComponent(documentNo)}?_embed=1`, "_blank");
   }
 
   async function confirmCancel() {
@@ -62,6 +68,15 @@ export function TransactionActions({
           className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
         >
           Print voucher
+        </button>
+      )}
+      {show2307 && (
+        <button
+          type="button"
+          onClick={print2307}
+          className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+        >
+          Print 2307
         </button>
       )}
       {!isCancelled && canCancel && (
