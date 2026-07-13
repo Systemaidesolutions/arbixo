@@ -7,6 +7,7 @@ export type ExpandInputLine = {
   accountId: string;
   amount: number;
   description?: string | null;
+  lineDescription?: string | null;
   referenceNo?: string | null;
   vatType?: VatType | null;
   amountIsGross?: boolean;
@@ -107,6 +108,7 @@ export async function expandVatLines(
     const mainLine: LedgerLineInput = {
       accountId: line.accountId,
       description: line.description ?? fallbackDescription ?? null,
+      lineDescription: line.lineDescription ?? null,
       referenceNo: line.referenceNo ?? null,
       ...lineCounterparty,
       vatType,

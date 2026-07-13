@@ -9,12 +9,12 @@ import type { Account, AtcCode, Contact, CounterpartyType, Customer, Employee, L
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
 import { TransactionSearch } from "@/components/TransactionSearch";
 
-type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; referenceNo: string };
+type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; referenceNo: string; lineDescription: string };
 type Attachment = { fileName: string; contentType: string; sizeBytes: number; data: string };
 
 const VAT_LABEL: Partial<Record<VatType, string>> = { VAT_12: "12% VAT", ZERO_RATED: "Zero-Rated", VAT_EXEMPT: "VAT Exempt", NON_VAT: "Non-VAT" };
 const uid = () => crypto.randomUUID();
-const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT", amount: 0, amountIsGross: true, atcCodeId: null, referenceNo: "" });
+const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT", amount: 0, amountIsGross: true, atcCodeId: null, referenceNo: "", lineDescription: "" });
 const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const MAX_FILE = 3_000_000;
 
@@ -88,7 +88,7 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
     const payload = {
       companyId, locationId: locationId || null, documentNo, postingDate,
       counterpartyType, counterpartyId, cashAccountId, particulars,
-      lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, referenceNo: l.referenceNo || null })),
+      lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, referenceNo: l.referenceNo || null, lineDescription: l.lineDescription || null })),
       attachments,
     };
     const res = await fetch("/api/ledger-entries/cash-receipts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -152,7 +152,7 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
             <table className="w-full min-w-[820px] text-xs">
               <thead>
                 <tr className="bg-neutral-50 text-left text-neutral-500">
-                  <th className={cell}>Account</th><th className={cell}>Ref No.</th><th className={cell}>VAT</th><th className={cell}>Amount</th><th className={cell}>Gross/Net</th><th className={cell}>ATC (withholding)</th>
+                  <th className={cell}>Account</th><th className={cell}>Ref No.</th><th className={cell}>Description</th><th className={cell}>VAT</th><th className={cell}>Amount</th><th className={cell}>Gross/Net</th><th className={cell}>ATC (withholding)</th>
                   <th className={`${cell} text-right`}>Net</th><th className={`${cell} text-right`}>VAT</th><th className={`${cell} text-right`}>W/tax</th><th className={`${cell} text-right`}><button type="button" onClick={clearLines} className="font-medium text-red-600 hover:underline">Clear</button></th>
                 </tr>
               </thead>
@@ -161,6 +161,7 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
                   <tr key={r.key}>
                     <td className={cell}><select required value={r.accountId} onChange={(e) => updateLine(r.key, { accountId: e.target.value })} className="w-44 rounded border border-neutral-300 px-1 py-1"><option value="">Select…</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></td>
                     <td className={cell}><input value={r.referenceNo} onChange={(e) => updateLine(r.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
+                    <td className={cell}><input value={r.lineDescription} onChange={(e) => updateLine(r.key, { lineDescription: e.target.value })} className="w-40 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><select value={r.vatType} onChange={(e) => updateLine(r.key, { vatType: e.target.value as VatType })} className="w-24 rounded border border-neutral-300 px-1 py-1">{Object.entries(VAT_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td>
                     <td className={cell}><input type="number" step="0.01" value={r.amount || ""} onChange={(e) => updateLine(r.key, { amount: Number(e.target.value) })} className="w-24 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><select value={r.amountIsGross ? "gross" : "net"} disabled={r.vatType !== "VAT_12"} onChange={(e) => updateLine(r.key, { amountIsGross: e.target.value === "gross" })} className="w-20 rounded border border-neutral-300 px-1 py-1 disabled:bg-neutral-100"><option value="gross">Gross</option><option value="net">Net</option></select></td>
@@ -173,7 +174,7 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
                 ))}
               </tbody>
               <tfoot>
-                <tr className="bg-neutral-50 font-medium"><td className={cell} colSpan={6}>Totals</td><td className={`${cell} text-right font-mono`} colSpan={2}>Credit {formatPeso(computed.totalCredit)}</td><td className={`${cell} text-right font-mono`}>{formatPeso(computed.totalWithholding)}</td><td className={cell}></td></tr>
+                <tr className="bg-neutral-50 font-medium"><td className={cell} colSpan={7}>Totals</td><td className={`${cell} text-right font-mono`} colSpan={2}>Credit {formatPeso(computed.totalCredit)}</td><td className={`${cell} text-right font-mono`}>{formatPeso(computed.totalWithholding)}</td><td className={cell}></td></tr>
               </tfoot>
             </table>
           </div>

@@ -186,6 +186,23 @@ export function PartyManager({
     setSaving(true);
     setError(null);
 
+    // A VAT-registered customer/vendor must carry its full VAT identity
+    // (TIN + registered address) for BIR reporting.
+    if ((entityType === "customer" || entityType === "vendor") && form.registrationType === "VAT") {
+      const missing = [
+        !form.tin.trim() && "TIN",
+        !form.address.trim() && "Address",
+        !form.city.trim() && "City",
+        !form.province.trim() && "Province",
+        !form.zipCode.trim() && "ZIP Code",
+      ].filter(Boolean);
+      if (missing.length) {
+        setSaving(false);
+        setError(`A VAT-registered ${PARTY_LABELS[entityType].singular.toLowerCase()} requires: ${missing.join(", ")}.`);
+        return;
+      }
+    }
+
     // On create with auto-numbering, omit code so the server assigns it from
     // the No. Series. On edit (or when typed manually) send the entered code.
     const autoAssign = form.mode === "create" && !manualCode;

@@ -9,13 +9,13 @@ import type { Account, AtcCode, Contact, CounterpartyType, Customer, Employee, L
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
 import { TransactionSearch } from "@/components/TransactionSearch";
 
-type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; taxSource: TaxSource; referenceNo: string; expanded: boolean; showParty: boolean; counterpartyType: CounterpartyType | null; counterpartyId: string | null };
+type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; taxSource: TaxSource; referenceNo: string; lineDescription: string; expanded: boolean; showParty: boolean; counterpartyType: CounterpartyType | null; counterpartyId: string | null };
 type Attachment = { fileName: string; contentType: string; sizeBytes: number; data: string };
 
 const VAT_LABEL: Partial<Record<VatType, string>> = { VAT_12: "12% VAT", ZERO_RATED: "Zero-Rated", VAT_EXEMPT: "VAT Exempt", NON_VAT: "Non-VAT" };
 const NATURE_LABEL: Record<TaxSource, string> = { GOODS: "Goods", SERVICE: "Services", CAPITAL_GOODS: "Capital Goods" };
 const uid = () => crypto.randomUUID();
-const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT", amount: 0, amountIsGross: true, atcCodeId: null, taxSource: "GOODS", referenceNo: "", expanded: false, showParty: false, counterpartyType: null, counterpartyId: null });
+const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT", amount: 0, amountIsGross: true, atcCodeId: null, taxSource: "GOODS", referenceNo: "", lineDescription: "", expanded: false, showParty: false, counterpartyType: null, counterpartyId: null });
 const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const MAX_FILE = 3_000_000;
 
@@ -104,7 +104,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
     const payload = {
       companyId, locationId: locationId || null, documentNo, checkNo: checkNo || null, postingDate,
       counterpartyType, counterpartyId, cashAccountId, particulars,
-      lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, taxSource: l.taxSource, referenceNo: l.referenceNo || null, counterpartyType: l.showParty ? l.counterpartyType : null, counterpartyId: l.showParty ? l.counterpartyId : null })),
+      lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, taxSource: l.taxSource, referenceNo: l.referenceNo || null, lineDescription: l.lineDescription || null, counterpartyType: l.showParty ? l.counterpartyType : null, counterpartyId: l.showParty ? l.counterpartyId : null })),
       attachments,
     };
     const res = await fetch("/api/ledger-entries/cash-disbursement", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -171,7 +171,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
             <table className="w-full min-w-[900px] text-xs">
               <thead>
                 <tr className="bg-neutral-50 text-left text-neutral-500">
-                  <th className={cell}>Account</th><th className={cell}>Ref No.</th><th className={cell}>Nature</th><th className={cell}>VAT</th><th className={cell}>Amount</th><th className={cell}>Gross/Net</th><th className={cell}>ATC</th>
+                  <th className={cell}>Account</th><th className={cell}>Ref No.</th><th className={cell}>Description</th><th className={cell}>Nature</th><th className={cell}>VAT</th><th className={cell}>Amount</th><th className={cell}>Gross/Net</th><th className={cell}>ATC</th>
                   <th className={`${cell} text-right`}>Net</th><th className={`${cell} text-right`}>VAT</th><th className={`${cell} text-right`}>W/tax</th><th className={cell}>Details</th><th className={`${cell} text-right`}><button type="button" onClick={clearLines} className="font-medium text-red-600 hover:underline">Clear</button></th>
                 </tr>
               </thead>
@@ -181,6 +181,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                   <tr>
                     <td className={cell}><select required value={r.accountId} onChange={(e) => updateLine(r.key, { accountId: e.target.value })} className="w-44 rounded border border-neutral-300 px-1 py-1"><option value="">Select…</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></td>
                     <td className={cell}><input value={r.referenceNo} onChange={(e) => updateLine(r.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
+                    <td className={cell}><input value={r.lineDescription} onChange={(e) => updateLine(r.key, { lineDescription: e.target.value })} className="w-40 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><select value={r.taxSource} onChange={(e) => updateLine(r.key, { taxSource: e.target.value as TaxSource })} className="w-28 rounded border border-neutral-300 px-1 py-1">{Object.entries(NATURE_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td>
                     <td className={cell}><select value={r.vatType} onChange={(e) => updateLine(r.key, { vatType: e.target.value as VatType })} className="w-24 rounded border border-neutral-300 px-1 py-1">{Object.entries(VAT_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td>
                     <td className={cell}><input type="number" step="0.01" value={r.amount || ""} onChange={(e) => updateLine(r.key, { amount: Number(e.target.value) })} className="w-24 rounded border border-neutral-300 px-1 py-1" /></td>
@@ -194,7 +195,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                   </tr>
                   {r.expanded && (
                     <tr>
-                      <td className="border-b border-neutral-100 bg-neutral-50/60 px-3 py-3" colSpan={12}>
+                      <td className="border-b border-neutral-100 bg-neutral-50/60 px-3 py-3" colSpan={13}>
                         <button type="button" onClick={() => updateLine(r.key, { showParty: !r.showParty, ...(r.showParty ? { counterpartyType: null, counterpartyId: null } : {}) })} className="text-xs text-neutral-600 hover:text-neutral-900">{r.showParty ? "− remove party" : "+ attach party"}</button>
                         {r.showParty && (
                           <div className="mt-3">
@@ -208,7 +209,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                 ))}
               </tbody>
               <tfoot>
-                <tr className="bg-neutral-50 font-medium"><td className={cell} colSpan={7}>Totals</td><td className={`${cell} text-right font-mono`} colSpan={2}>Debit {formatPeso(computed.totalDebit)}</td><td className={`${cell} text-right font-mono`}>{formatPeso(computed.totalWithholding)}</td><td className={cell} colSpan={2}></td></tr>
+                <tr className="bg-neutral-50 font-medium"><td className={cell} colSpan={8}>Totals</td><td className={`${cell} text-right font-mono`} colSpan={2}>Debit {formatPeso(computed.totalDebit)}</td><td className={`${cell} text-right font-mono`}>{formatPeso(computed.totalWithholding)}</td><td className={cell} colSpan={2}></td></tr>
               </tfoot>
             </table>
           </div>

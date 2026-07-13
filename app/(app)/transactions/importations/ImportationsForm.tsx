@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatPeso } from "@/lib/format";
+import { usePageStack } from "@/components/PageStack";
 
 type Importation = {
   id: string;
@@ -51,7 +52,19 @@ function fmtDate(iso: string) {
 
 export function ImportationsForm({ companyId, canPost }: { companyId: string; canPost: boolean }) {
   const router = useRouter();
+  const ps = usePageStack();
   const [items, setItems] = useState<Importation[]>([]);
+
+  // Open Cash Disbursement showing only its page (chrome-less): as a new
+  // stacked panel on the base page, or via the parent stack when we're inside
+  // an embedded (iframed) page.
+  function openCashDisbursement() {
+    const href = "/transactions/cash-disbursement";
+    if (ps) ps.open(href, "Cash Disbursement");
+    else if (typeof window !== "undefined" && window.parent !== window)
+      window.parent.postMessage({ type: "stack:open", href, title: "Cash Disbursement" }, window.location.origin);
+    else router.push(href);
+  }
   const [form, setForm] = useState<FormState>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,8 +116,8 @@ export function ImportationsForm({ companyId, canPost }: { companyId: string; ca
       return;
     }
     setForm(emptyForm());
-    // The importation is typically paid next — go straight to Cash Disbursement.
-    router.push("/transactions/cash-disbursement");
+    // The importation is typically paid next — open Cash Disbursement.
+    openCashDisbursement();
   }
 
   async function handleDelete(im: Importation) {

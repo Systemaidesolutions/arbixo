@@ -713,7 +713,8 @@ model LedgerEntry {
   debitAmount  Decimal @db.Decimal(18, 2) @default(0)
   creditAmount Decimal @db.Decimal(18, 2) @default(0)
 
-  description  String? // Particulars / Nature
+  description  String? // Particulars (document-level, same on every line)
+  lineDescription String? // per-line Description (shown as line items on the voucher)
   referenceNo  String? // per-line reference; the balancing line carries the concatenation
   checkNo      String? // Cash Disbursement only
   isCancelled  Boolean @default(false)
