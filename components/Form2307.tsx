@@ -13,248 +13,306 @@ export type Form2307Data = {
   rows: Row2307[];
 };
 
-const mmddyyyy = (d: Date) =>
-  `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
-const peso = (n: number) => (n ? formatPeso(n) : "");
+const B = "border border-black";
+const GREY = "bg-[#d9d9d9]";
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+// A row of fixed character cells (for TIN / dates / ZIP).
+function Cells({ value = "", count, w = "w-[14px]", cellGrey = false }: { value?: string; count: number; w?: string; cellGrey?: boolean }) {
+  const chars = value.split("");
+  return (
+    <div className="flex">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className={`h-[15px] ${w} border border-black text-center text-[9px] leading-[15px] ${cellGrey ? GREY : ""}`}>
+          {chars[i] ?? ""}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// TIN in 3-3-3-5 groups with grey dash separators (last group is the branch code).
+function Tin({ value }: { value: string }) {
+  const d = (value || "").replace(/\D/g, "");
+  const dash = <div className={`flex h-[15px] w-[9px] items-center justify-center border border-black text-[9px] ${GREY}`}>-</div>;
+  return (
+    <div className="flex items-center">
+      <Cells value={d.slice(0, 3)} count={3} />
+      {dash}
+      <Cells value={d.slice(3, 6)} count={3} />
+      {dash}
+      <Cells value={d.slice(6, 9)} count={3} />
+      {dash}
+      <Cells value={d.slice(9, 14)} count={5} cellGrey />
+    </div>
+  );
+}
+
+// A date as MM DD YYYY character cells.
+function DateCells({ d }: { d: Date | null }) {
+  const mm = d ? pad2(d.getMonth() + 1) : "";
+  const dd = d ? pad2(d.getDate()) : "";
+  const yy = d ? String(d.getFullYear()) : "";
+  return (
+    <div className="flex items-center gap-[2px]">
+      <Cells value={mm} count={2} />
+      <Cells value={dd} count={2} />
+      <Cells value={yy} count={4} />
+    </div>
+  );
+}
+
+// Approximated Code128-style barcode (the blank form's is a static graphic).
+function Barcode() {
+  const widths = [2, 1, 3, 1, 2, 2, 1, 1, 3, 2, 1, 2, 1, 3, 1, 1, 2, 3, 1, 2, 2, 1, 3, 1, 1, 2, 1, 3, 2, 1, 1, 2, 3, 1, 2, 1, 2, 1, 3, 1, 2, 2, 1, 1, 3, 1, 2, 1];
+  let x = 0;
+  return (
+    <svg viewBox="0 0 130 44" className="h-[44px] w-[130px]">
+      {widths.map((w, i) => {
+        const rect = i % 2 === 0 ? <rect key={i} x={x} y={0} width={w} height={44} fill="black" /> : null;
+        x += w;
+        return rect;
+      })}
+    </svg>
+  );
+}
+
+const HEADS = ["Income Payments Subject to Expanded Withholding Tax", "ATC", "1st Month of the Quarter", "2nd Month of the Quarter", "3rd Month of the Quarter", "Total", "Tax Withheld for the Quarter"];
 
 // BIR Form No. 2307 (January 2018 ENCS) — Certificate of Creditable Tax
-// Withheld at Source. Faithful to the official front-page layout. Presentational
-// only; the caller supplies payee (supplier) and payor (company).
+// Withheld at Source. Laid out to match the official form; prints on Legal.
 export function Form2307({ data, autoPrint = true }: { data: Form2307Data; autoPrint?: boolean }) {
   const { payee, payor, rows } = data;
-
   const d = new Date(data.postingDate);
-  const month = d.getMonth();
-  const quarter = Math.floor(month / 3);
-  const monthCol = month % 3; // 0/1/2 within the quarter
-  const periodFrom = new Date(d.getFullYear(), quarter * 3, 1);
-  const periodTo = new Date(d.getFullYear(), quarter * 3 + 3, 0);
-
+  const q = Math.floor(d.getMonth() / 3);
+  const monthCol = d.getMonth() % 3;
+  const periodFrom = new Date(d.getFullYear(), q * 3, 1);
+  const periodTo = new Date(d.getFullYear(), q * 3 + 3, 0);
   const totalIncome = rows.reduce((s, r) => s + r.income, 0);
   const totalTax = rows.reduce((s, r) => s + r.tax, 0);
-  const dataRows = Math.max(rows.length, 4);
+  const amt = (n: number) => (n ? formatPeso(n) : "");
 
-  const bx = "border border-black";
-  const num = "w-5 shrink-0 border-r border-black text-center font-semibold";
+  // Part III detail rows (income sits in the quarter's month column), padded.
+  const ewtRows = [...rows];
+  while (ewtRows.length < 6) ewtRows.push({ atc: "", description: "", income: 0, tax: 0 });
 
-  // Part III row (EWT). Income sits in the quarter's month column.
-  const detailRow = (r: Row2307 | null, key: string | number) => (
-    <tr key={key}>
-      <td className="border-r border-t border-black px-1 py-0.5">{r?.description ?? ""}</td>
-      <td className="border-r border-t border-black px-1 py-0.5 text-center font-mono">{r?.atc ?? ""}</td>
-      {[0, 1, 2].map((c) => (
-        <td key={c} className="border-r border-t border-black px-1 py-0.5 text-right font-mono">
-          {r && c === monthCol ? peso(r.income) : ""}
-        </td>
-      ))}
-      <td className="border-r border-t border-black px-1 py-0.5 text-right font-mono">{r ? peso(r.income) : ""}</td>
-      <td className="border-t border-black px-1 py-0.5 text-right font-mono">{r ? peso(r.tax) : ""}</td>
-    </tr>
-  );
-
-  const blankRow = (key: string | number) => (
-    <tr key={key}>
-      <td className="border-r border-t border-black px-1 py-1.5">&nbsp;</td>
-      <td className="border-r border-t border-black" />
-      <td className="border-r border-t border-black" />
-      <td className="border-r border-t border-black" />
-      <td className="border-r border-t border-black" />
-      <td className="border-r border-t border-black" />
-      <td className="border-t border-black" />
-    </tr>
-  );
-
-  const partHeader = (
-    <>
-      <tr className="bg-neutral-200 text-center align-middle">
-        <th rowSpan={2} className="border-r border-b border-black px-1 py-0.5 text-left align-middle">
-          Income Payments Subject to Expanded Withholding Tax
-        </th>
-        <th rowSpan={2} className="border-r border-b border-black px-1 py-0.5 align-middle">ATC</th>
-        <th colSpan={4} className="border-r border-b border-black px-1 py-0.5">AMOUNT OF INCOME PAYMENTS</th>
-        <th rowSpan={2} className="border-b border-black px-1 py-0.5 align-middle">Tax Withheld<br />for the Quarter</th>
-      </tr>
-      <tr className="bg-neutral-200 text-center">
-        <th className="border-r border-b border-black px-1 py-0.5">1st Month<br />of the Quarter</th>
-        <th className="border-r border-b border-black px-1 py-0.5">2nd Month<br />of the Quarter</th>
-        <th className="border-r border-b border-black px-1 py-0.5">3rd Month<br />of the Quarter</th>
-        <th className="border-r border-b border-black px-1 py-0.5">Total</th>
-      </tr>
-    </>
-  );
+  const cellTd = "border border-black px-1 py-[3px] align-top";
+  const numTd = "border border-black px-1 py-[3px] text-right font-mono align-top";
 
   return (
-    <div className="mx-auto max-w-[860px] bg-white p-4 text-[10px] leading-tight text-black print:p-0">
-      {autoPrint && <PrintControls />}
+    <div className="mx-auto w-[8in] bg-white text-[9px] leading-tight text-black print:w-full">
+      <style>{`@media print { @page { size: 8.5in 14in; margin: 0.3in; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}</style>
+      {autoPrint && <PrintControls auto={false} />}
 
-      {/* Header */}
-      <div className={`flex ${bx}`}>
-        <div className="w-24 shrink-0 border-r border-black p-1 text-[8px] leading-tight">
-          <div>BIR Form No.</div>
-          <div className="text-lg font-bold leading-none">2307</div>
-          <div>January 2018 (ENCS)</div>
+      <div className={B}>
+        {/* Top strip: For BIR Use Only + government heading */}
+        <div className="flex border-b border-black">
+          <div className="w-[150px] border-r border-black">
+            <div className={`flex ${GREY}`}>
+              <div className="w-[52px] border-r border-black px-1 py-[2px] text-[8px]">For BIR<br />Use Only</div>
+              <div className="flex-1 px-1 py-[2px] text-[8px]">BCS/<br />Item:</div>
+            </div>
+          </div>
+          <div className="flex flex-1 items-center justify-center gap-2 py-1">
+            <svg viewBox="0 0 40 40" className="h-9 w-9">
+              <circle cx="20" cy="20" r="19" fill="none" stroke="black" strokeWidth="1" />
+              <circle cx="20" cy="20" r="14" fill="none" stroke="black" strokeWidth="0.7" />
+              <polygon points="20,9 22.4,16.4 30,16.4 23.8,21 26.2,28.4 20,24 13.8,28.4 16.2,21 10,16.4 17.6,16.4" fill="black" />
+            </svg>
+            <div className="text-center leading-tight">
+              <div className="text-[11px] font-bold">Republic of the Philippines</div>
+              <div className="text-[11px]">Department of Finance</div>
+              <div className="text-[11px] font-semibold">Bureau of Internal Revenue</div>
+            </div>
+          </div>
         </div>
-        <div className="flex-1 py-1 text-center">
-          <div>Republic of the Philippines</div>
-          <div>Department of Finance</div>
-          <div>Bureau of Internal Revenue</div>
-          <div className="mt-1 text-sm font-bold">Certificate of Creditable Tax Withheld at Source</div>
+
+        {/* Form no. | title | barcode */}
+        <div className="flex border-b border-black">
+          <div className="w-[150px] border-r border-black px-2 py-1 text-center leading-tight">
+            <div className="text-[9px]">BIR Form No.</div>
+            <div className="text-[26px] font-bold leading-none">2307</div>
+            <div className="text-[9px]">January 2018 (ENCS)</div>
+          </div>
+          <div className="flex flex-1 items-center justify-center px-2 text-center">
+            <div className="text-[20px] font-bold leading-tight">Certificate of Creditable Tax<br />Withheld at Source</div>
+          </div>
+          <div className="flex w-[150px] flex-col items-center justify-center border-l border-black py-1">
+            <Barcode />
+            <div className="mt-[2px] text-[8px]">2307 01/18ENCS</div>
+          </div>
         </div>
-        <div className="w-20 shrink-0 border-l border-black p-1 text-center text-[8px]">
-          <div className="font-semibold">2307</div>
+
+        {/* Instruction */}
+        <div className={`border-b border-black px-1 py-[2px] text-[9px] ${GREY}`}>
+          Fill in all applicable spaces. Mark all appropriate boxes with an &quot;X&quot;.
+        </div>
+
+        {/* 1 — For the Period */}
+        <div className="flex items-center border-b border-black px-1 py-[3px]">
+          <span className="mr-2 font-bold">1</span>
+          <span className="mr-3">For the Period</span>
+          <span className="mr-1">From</span>
+          <DateCells d={periodFrom} />
+          <span className="mx-1 italic text-neutral-600">(MM/DD/YYYY)</span>
+          <span className="ml-2 mr-1">To</span>
+          <DateCells d={periodTo} />
+          <span className="ml-1 italic text-neutral-600">(MM/DD/YYYY)</span>
+        </div>
+
+        {/* Part I — Payee */}
+        <div className={`border-b border-black py-[2px] text-center font-bold ${GREY}`}>Part I – Payee Information</div>
+        <div className="flex items-center border-b border-black px-1 py-[3px]">
+          <span className="mr-2 font-bold">2</span>
+          <span className="mr-2">Taxpayer Identification Number (TIN)</span>
+          <Tin value={payee.tin} />
+        </div>
+        <div className="border-b border-black px-1 py-[3px]">
+          <span className="font-bold">3</span> <span className="italic">Payee&apos;s Name (Last Name, First Name, Middle Name for Individual OR Registered Name for Non-Individual)</span>
+          <div className="mt-[3px] min-h-[16px] font-semibold uppercase">{payee.name}</div>
+        </div>
+        <div className="flex border-b border-black">
+          <div className="flex-1 border-r border-black px-1 py-[3px]">
+            <span className="font-bold">4</span> Registered Address
+            <div className="mt-[3px] min-h-[16px] uppercase">{payee.address}</div>
+          </div>
+          <div className="w-[150px] px-1 py-[3px]">
+            <div><span className="font-bold">4A</span> ZIP Code</div>
+            <div className="mt-[3px]"><Cells value={payee.zip ?? ""} count={4} /></div>
+          </div>
+        </div>
+        <div className="border-b border-black px-1 py-[3px]">
+          <span className="font-bold">5</span> <span className="italic">Foreign Address, if applicable</span>
+          <div className="mt-[3px] min-h-[16px]">&nbsp;</div>
+        </div>
+
+        {/* Part II — Payor */}
+        <div className={`border-b border-black py-[2px] text-center font-bold ${GREY}`}>Part II – Payor Information</div>
+        <div className="flex items-center border-b border-black px-1 py-[3px]">
+          <span className="mr-2 font-bold">6</span>
+          <span className="mr-2">Taxpayer Identification Number (TIN)</span>
+          <Tin value={payor.tin} />
+        </div>
+        <div className="border-b border-black px-1 py-[3px]">
+          <span className="font-bold">7</span> <span className="italic">Payor&apos;s Name (Last Name, First Name, Middle Name for Individual OR Registered Name for Non-Individual)</span>
+          <div className="mt-[3px] min-h-[16px] font-semibold uppercase">{payor.name}</div>
+        </div>
+        <div className="flex border-b border-black">
+          <div className="flex-1 border-r border-black px-1 py-[3px]">
+            <span className="font-bold">8</span> Registered Address
+            <div className="mt-[3px] min-h-[16px] uppercase">{payor.address}</div>
+          </div>
+          <div className="w-[150px] px-1 py-[3px]">
+            <div><span className="font-bold">8A</span> ZIP Code</div>
+            <div className="mt-[3px]"><Cells value={payor.zip ?? ""} count={4} /></div>
+          </div>
+        </div>
+
+        {/* Part III */}
+        <div className={`border-b border-black py-[2px] text-center font-bold ${GREY}`}>Part III – Details of Monthly Income Payments and Taxes Withheld</div>
+        <table className="w-full border-collapse text-[8px]">
+          <thead>
+            <tr className={`text-center ${GREY}`}>
+              <th rowSpan={2} className="border border-black px-1 py-1 align-middle">{HEADS[0]}</th>
+              <th rowSpan={2} className="border border-black px-1 py-1 align-middle">ATC</th>
+              <th colSpan={4} className="border border-black px-1 py-1">AMOUNT OF INCOME PAYMENTS</th>
+              <th rowSpan={2} className="border border-black px-1 py-1 align-middle">Tax Withheld<br />for the Quarter</th>
+            </tr>
+            <tr className={`text-center ${GREY}`}>
+              <th className="border border-black px-1 py-1">1st Month<br />of the Quarter</th>
+              <th className="border border-black px-1 py-1">2nd Month<br />of the Quarter</th>
+              <th className="border border-black px-1 py-1">3rd Month<br />of the Quarter</th>
+              <th className="border border-black px-1 py-1">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ewtRows.map((r, i) => (
+              <tr key={i}>
+                <td className={cellTd}>{r.description}</td>
+                <td className={`${cellTd} text-center font-mono`}>{r.atc}</td>
+                {[0, 1, 2].map((c) => (
+                  <td key={c} className={numTd}>{r.income && c === monthCol ? amt(r.income) : ""}</td>
+                ))}
+                <td className={numTd}>{amt(r.income)}</td>
+                <td className={numTd}>{amt(r.tax)}</td>
+              </tr>
+            ))}
+            <tr className={`font-bold ${GREY}`}>
+              <td className="border border-black px-1 py-[3px]">Total</td>
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className={numTd}>{amt(totalIncome)}</td>
+              <td className={numTd}>{amt(totalTax)}</td>
+            </tr>
+            <tr className={`font-bold ${GREY}`}>
+              <td colSpan={7} className="border border-black px-1 py-[3px] text-center">Money Payments Subject to Withholding of Business Tax</td>
+            </tr>
+            {[0, 1, 2].map((i) => (
+              <tr key={`b${i}`}>
+                <td className={cellTd}>&nbsp;</td>
+                <td className={`${cellTd} ${GREY}`} />
+                <td className={`${cellTd} ${GREY}`} />
+                <td className={`${cellTd} ${GREY}`} />
+                <td className={`${cellTd} ${GREY}`} />
+                <td className={`${cellTd} ${GREY}`} />
+                <td className={cellTd} />
+              </tr>
+            ))}
+            <tr className={`font-bold ${GREY}`}>
+              <td className="border border-black px-1 py-[3px]">Total</td>
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Declaration */}
+        <div className={`border-t border-black px-2 py-1 text-[9px] ${GREY}`}>
+          We declare under the penalties of perjury that this certificate has been made in good faith, verified by us, and to the
+          best of our knowledge and belief, is true and correct, pursuant to the provisions of the National Internal Revenue
+          Code, as amended, and the regulations issued under authority thereof. Further, we give our consent to the processing of
+          our information as contemplated under the *Data Privacy Act of 2012 (R.A. No. 10173) for legitimate and lawful purposes.
+        </div>
+
+        {/* Payor signature */}
+        <div className="border-t border-black px-2 pb-1 pt-8 text-center">
+          <div className="mx-auto max-w-[420px] border-t border-black pt-[2px] font-semibold uppercase">{payor.name}</div>
+          <div className="text-[8px]">Signature over Printed Name of Payor/Payor&apos;s Authorized Representative/Tax Agent</div>
+          <div className="text-[8px] italic">(Indicate Title/Designation and TIN)</div>
+        </div>
+        <div className="flex border-t border-black text-[8px]">
+          <div className={`flex-1 border-r border-black px-1 py-1 ${GREY}`}>Tax Agent Accreditation No./<br />Attorney&apos;s Roll No. (if applicable)</div>
+          <div className="w-[220px] border-r border-black" />
+          <div className={`px-1 py-1 ${GREY}`}>Date of Issue<br />(MM/DD/YYYY)</div>
+          <div className="flex items-center px-1"><DateCells d={null} /></div>
+          <div className={`px-1 py-1 ${GREY}`}>Date of Expiry<br />(MM/DD/YYYY)</div>
+          <div className="flex items-center px-1"><DateCells d={null} /></div>
+        </div>
+
+        {/* Conforme / Payee signature */}
+        <div className={`border-t border-black px-2 py-[2px] text-center font-bold ${GREY}`}>CONFORME:</div>
+        <div className="border-t border-black px-2 pb-1 pt-8 text-center">
+          <div className="mx-auto max-w-[420px] border-t border-black pt-[2px] font-semibold uppercase">{payee.name}</div>
+          <div className="text-[8px]">Signature over Printed Name of Payee/Payee&apos;s Authorized Representative/Tax Agent</div>
+          <div className="text-[8px] italic">(Indicate Title/Designation and TIN)</div>
+        </div>
+        <div className="flex border-t border-black text-[8px]">
+          <div className={`flex-1 border-r border-black px-1 py-1 ${GREY}`}>Tax Agent Accreditation No./<br />Attorney&apos;s Roll No. (if applicable)</div>
+          <div className="w-[220px] border-r border-black" />
+          <div className={`px-1 py-1 ${GREY}`}>Date of Issue<br />(MM/DD/YYYY)</div>
+          <div className="flex items-center px-1"><DateCells d={null} /></div>
+          <div className={`px-1 py-1 ${GREY}`}>Date of Expiry<br />(MM/DD/YYYY)</div>
+          <div className="flex items-center px-1"><DateCells d={null} /></div>
         </div>
       </div>
 
-      <div className="border-x border-b border-black px-1 py-0.5 italic">
-        Fill in all applicable spaces. Mark all appropriate boxes with an &quot;X&quot;.
-      </div>
-
-      {/* 1 — Period */}
-      <div className="flex border-x border-b border-black">
-        <div className={num}>1</div>
-        <div className="flex flex-1 items-center gap-4 px-1 py-0.5">
-          <span>For the Period</span>
-          <span>From <b className="font-mono">{mmddyyyy(periodFrom)}</b></span>
-          <span>To <b className="font-mono">{mmddyyyy(periodTo)}</b></span>
-          <span className="text-[8px] text-neutral-500">(MM/DD/YYYY)</span>
-        </div>
-      </div>
-
-      {/* Part I — Payee */}
-      <div className="border-x border-b border-black bg-neutral-200 px-1 font-semibold">Part I – Payee Information</div>
-      <div className="flex border-x border-b border-black">
-        <div className={num}>2</div>
-        <div className="flex-1 px-1 py-0.5">
-          <div className="text-[8px] text-neutral-600">Taxpayer Identification Number (TIN)</div>
-          <div className="font-mono">{payee.tin || "—"}</div>
-        </div>
-      </div>
-      <div className="flex border-x border-b border-black">
-        <div className={num}>3</div>
-        <div className="flex-1 px-1 py-0.5">
-          <div className="text-[8px] text-neutral-600">Payee&apos;s Name (Last Name, First Name, Middle Name for Individual OR Registered Name for Non-Individual)</div>
-          <div className="font-semibold">{payee.name || "—"}</div>
-        </div>
-      </div>
-      <div className="flex border-x border-b border-black">
-        <div className={num}>4</div>
-        <div className="flex-1 border-r border-black px-1 py-0.5">
-          <div className="text-[8px] text-neutral-600">Registered Address</div>
-          <div>{payee.address || "—"}</div>
-        </div>
-        <div className="w-40 shrink-0 px-1 py-0.5">
-          <div className="text-[8px] text-neutral-600">4A ZIP Code</div>
-          <div className="font-mono">{payee.zip || ""}</div>
-        </div>
-      </div>
-      <div className="flex border-x border-b border-black">
-        <div className={num}>5</div>
-        <div className="flex-1 px-1 py-0.5">
-          <div className="text-[8px] text-neutral-600">Foreign Address, if applicable</div>
-          <div>&nbsp;</div>
-        </div>
-      </div>
-
-      {/* Part II — Payor */}
-      <div className="border-x border-b border-black bg-neutral-200 px-1 font-semibold">Part II – Payor Information</div>
-      <div className="flex border-x border-b border-black">
-        <div className={num}>6</div>
-        <div className="flex-1 px-1 py-0.5">
-          <div className="text-[8px] text-neutral-600">Taxpayer Identification Number (TIN)</div>
-          <div className="font-mono">{payor.tin || "—"}</div>
-        </div>
-      </div>
-      <div className="flex border-x border-b border-black">
-        <div className={num}>7</div>
-        <div className="flex-1 px-1 py-0.5">
-          <div className="text-[8px] text-neutral-600">Payor&apos;s Name (Last Name, First Name, Middle Name for Individual OR Registered Name for Non-Individual)</div>
-          <div className="font-semibold">{payor.name || "—"}</div>
-        </div>
-      </div>
-      <div className="flex border-x border-b border-black">
-        <div className={num}>8</div>
-        <div className="flex-1 border-r border-black px-1 py-0.5">
-          <div className="text-[8px] text-neutral-600">Registered Address</div>
-          <div>{payor.address || "—"}</div>
-        </div>
-        <div className="w-40 shrink-0 px-1 py-0.5">
-          <div className="text-[8px] text-neutral-600">8A ZIP Code</div>
-          <div className="font-mono">{payor.zip || ""}</div>
-        </div>
-      </div>
-
-      {/* Part III */}
-      <div className="border-x border-b border-black bg-neutral-200 px-1 font-semibold">
-        Part III – Details of Monthly Income Payments and Taxes Withheld
-      </div>
-      <table className="w-full border-x border-black text-[9px]">
-        <thead>{partHeader}</thead>
-        <tbody>
-          {Array.from({ length: dataRows }).map((_, i) => (rows[i] ? detailRow(rows[i], i) : blankRow(i)))}
-          <tr className="bg-neutral-100 font-semibold">
-            <td className="border-r border-t border-black px-1 py-0.5 text-right" colSpan={5}>Total</td>
-            <td className="border-r border-t border-black px-1 py-0.5 text-right font-mono">{peso(totalIncome)}</td>
-            <td className="border-t border-black px-1 py-0.5 text-right font-mono">{peso(totalTax)}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* Section B — Money payments subject to business tax (left blank for EWT-only certs) */}
-      <table className="w-full border-x border-b border-black text-[9px]">
-        <tbody>
-          <tr className="bg-neutral-200 font-semibold">
-            <td colSpan={7} className="border-t border-black px-1 py-0.5">
-              Money Payments Subject to Withholding of Business Tax (Government &amp; Private)
-            </td>
-          </tr>
-          {blankRow("b0")}
-          {blankRow("b1")}
-          <tr className="bg-neutral-100 font-semibold">
-            <td className="border-r border-t border-black px-1 py-0.5 text-right" colSpan={5}>Total</td>
-            <td className="border-r border-t border-black px-1 py-0.5 text-right font-mono" />
-            <td className="border-t border-black px-1 py-0.5 text-right font-mono" />
-          </tr>
-        </tbody>
-      </table>
-
-      {/* Declaration */}
-      <div className="border-x border-b border-black px-2 py-1 text-[9px]">
-        We declare under the penalties of perjury that this certificate has been made in good faith, verified by us, and to
-        the best of our knowledge and belief, is true and correct, pursuant to the provisions of the National Internal
-        Revenue Code, as amended, and the regulations issued under authority thereof. Further, we give our consent to the
-        processing of our information as contemplated under the *Data Privacy Act of 2012 (R.A. No. 10173) for legitimate
-        and lawful purposes.
-      </div>
-
-      {/* Payor signature */}
-      <div className="border-x border-b border-black px-2 pb-1 pt-6 text-center">
-        <div className="mx-auto max-w-[420px] border-t border-black pt-0.5 text-[9px] font-semibold">{payor.name || ""}</div>
-        <div className="text-[8px]">Signature over Printed Name of Payor/Payor&apos;s Authorized Representative/Tax Agent</div>
-        <div className="text-[8px] text-neutral-600">(Indicate Title/Designation and TIN)</div>
-      </div>
-      <div className="flex border-x border-b border-black text-[8px]">
-        <div className="flex-1 border-r border-black px-1 py-1">Tax Agent Accreditation No./<br />Attorney&apos;s Roll No. (if applicable)</div>
-        <div className="flex-1 border-r border-black px-1 py-1">Date of Issue (MM/DD/YYYY)</div>
-        <div className="flex-1 px-1 py-1">Date of Expiry (MM/DD/YYYY)</div>
-      </div>
-
-      {/* Conforme / Payee signature */}
-      <div className="border-x border-b border-black px-2 py-0.5 font-semibold">CONFORME:</div>
-      <div className="border-x border-b border-black px-2 pb-1 pt-6 text-center">
-        <div className="mx-auto max-w-[420px] border-t border-black pt-0.5 text-[9px] font-semibold">{payee.name || ""}</div>
-        <div className="text-[8px]">Signature over Printed Name of Payee/Payee&apos;s Authorized Representative/Tax Agent</div>
-        <div className="text-[8px] text-neutral-600">(Indicate Title/Designation and TIN)</div>
-      </div>
-      <div className="flex border-x border-b border-black text-[8px]">
-        <div className="flex-1 border-r border-black px-1 py-1">Tax Agent Accreditation No./<br />Attorney&apos;s Roll No. (if applicable)</div>
-        <div className="flex-1 border-r border-black px-1 py-1">Date of Issue (MM/DD/YYYY)</div>
-        <div className="flex-1 px-1 py-1">Date of Expiry (MM/DD/YYYY)</div>
-      </div>
-
-      <div className="mt-1 text-[8px] text-neutral-500">
-        *NOTE: The BIR Data Privacy Policy is in the BIR website (www.bir.gov.ph). System-generated from {data.documentNo};
-        amounts reflect this transaction only, not the full quarter.
-      </div>
+      <div className="mt-[2px] text-[8px]">*NOTE: The BIR Data Privacy is in the BIR website (www.bir.gov.ph)</div>
     </div>
   );
 }
