@@ -167,7 +167,7 @@ export function TrialBalanceClient({
               <th className="px-3 py-2 text-right">Credit</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-100">
+          <tbody>
             {loading ? (
               <tr>
                 <td colSpan={4} className="px-3 py-4 text-center text-neutral-400">
@@ -181,27 +181,30 @@ export function TrialBalanceClient({
                 </td>
               </tr>
             ) : (
-              Array.from(byClassification.entries()).map(([classification, group]) => (
-                <Fragment key={classification}>
-                  <tr className="bg-neutral-50/50">
-                    <td colSpan={4} className="px-3 py-1 text-xs font-medium uppercase tracking-wide text-neutral-400">
-                      {CLASSIFICATION_LABELS[classification as AccountClassification]}
-                    </td>
-                  </tr>
-                  {group.map((row) => (
-                    <tr key={row.accountId}>
-                      <td className="px-3 py-2 font-mono text-neutral-500">{row.code}</td>
-                      <td className="px-3 py-2">{row.title}</td>
-                      <td className="px-3 py-2 text-right font-mono">
-                        {row.debit > 0 ? formatPeso(row.debit) : ""}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono">
-                        {row.credit > 0 ? formatPeso(row.credit) : ""}
+              (() => {
+                let i = 0; // running index for continuous zebra shading across groups
+                return Array.from(byClassification.entries()).map(([classification, group]) => (
+                  <Fragment key={classification}>
+                    <tr className="bg-neutral-100">
+                      <td colSpan={4} className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                        {CLASSIFICATION_LABELS[classification as AccountClassification]}
                       </td>
                     </tr>
-                  ))}
-                </Fragment>
-              ))
+                    {group.map((row) => (
+                      <tr key={row.accountId} className={i++ % 2 === 1 ? "bg-neutral-50" : "bg-white"}>
+                        <td className="px-3 py-2 font-mono text-neutral-500">{row.code}</td>
+                        <td className="px-3 py-2">{row.title}</td>
+                        <td className="px-3 py-2 text-right font-mono">
+                          {row.debit > 0 ? formatPeso(row.debit) : ""}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono">
+                          {row.credit > 0 ? formatPeso(row.credit) : ""}
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                ));
+              })()
             )}
           </tbody>
           <tfoot className="border-t-2 border-neutral-300 bg-neutral-50 font-medium">
