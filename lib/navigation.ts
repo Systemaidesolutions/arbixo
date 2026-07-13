@@ -107,16 +107,17 @@ export const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-// History — Business-Central-style browsers over posted ledger entries, plus
-// the company audit trail. Manager-only (injected in the sidebar).
+// History — one posted-transaction browser per journal (document-level).
+// Shown to every subscriber (injected in the sidebar).
 export const HISTORY_SECTION: NavSection = {
   title: "History",
   icon: "reports",
   links: [
-    { href: "/history/sales", label: "Sales entries", icon: "sales" },
-    { href: "/history/purchases", label: "Purchase entries", icon: "purchases" },
-    { href: "/history/general-ledger", label: "General ledger entries", icon: "generalLedger" },
-    { href: "/utility/audit-trail", label: "Audit trail", icon: "audit" },
+    { href: "/history/transactions/cash-receipts", label: "Cash Receipts", icon: "cashIn" },
+    { href: "/history/transactions/sales", label: "Sales on Account", icon: "sales" },
+    { href: "/history/transactions/cash-disbursement", label: "Cash Disbursement", icon: "cashOut" },
+    { href: "/history/transactions/purchases", label: "Purchase on Account", icon: "purchases" },
+    { href: "/history/transactions/general-journal", label: "General Journal", icon: "journal" },
   ],
 };
 

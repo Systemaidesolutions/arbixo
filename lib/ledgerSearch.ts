@@ -9,16 +9,25 @@ import type { DocumentSummary } from "@/app/api/ledger-entries/route";
 export async function searchLedgerDocuments(
   companyId: string,
   journalType: JournalType,
-  q?: string | null,
-  limit = 200
+  opts: { q?: string | null; from?: string | null; to?: string | null; limit?: number } = {}
 ): Promise<DocumentSummary[]> {
+  const { q, from, to } = opts;
+  const limit = opts.limit ?? 200;
   const term = (q ?? "").trim();
   const contains = { contains: term, mode: "insensitive" as const };
 
+  const dateFilter: { gte?: Date; lte?: Date } = {};
+  if (from) dateFilter.gte = new Date(`${from}T00:00:00`);
+  if (to) dateFilter.lte = new Date(`${to}T23:59:59.999`);
+  const base = {
+    companyId,
+    journalType,
+    ...(from || to ? { postingDate: dateFilter } : {}),
+  };
+
   const where = term
     ? {
-        companyId,
-        journalType,
+        ...base,
         OR: [
           { documentNo: contains },
           { description: contains },
@@ -30,7 +39,7 @@ export async function searchLedgerDocuments(
           { employee: { is: { OR: [{ firstName: contains }, { lastName: contains }] } } },
         ],
       }
-    : { companyId, journalType };
+    : base;
 
   const hits = await prisma.ledgerEntry.findMany({
     where,

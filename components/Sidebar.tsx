@@ -50,7 +50,10 @@ import { usePageStack } from "@/components/PageStack";
 const REVIEW_SECTION: NavSection = {
   title: "Review",
   icon: "admin",
-  links: [{ href: "/approvals", label: "Pending approvals", icon: "approvals" }],
+  links: [
+    { href: "/approvals", label: "Pending approvals", icon: "approvals" },
+    { href: "/utility/audit-trail", label: "Audit trail", icon: "audit" },
+  ],
 };
 
 const COMPANY_BACKUP_LINK = { href: "/utility/backup", label: "Backup this company", icon: "backup" } as const;
@@ -67,19 +70,25 @@ function sectionsFor(role: "ADMIN" | "USER", subtype: SubscriberSubtype | null):
   if (!cap.canPost) {
     sections = sections.filter((s) => s.title !== "Transactions");
   }
+
+  // History (posted-transaction browsers) is available to every posting
+  // subscriber (User + Manager), placed just before Setup.
+  if (cap.canPost) {
+    const withHistory: NavSection[] = [];
+    for (const s of sections) {
+      if (s.title === "Setup") withHistory.push(HISTORY_SECTION);
+      withHistory.push(s);
+    }
+    sections = withHistory;
+  }
+
   if (!cap.canApprove) return sections;
 
-  // Managers: History group before Setup, a company-backup link inside Setup,
-  // and Approvals at the end.
-  const managerSections: NavSection[] = [];
-  for (const s of sections) {
-    if (s.title === "Setup") {
-      managerSections.push(HISTORY_SECTION);
-      managerSections.push({ ...s, links: [...s.links, COMPANY_BACKUP_LINK, SUBSCRIPTION_PAYMENTS_LINK] });
-    } else {
-      managerSections.push(s);
-    }
-  }
+  // Managers additionally get a company-backup link inside Setup and the
+  // Review group (approvals + audit trail).
+  const managerSections = sections.map((s) =>
+    s.title === "Setup" ? { ...s, links: [...s.links, COMPANY_BACKUP_LINK, SUBSCRIPTION_PAYMENTS_LINK] } : s
+  );
   return [...managerSections, REVIEW_SECTION];
 }
 

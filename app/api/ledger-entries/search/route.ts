@@ -9,6 +9,8 @@ export async function GET(request: NextRequest) {
   const companyId = request.nextUrl.searchParams.get("companyId");
   const journalType = request.nextUrl.searchParams.get("journalType") as JournalType | null;
   const q = request.nextUrl.searchParams.get("q");
+  const from = request.nextUrl.searchParams.get("from");
+  const to = request.nextUrl.searchParams.get("to");
 
   if (!companyId || !journalType) {
     return NextResponse.json(
@@ -17,6 +19,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const documents = await searchLedgerDocuments(companyId, journalType, q);
+  const documents = await searchLedgerDocuments(companyId, journalType, { q, from, to });
   return NextResponse.json({ documents });
 }
