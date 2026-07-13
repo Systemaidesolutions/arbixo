@@ -4,7 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { formatPeso } from "@/lib/format";
 import { branchOptionLabel } from "@/lib/branchLabel";
 import { TransactionActions } from "@/components/TransactionActions";
+import { listAttachments } from "@/lib/transactionAttachments";
 import type { JournalType } from "@prisma/client";
+
+const fileSize = (n: number | null) =>
+  n == null ? "" : n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`;
 
 // The Check-Voucher / Purchase-Voucher print format only applies to money-out
 // documents, so the detail view offers "Print voucher" for just these two.
@@ -49,6 +53,7 @@ export default async function TransactionViewPage({ params }: { params: { journa
 
   const capability = await getCurrentCapability();
   const cancellationReason = entries.find((e) => e.cancellationReason)?.cancellationReason ?? "";
+  const attachments = (await listAttachments(company.id, journalType, [documentNo]))[documentNo] ?? [];
 
   const totalNet = entries.reduce((s, e) => s + Number(e.netAmount ?? 0), 0);
   const totalVat = entries.reduce((s, e) => s + Number(e.vatAmount ?? 0), 0);
@@ -150,6 +155,30 @@ export default async function TransactionViewPage({ params }: { params: { journa
             </tr>
           </tfoot>
         </table>
+      </div>
+
+      {/* Attachments */}
+      <div className="mt-6">
+        <h2 className="text-sm font-medium text-neutral-900">Attachments</h2>
+        {attachments.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-500">No files attached to this transaction.</p>
+        ) : (
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {attachments.map((a) => (
+              <li key={a.id}>
+                <a
+                  href={`/api/transactions/attachments/${a.id}`}
+                  download
+                  className="flex items-center gap-2 rounded border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs text-brand-blue hover:bg-blue-50"
+                >
+                  <span aria-hidden>📎</span>
+                  <span className="max-w-[220px] truncate">{a.fileName}</span>
+                  {a.sizeBytes != null && <span className="text-neutral-400">{fileSize(a.sizeBytes)}</span>}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </main>
   );
