@@ -17,6 +17,8 @@ type RequestBody = {
   counterpartyId?: string | null;
   cashAccountId: string;
   particulars?: string | null;
+  paymentTerms?: string | null;
+  dueDate?: string | null;
   lines: ExpandInputLine[];
   attachments?: AttachmentInput[];
 };
@@ -50,6 +52,8 @@ export async function POST(request: NextRequest) {
         counterpartyId: body.counterpartyId ?? null,
         balancingAccountId: cashAccountId,
         particulars: body.particulars ?? null,
+        paymentTerms: body.paymentTerms ?? null,
+        dueDate: body.dueDate ?? null,
         lines,
       },
       auth.user.id,

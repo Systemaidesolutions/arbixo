@@ -41,6 +41,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       tradeName: body.tradeName ?? undefined,
       vendorType: (body.vendorType as VendorType) ?? undefined,
       registrationType: (body.registrationType as RegistrationType) ?? undefined,
+      paymentTerms: body.paymentTerms === undefined ? undefined : body.paymentTerms,
       authorizedRep: body.authorizedRep ?? undefined,
       address: body.address ?? undefined,
       barangay: body.barangay ?? undefined,

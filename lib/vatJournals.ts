@@ -68,6 +68,7 @@ export type VatJournalDoc = {
   balancingAccountId: string;
   particulars?: string | null;
   paymentTerms?: string | null;
+  dueDate?: string | null;
   isReturn?: boolean;
   lines: ExpandInputLine[];
 };
@@ -100,6 +101,7 @@ export async function postVatJournal(
     description: particulars,
     referenceNo: docRef,
     paymentTerms: doc.paymentTerms ?? null,
+    dueDate: doc.dueDate ?? null,
     ...counterparty,
     ...(cfg.balancingSide === "credit" ? { creditAmount: balancingAmount } : { debitAmount: balancingAmount }),
     ...(cfg.hasCheck ? { checkNo: doc.checkNo ?? null } : {}),

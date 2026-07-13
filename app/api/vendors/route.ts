@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
       tradeName: body.tradeName,
       vendorType: vendorType as VendorType,
       registrationType: registrationType as RegistrationType,
+      paymentTerms: body.paymentTerms ?? null,
       authorizedRep: body.authorizedRep ?? null,
       address: body.address ?? null,
       barangay: body.barangay ?? null,

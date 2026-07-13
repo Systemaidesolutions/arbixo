@@ -19,6 +19,7 @@ type RequestBody = {
   receivableAccountId: string;
   particulars?: string | null;
   paymentTerms?: string | null;
+  dueDate?: string | null;
   lines: ExpandInputLine[];
   attachments?: AttachmentInput[];
 };
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
         balancingAccountId: receivableAccountId,
         particulars: body.particulars ?? null,
         paymentTerms: body.paymentTerms ?? null,
+        dueDate: body.dueDate ?? null,
         isReturn: body.isReturn ?? false,
         lines,
       },

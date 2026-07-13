@@ -22,6 +22,7 @@ export type LedgerLineInput = {
   withholdingAmt?: number | null;
   checkNo?: string | null;
   paymentTerms?: string | null;
+  dueDate?: string | Date | null;
 };
 
 export type PostDocumentInput = {
@@ -134,6 +135,7 @@ export async function postDocument(input: PostDocumentInput) {
           withholdingAmt: line.withholdingAmt ?? null,
           checkNo: line.checkNo ?? null,
           paymentTerms: line.paymentTerms ?? null,
+          dueDate: line.dueDate ? new Date(line.dueDate) : null,
         },
       })
     )

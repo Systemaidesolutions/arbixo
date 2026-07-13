@@ -8,6 +8,7 @@ import { computeVat, computeWithholding } from "@/lib/vat";
 import type { Account, AtcCode, Location, TaxSource, Vendor, VatType } from "@prisma/client";
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
 import { TransactionSearch } from "@/components/TransactionSearch";
+import { computeDueDate } from "@/lib/paymentTerms";
 
 type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; taxSource: TaxSource; referenceNo: string };
 type Attachment = { fileName: string; contentType: string; sizeBytes: number; data: string };
@@ -31,6 +32,8 @@ export function PurchasesForm({ companyId, companyPayor, accounts, payableAccoun
   const [vendorId, setVendorId] = useState<string | null>(null);
   const [payableAccountId, setPayableAccountId] = useState(payableAccounts[0]?.id ?? "");
   const [particulars, setParticulars] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState("");
+  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
   const [lines, setLines] = useState<LineState[]>([newLine()]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
@@ -40,6 +43,14 @@ export function PurchasesForm({ companyId, companyPayor, accounts, payableAccoun
   const [vendorList, setVendorList] = useState(vendors);
 
   const atcById = useMemo(() => new Map(atcCodes.map((a) => [a.id, a])), [atcCodes]);
+  const onDateChange = (v: string) => { setPostingDate(v); setDueDate(computeDueDate(v, paymentTerms)); };
+  const onTermsChange = (v: string) => { setPaymentTerms(v); setDueDate(computeDueDate(postingDate, v)); };
+  const onVendorChange = (id: string | null) => {
+    setVendorId(id);
+    const terms = vendorList.find((x) => x.id === id)?.paymentTerms ?? "";
+    setPaymentTerms(terms);
+    setDueDate(computeDueDate(postingDate, terms));
+  };
   const updateLine = (key: string, patch: Partial<LineState>) => setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   const addLine = () => setLines((prev) => [...prev, newLine()]);
   const removeLine = (key: string) => setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.key !== key) : prev));
@@ -98,7 +109,7 @@ export function PurchasesForm({ companyId, companyPayor, accounts, payableAccoun
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
       companyId, locationId: locationId || null, documentNo, postingDate, isReturn,
-      counterpartyType: "VENDOR" as const, counterpartyId: vendorId, payableAccountId, particulars,
+      counterpartyType: "VENDOR" as const, counterpartyId: vendorId, payableAccountId, particulars, paymentTerms: paymentTerms || null, dueDate: dueDate || null,
       lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, taxSource: l.taxSource, referenceNo: l.referenceNo || null })),
       attachments,
     };
@@ -111,7 +122,7 @@ export function PurchasesForm({ companyId, companyPayor, accounts, payableAccoun
     const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=PURCHASE_ON_ACCOUNT`);
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
-    setVendorId(null); setParticulars(""); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setVendorId(null); setParticulars(""); setPaymentTerms(""); setDueDate(postingDate); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
   }
   function handleSubmit(e: React.FormEvent) { e.preventDefault(); post(false); }
 
@@ -133,7 +144,7 @@ export function PurchasesForm({ companyId, companyPayor, accounts, payableAccoun
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
         {/* Header */}
         <div className="grid grid-cols-1 gap-3 rounded-lg border border-neutral-200 p-4 sm:grid-cols-3">
-          <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => setPostingDate(e.target.value)} className={field} /></label>
+          <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => onDateChange(e.target.value)} className={field} /></label>
           <label className={label}>{isReturn ? "CM no." : "PV no."}<input required value={documentNo} onChange={(e) => setDocumentNo(e.target.value)} className={`${field} font-mono`} /></label>
           <label className={label}>Branch<select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={field}><option value="">—</option>{locations.map((l) => <option key={l.id} value={l.id}>{branchOptionLabel(l)}</option>)}</select></label>
 
@@ -142,9 +153,11 @@ export function PurchasesForm({ companyId, companyPayor, accounts, payableAccoun
           </label>
 
           <div className="sm:col-span-2">
-            <CounterpartyPicker counterpartyType="VENDOR" counterpartyId={vendorId} onTypeChange={() => {}} onIdChange={setVendorId} vendors={vendorList} employees={[]} contacts={[]} customers={[]} types={["VENDOR"]} label="Supplier" companyId={companyId} onCreated={(_t, record) => { setVendorList((l) => [...l, record as (typeof vendorList)[number]]); setVendorId(record.id); }} />
+            <CounterpartyPicker counterpartyType="VENDOR" counterpartyId={vendorId} onTypeChange={() => {}} onIdChange={onVendorChange} vendors={vendorList} employees={[]} contacts={[]} customers={[]} types={["VENDOR"]} label="Supplier" companyId={companyId} onCreated={(_t, record) => { setVendorList((l) => [...l, record as (typeof vendorList)[number]]); onVendorChange(record.id); }} />
           </div>
           <label className={label}>Payable account<select required value={payableAccountId} onChange={(e) => setPayableAccountId(e.target.value)} className={field}>{payableAccounts.length === 0 && <option value="">No A/P accounts yet</option>}{payableAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
+          <label className={label}>Payment terms<input value={paymentTerms} onChange={(e) => onTermsChange(e.target.value)} placeholder="e.g. Net 30, COD" className={field} /></label>
+          <label className={label}>Due date<input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} /></label>
           <label className="block text-xs text-neutral-500 sm:col-span-3">Particulars<input value={particulars} onChange={(e) => setParticulars(e.target.value)} className={field} /></label>
 
           {/* Attachments */}

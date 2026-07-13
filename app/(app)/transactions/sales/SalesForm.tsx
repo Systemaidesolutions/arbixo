@@ -8,6 +8,7 @@ import { computeVat, computeWithholding } from "@/lib/vat";
 import type { Account, AtcCode, Customer, Location, VatType } from "@prisma/client";
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
 import { TransactionSearch } from "@/components/TransactionSearch";
+import { computeDueDate } from "@/lib/paymentTerms";
 
 type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; referenceNo: string };
 type Attachment = { fileName: string; contentType: string; sizeBytes: number; data: string };
@@ -34,6 +35,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
   const [receivableAccountId, setReceivableAccountId] = useState(receivableAccounts[0]?.id ?? "");
   const [particulars, setParticulars] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
+  const [dueDate, setDueDate] = useState(todayLocal());
   const [lines, setLines] = useState<LineState[]>([newLine()]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
@@ -43,6 +45,15 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
   const [customerList, setCustomerList] = useState(customers);
 
   const atcById = useMemo(() => new Map(atcCodes.map((a) => [a.id, a])), [atcCodes]);
+  // Date/terms drive the due date (date + term days; no terms → same day).
+  const onDateChange = (v: string) => { setPostingDate(v); setDueDate(computeDueDate(v, paymentTerms)); };
+  const onTermsChange = (v: string) => { setPaymentTerms(v); setDueDate(computeDueDate(postingDate, v)); };
+  const onCustomerChange = (id: string | null) => {
+    setCustomerId(id);
+    const terms = customerList.find((x) => x.id === id)?.paymentTerms ?? "";
+    setPaymentTerms(terms);
+    setDueDate(computeDueDate(postingDate, terms));
+  };
   // Income lines should only offer revenue accounts.
   const incomeAccounts = useMemo(() => accounts.filter((a) => a.classification === "REVENUE"), [accounts]);
   const updateLine = (key: string, patch: Partial<LineState>) => setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
@@ -76,7 +87,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
       companyId, locationId: locationId || null, documentNo, postingDate, isReturn,
-      counterpartyType: "CUSTOMER" as const, counterpartyId: customerId, receivableAccountId, particulars, paymentTerms: paymentTerms || null,
+      counterpartyType: "CUSTOMER" as const, counterpartyId: customerId, receivableAccountId, particulars, paymentTerms: paymentTerms || null, dueDate: dueDate || null,
       lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, referenceNo: l.referenceNo || null })),
       attachments,
     };
@@ -88,7 +99,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
     const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=SALES_ON_ACCOUNT`);
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
-    setCustomerId(null); setParticulars(""); setPaymentTerms(""); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setCustomerId(null); setParticulars(""); setPaymentTerms(""); setDueDate(todayLocal()); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
   }
   function handleSubmit(e: React.FormEvent) { e.preventDefault(); post(); }
 
@@ -110,7 +121,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
         {/* Header */}
         <div className="grid grid-cols-1 gap-3 rounded-lg border border-neutral-200 p-4 sm:grid-cols-3">
-          <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => setPostingDate(e.target.value)} className={field} /></label>
+          <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => onDateChange(e.target.value)} className={field} /></label>
           <label className={label}>{isReturn ? "CM no." : "Invoice no."}<input required value={documentNo} onChange={(e) => setDocumentNo(e.target.value)} className={`${field} font-mono`} /></label>
           <label className={label}>Branch<select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={field}><option value="">—</option>{locations.map((l) => <option key={l.id} value={l.id}>{branchOptionLabel(l)}</option>)}</select></label>
 
@@ -119,10 +130,11 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
           </label>
 
           <div className="sm:col-span-2">
-            <CounterpartyPicker counterpartyType="CUSTOMER" counterpartyId={customerId} onTypeChange={() => {}} onIdChange={setCustomerId} vendors={[]} employees={[]} contacts={[]} customers={customerList} types={["CUSTOMER"]} label="Customer" companyId={companyId} onCreated={(_t, record) => { setCustomerList((l) => [...l, record as (typeof customerList)[number]]); setCustomerId(record.id); }} />
+            <CounterpartyPicker counterpartyType="CUSTOMER" counterpartyId={customerId} onTypeChange={() => {}} onIdChange={onCustomerChange} vendors={[]} employees={[]} contacts={[]} customers={customerList} types={["CUSTOMER"]} label="Customer" companyId={companyId} onCreated={(_t, record) => { setCustomerList((l) => [...l, record as (typeof customerList)[number]]); onCustomerChange(record.id); }} />
           </div>
           <label className={label}>Receivable account<select required value={receivableAccountId} onChange={(e) => setReceivableAccountId(e.target.value)} className={field}>{receivableAccounts.length === 0 && <option value="">No A/R accounts yet</option>}{receivableAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
-          <label className={label}>Payment terms<input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="e.g. Net 30, COD" className={field} /></label>
+          <label className={label}>Payment terms<input value={paymentTerms} onChange={(e) => onTermsChange(e.target.value)} placeholder="e.g. Net 30, COD" className={field} /></label>
+          <label className={label}>Due date<input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} /></label>
           <label className="block text-xs text-neutral-500 sm:col-span-3">Income description<input value={particulars} onChange={(e) => setParticulars(e.target.value)} className={field} /></label>
 
           {/* Attachments */}

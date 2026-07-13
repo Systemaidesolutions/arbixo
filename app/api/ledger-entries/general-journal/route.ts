@@ -38,6 +38,7 @@ type RequestBody = {
   documentNo: string; // JV no.
   postingDate: string;
   particulars?: string | null;
+  dueDate?: string | null;
   lines: InputLine[];
   attachments?: AttachmentInput[];
 };
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
       creditAmount: line.creditAmount ?? 0,
       description: line.description ?? body.particulars ?? null,
       referenceNo: line.referenceNo ?? null,
+      dueDate: body.dueDate ?? null,
       ...counterpartyFields(line.counterpartyType, line.counterpartyId),
       vatType: line.vatType ?? null,
       grossAmount: line.grossAmount ?? null,

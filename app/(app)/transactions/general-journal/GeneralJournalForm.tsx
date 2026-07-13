@@ -26,6 +26,7 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
   companyId: string; accounts: Account[]; vendors: Vendor[]; employees: Employee[]; contacts: Contact[]; customers: Customer[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
 }) {
   const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
   const [locationId, setLocationId] = useLastBranch(companyId, locations);
   const [documentNo, setDocumentNo] = useState(suggestedDocumentNo);
   const [particulars, setParticulars] = useState("");
@@ -70,7 +71,7 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
   async function post(print: boolean) {
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
-      companyId, locationId: locationId || null, documentNo, postingDate, particulars,
+      companyId, locationId: locationId || null, documentNo, postingDate, particulars, dueDate: dueDate || null,
       lines: lines.map((l) => ({
         accountId: l.accountId, debitAmount: l.debitAmount || 0, creditAmount: l.creditAmount || 0, description: l.description || null, referenceNo: l.referenceNo || null,
         counterpartyType: l.showParty ? l.counterpartyType : null, counterpartyId: l.showParty ? l.counterpartyId : null,
@@ -89,7 +90,7 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
     const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=GENERAL_JOURNAL`);
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
-    setParticulars(""); setLines([newLine(), newLine()]); setAttachments([]); setAttachError(null);
+    setParticulars(""); setDueDate(postingDate); setLines([newLine(), newLine()]); setAttachments([]); setAttachError(null);
   }
   function handleSubmit(e: React.FormEvent) { e.preventDefault(); post(false); }
 
@@ -107,9 +108,10 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
         <div className="grid grid-cols-1 gap-3 rounded-lg border border-neutral-200 p-4 sm:grid-cols-3">
-          <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => setPostingDate(e.target.value)} className={field} /></label>
+          <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => { setPostingDate(e.target.value); setDueDate(e.target.value); }} className={field} /></label>
           <label className={label}>JV no.<input required value={documentNo} onChange={(e) => setDocumentNo(e.target.value)} className={`${field} font-mono`} /></label>
           <label className={label}>Branch<select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={field}><option value="">—</option>{locations.map((l) => <option key={l.id} value={l.id}>{branchOptionLabel(l)}</option>)}</select></label>
+          <label className={label}>Due date<input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} /></label>
           <label className="block text-xs text-neutral-500 sm:col-span-3">Particulars<input value={particulars} onChange={(e) => setParticulars(e.target.value)} className={field} /></label>
 
           <div className="sm:col-span-3">

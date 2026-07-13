@@ -27,6 +27,7 @@ type PartyRecord = {
   customerType?: CustomerType;
   vendorType?: VendorType;
   registrationType?: RegistrationType;
+  paymentTerms?: string | null;
   position?: string | null;
   address?: string | null;
   barangay?: string | null;
@@ -55,6 +56,7 @@ type FormState = {
   customerType: CustomerType;
   vendorType: VendorType;
   registrationType: RegistrationType;
+  paymentTerms: string;
   position: string;
   address: string;
   barangay: string;
@@ -83,6 +85,7 @@ function emptyForm(): FormState {
     customerType: "PRIVATE",
     vendorType: "SUPPLIER",
     registrationType: "VAT",
+    paymentTerms: "",
     position: "",
     address: "",
     barangay: "",
@@ -113,6 +116,7 @@ function toForm(record: PartyRecord): FormState {
     customerType: record.customerType ?? "PRIVATE",
     vendorType: record.vendorType ?? "SUPPLIER",
     registrationType: record.registrationType ?? "VAT",
+    paymentTerms: record.paymentTerms ?? "",
     position: record.position ?? "",
     address: record.address ?? "",
     barangay: record.barangay ?? "",
@@ -217,6 +221,7 @@ export function PartyManager({
       payload.website = form.website.trim() || null;
       if (entityType === "customer") payload.customerType = form.customerType;
       if (entityType === "vendor") payload.vendorType = form.vendorType;
+      if (entityType === "customer" || entityType === "vendor") payload.paymentTerms = form.paymentTerms.trim() || null;
     }
 
     const url = form.mode === "create" ? apiBase : `${apiBase}/${form.id}`;
@@ -515,6 +520,21 @@ export function PartyManager({
                     this {PARTY_LABELS[entityType].singular.toLowerCase()}.
                   </span>
                 </label>
+
+                {(entityType === "customer" || entityType === "vendor") && (
+                  <label className={label}>
+                    Payment terms (optional)
+                    <input
+                      value={form.paymentTerms}
+                      onChange={(e) => set("paymentTerms", e.target.value)}
+                      placeholder="e.g. Net 30, COD"
+                      className={field}
+                    />
+                    <span className="mt-1 block text-xs text-neutral-400">
+                      Auto-fills on transactions; the number of days sets the due date.
+                    </span>
+                  </label>
+                )}
 
                 <label className={label}>
                   Fax (optional)
