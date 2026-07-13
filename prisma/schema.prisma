@@ -715,6 +715,7 @@ model LedgerEntry {
   referenceNo  String? // per-line reference; the balancing line carries the concatenation
   checkNo      String? // Cash Disbursement only
   isCancelled  Boolean @default(false)
+  cancellationReason String? // set on the original + its reversal when cancelled
 
   // Maker-checker review. A document posted by a subscriber "User" starts
   // unapproved (pending a Manager's review); one posted by a Manager is

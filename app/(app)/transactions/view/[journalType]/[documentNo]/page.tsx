@@ -1,9 +1,14 @@
 import { notFound } from "next/navigation";
-import { requirePostingCompany } from "@/lib/currentUser";
+import { requirePostingCompany, getCurrentCapability } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { formatPeso } from "@/lib/format";
 import { branchOptionLabel } from "@/lib/branchLabel";
+import { TransactionActions } from "@/components/TransactionActions";
 import type { JournalType } from "@prisma/client";
+
+// The Check-Voucher / Purchase-Voucher print format only applies to money-out
+// documents, so the detail view offers "Print voucher" for just these two.
+const PRINTABLE: JournalType[] = ["CASH_DISBURSEMENT", "PURCHASE_ON_ACCOUNT"];
 
 // Read-only detail view of a posted transaction — the "open the transaction"
 // target for the search results (as opposed to the printable voucher). Opens
@@ -42,6 +47,9 @@ export default async function TransactionViewPage({ params }: { params: { journa
   const checkNo = entries.find((e) => e.checkNo)?.checkNo ?? "";
   const particulars = entries.find((e) => e.description)?.description ?? "";
 
+  const capability = await getCurrentCapability();
+  const cancellationReason = entries.find((e) => e.cancellationReason)?.cancellationReason ?? "";
+
   const totalNet = entries.reduce((s, e) => s + Number(e.netAmount ?? 0), 0);
   const totalVat = entries.reduce((s, e) => s + Number(e.vatAmount ?? 0), 0);
   const totalWtax = entries.reduce((s, e) => s + Number(e.withholdingAmt ?? 0), 0);
@@ -70,14 +78,21 @@ export default async function TransactionViewPage({ params }: { params: { journa
             {first.isReturn && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">Return</span>}
           </p>
         </div>
-        <a
-          href={`/transactions/voucher/${journalType}/${encodeURIComponent(documentNo)}?_embed=1`}
-          target="_blank"
-          className="shrink-0 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
-        >
-          Print voucher
-        </a>
+        <TransactionActions
+          companyId={company.id}
+          journalType={journalType}
+          documentNo={documentNo}
+          isCancelled={first.isCancelled}
+          canCancel={Boolean(capability?.canCancel)}
+          showPrint={PRINTABLE.includes(journalType)}
+        />
       </div>
+
+      {first.isCancelled && cancellationReason && (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span className="font-medium">Cancelled.</span> {cancellationReason}
+        </div>
+      )}
 
       {/* Header info */}
       <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg border border-neutral-200 p-4 text-sm sm:grid-cols-3">
