@@ -8,7 +8,6 @@ import { computeVat, computeWithholding } from "@/lib/vat";
 import type { Account, AtcCode, Contact, CounterpartyType, Customer, Employee, Location, TaxSource, Vendor, VatType } from "@prisma/client";
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
 import { TransactionSearch } from "@/components/TransactionSearch";
-import { computeDueDate } from "@/lib/paymentTerms";
 
 type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; taxSource: TaxSource; referenceNo: string };
 type Attachment = { fileName: string; contentType: string; sizeBytes: number; data: string };
@@ -33,12 +32,11 @@ export function CashDisbursementForm({ companyId, companyPayor, accounts, cashAc
   const [counterpartyId, setCounterpartyId] = useState<string | null>(null);
   const [cashAccountId, setCashAccountId] = useState(cashAccounts[0]?.id ?? "");
   const [particulars, setParticulars] = useState("");
-  const [paymentTerms, setPaymentTerms] = useState("");
-  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
   const [lines, setLines] = useState<LineState[]>([newLine()]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [posted, setPosted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [vendorList, setVendorList] = useState(vendors);
@@ -47,26 +45,12 @@ export function CashDisbursementForm({ companyId, companyPayor, accounts, cashAc
   const [customerList, setCustomerList] = useState(customers);
 
   const atcById = useMemo(() => new Map(atcCodes.map((a) => [a.id, a])), [atcCodes]);
-  // Only customers/vendors carry payment terms; others yield "".
-  const partyTerms = (rec: unknown): string => {
-    const t = (rec as { paymentTerms?: unknown } | null)?.paymentTerms;
-    return typeof t === "string" ? t : "";
-  };
-  const applyTerms = (terms: string) => { setPaymentTerms(terms); setDueDate(computeDueDate(postingDate, terms)); };
-  const onDateChange = (v: string) => { setPostingDate(v); setDueDate(computeDueDate(v, paymentTerms)); };
-  const onCounterpartyChange = (id: string | null) => {
-    setCounterpartyId(id);
-    const lists = { CUSTOMER: customerList, VENDOR: vendorList, EMPLOYEE: employeeList, CONTACT: contactList } as Record<string, Array<{ id: string }>>;
-    const party = counterpartyType ? lists[counterpartyType]?.find((x) => x.id === id) : null;
-    applyTerms(partyTerms(party));
-  };
   function onPartyCreated(type: CounterpartyType, record: Vendor | Employee | Contact | Customer) {
     if (type === "VENDOR") setVendorList((l) => [...l, record as Vendor]);
     else if (type === "EMPLOYEE") setEmployeeList((l) => [...l, record as Employee]);
     else if (type === "CONTACT") setContactList((l) => [...l, record as Contact]);
     else setCustomerList((l) => [...l, record as Customer]);
     setCounterpartyId(record.id);
-    applyTerms(partyTerms(record));
   }
   const updateLine = (key: string, patch: Partial<LineState>) => setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   const addLine = () => setLines((prev) => [...prev, newLine()]);
@@ -132,24 +116,29 @@ export function CashDisbursementForm({ companyId, companyPayor, accounts, cashAc
     window.open("/transactions/2307/preview?_embed=1", "_blank");
   }
 
-  async function post(print: boolean) {
+  async function resetForm() {
+    const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=CASH_DISBURSEMENT`);
+    const nextData = await nextRes.json();
+    setDocumentNo(nextData.documentNo);
+    setCheckNo(""); setCounterpartyId(null); setParticulars(""); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setPosted(false); setError(null); setSuccess(null);
+  }
+
+  async function post(retain: boolean, printVoucher = false) {
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
       companyId, locationId: locationId || null, documentNo, checkNo: checkNo || null, postingDate,
-      counterpartyType, counterpartyId, cashAccountId, particulars, paymentTerms: paymentTerms || null, dueDate: dueDate || null,
+      counterpartyType, counterpartyId, cashAccountId, particulars,
       lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, taxSource: l.taxSource, referenceNo: l.referenceNo || null })),
       attachments,
     };
     const res = await fetch("/api/ledger-entries/cash-disbursement", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSaving(false);
     if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error ?? "Something went wrong posting this entry."); return; }
-    const postedDocNo = documentNo;
-    setSuccess(`Posted CV ${postedDocNo}.`);
-    if (print) window.open(`/transactions/voucher/CASH_DISBURSEMENT/${encodeURIComponent(postedDocNo)}?_embed=1`, "_blank");
-    const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=CASH_DISBURSEMENT`);
-    const nextData = await nextRes.json();
-    setDocumentNo(nextData.documentNo);
-    setCheckNo(""); setCounterpartyId(null); setParticulars(""); setPaymentTerms(""); setDueDate(postingDate); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setSuccess(`Posted CV ${documentNo}.`);
+    if (printVoucher) window.open(`/transactions/voucher/CASH_DISBURSEMENT/${encodeURIComponent(documentNo)}?_embed=1`, "_blank");
+    if (retain) { setPosted(true); return; }
+    await resetForm();
   }
   function handleSubmit(e: React.FormEvent) { e.preventDefault(); post(false); }
 
@@ -170,17 +159,15 @@ export function CashDisbursementForm({ companyId, companyPayor, accounts, cashAc
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
         <div className="grid grid-cols-1 gap-3 rounded-lg border border-neutral-200 p-4 sm:grid-cols-4">
-          <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => onDateChange(e.target.value)} className={field} /></label>
+          <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => setPostingDate(e.target.value)} className={field} /></label>
           <label className={label}>CV no.<input required value={documentNo} onChange={(e) => setDocumentNo(e.target.value)} className={`${field} font-mono`} /></label>
           <label className={label}>Check no. (optional)<input value={checkNo} onChange={(e) => setCheckNo(e.target.value)} className={field} /></label>
           <label className={label}>Branch<select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={field}><option value="">—</option>{locations.map((l) => <option key={l.id} value={l.id}>{branchOptionLabel(l)}</option>)}</select></label>
 
           <div className="sm:col-span-4">
-            <CounterpartyPicker counterpartyType={counterpartyType} counterpartyId={counterpartyId} onTypeChange={setCounterpartyType} onIdChange={onCounterpartyChange} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} label="Payee" companyId={companyId} onCreated={onPartyCreated} />
+            <CounterpartyPicker counterpartyType={counterpartyType} counterpartyId={counterpartyId} onTypeChange={setCounterpartyType} onIdChange={setCounterpartyId} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} label="Payee" companyId={companyId} onCreated={onPartyCreated} />
           </div>
           <label className={label}>Cash account<select required value={cashAccountId} onChange={(e) => setCashAccountId(e.target.value)} className={field}>{cashAccounts.length === 0 && <option value="">No Cash accounts yet</option>}{cashAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
-          <label className={label}>Payment terms<input value={paymentTerms} onChange={(e) => applyTerms(e.target.value)} placeholder="e.g. Net 30, COD" className={field} /></label>
-          <label className={label}>Due date<input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} /></label>
           <label className="block text-xs text-neutral-500 sm:col-span-4">Particulars<input value={particulars} onChange={(e) => setParticulars(e.target.value)} className={field} /></label>
 
           <div className="sm:col-span-4">
@@ -247,9 +234,11 @@ export function CashDisbursementForm({ companyId, companyPayor, accounts, cashAc
         {success && <p className="text-sm text-green-600">{success}</p>}
 
         <div className="flex gap-2">
-          <button type="submit" disabled={saving} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save & new"}</button>
-          <button type="button" onClick={() => post(true)} disabled={saving} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save &amp; Print</button>
+          <button type="submit" disabled={saving || posted} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save & new"}</button>
+          <button type="button" onClick={() => post(true)} disabled={saving || posted} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save</button>
+          <button type="button" onClick={() => post(false, true)} disabled={saving || posted} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save &amp; Print</button>
           <button type="button" onClick={print2307} disabled={saving} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Print 2307</button>
+          {posted && <button type="button" onClick={resetForm} className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">New</button>}
         </div>
       </form>
     </main>

@@ -26,7 +26,6 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
   companyId: string; accounts: Account[]; vendors: Vendor[]; employees: Employee[]; contacts: Contact[]; customers: Customer[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
 }) {
   const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
-  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
   const [locationId, setLocationId] = useLastBranch(companyId, locations);
   const [documentNo, setDocumentNo] = useState(suggestedDocumentNo);
   const [particulars, setParticulars] = useState("");
@@ -34,6 +33,7 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [posted, setPosted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [vendorList, setVendorList] = useState(vendors);
@@ -68,10 +68,18 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
     }
   }
 
-  async function post(print: boolean) {
+  async function resetForm() {
+    const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=GENERAL_JOURNAL`);
+    const nextData = await nextRes.json();
+    setDocumentNo(nextData.documentNo);
+    setParticulars(""); setLines([newLine(), newLine()]); setAttachments([]); setAttachError(null);
+    setPosted(false); setError(null); setSuccess(null);
+  }
+
+  async function post(retain: boolean, printVoucher = false) {
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
-      companyId, locationId: locationId || null, documentNo, postingDate, particulars, dueDate: dueDate || null,
+      companyId, locationId: locationId || null, documentNo, postingDate, particulars,
       lines: lines.map((l) => ({
         accountId: l.accountId, debitAmount: l.debitAmount || 0, creditAmount: l.creditAmount || 0, description: l.description || null, referenceNo: l.referenceNo || null,
         counterpartyType: l.showParty ? l.counterpartyType : null, counterpartyId: l.showParty ? l.counterpartyId : null,
@@ -84,13 +92,10 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
     const res = await fetch("/api/ledger-entries/general-journal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSaving(false);
     if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error ?? "Something went wrong posting this entry."); return; }
-    const postedDocNo = documentNo;
-    setSuccess(`Posted JV ${postedDocNo}.`);
-    if (print) window.open(`/transactions/voucher/GENERAL_JOURNAL/${encodeURIComponent(postedDocNo)}?_embed=1`, "_blank");
-    const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=GENERAL_JOURNAL`);
-    const nextData = await nextRes.json();
-    setDocumentNo(nextData.documentNo);
-    setParticulars(""); setDueDate(postingDate); setLines([newLine(), newLine()]); setAttachments([]); setAttachError(null);
+    setSuccess(`Posted JV ${documentNo}.`);
+    if (printVoucher) window.open(`/transactions/voucher/GENERAL_JOURNAL/${encodeURIComponent(documentNo)}?_embed=1`, "_blank");
+    if (retain) { setPosted(true); return; }
+    await resetForm();
   }
   function handleSubmit(e: React.FormEvent) { e.preventDefault(); post(false); }
 
@@ -108,10 +113,9 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
         <div className="grid grid-cols-1 gap-3 rounded-lg border border-neutral-200 p-4 sm:grid-cols-3">
-          <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => { setPostingDate(e.target.value); setDueDate(e.target.value); }} className={field} /></label>
+          <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => setPostingDate(e.target.value)} className={field} /></label>
           <label className={label}>JV no.<input required value={documentNo} onChange={(e) => setDocumentNo(e.target.value)} className={`${field} font-mono`} /></label>
           <label className={label}>Branch<select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={field}><option value="">—</option>{locations.map((l) => <option key={l.id} value={l.id}>{branchOptionLabel(l)}</option>)}</select></label>
-          <label className={label}>Due date<input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} /></label>
           <label className="block text-xs text-neutral-500 sm:col-span-3">Particulars<input value={particulars} onChange={(e) => setParticulars(e.target.value)} className={field} /></label>
 
           <div className="sm:col-span-3">
@@ -208,8 +212,10 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
         {success && <p className="text-sm text-green-600">{success}</p>}
 
         <div className="flex gap-2">
-          <button type="submit" disabled={saving || totals.diff !== 0} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save & new"}</button>
-          <button type="button" onClick={() => post(true)} disabled={saving || totals.diff !== 0} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save &amp; Print</button>
+          <button type="submit" disabled={saving || posted || totals.diff !== 0} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save & new"}</button>
+          <button type="button" onClick={() => post(true)} disabled={saving || posted || totals.diff !== 0} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save</button>
+          <button type="button" onClick={() => post(false, true)} disabled={saving || posted || totals.diff !== 0} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save &amp; Print</button>
+          {posted && <button type="button" onClick={resetForm} className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">New</button>}
         </div>
       </form>
     </main>

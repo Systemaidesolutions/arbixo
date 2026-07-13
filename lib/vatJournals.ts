@@ -84,21 +84,16 @@ export async function postVatJournal(
   const cfg = VAT_JOURNALS[key];
   const counterparty = counterpartyFields(doc.counterpartyType ?? cfg.defaultParty, doc.counterpartyId ?? null);
 
-  // Fold the distinct line reference nos into the particulars, so the posted
-  // description carries them (the balancing line also keeps them in referenceNo).
-  const docRef = [...new Set(doc.lines.map((l) => (l.referenceNo ?? "").trim()).filter(Boolean))].join(", ") || null;
-  const particulars = docRef
-    ? [doc.particulars?.trim(), `Ref: ${docRef}`].filter(Boolean).join(" — ")
-    : doc.particulars ?? null;
-
   const { glLines, balancingAmount } = await expandVatLines(
-    companyId, doc.lines, cfg.direction, counterparty, particulars, doc.documentNo
+    companyId, doc.lines, cfg.direction, counterparty, doc.particulars ?? null, doc.documentNo
   );
   if (balancingAmount <= 0) throw new ZeroBalanceError(cfg.zeroMessage);
 
+  // The balancing line carries the concatenation of the lines' reference nos.
+  const docRef = [...new Set(doc.lines.map((l) => (l.referenceNo ?? "").trim()).filter(Boolean))].join(", ") || null;
   const balLine: LedgerLineInput = {
     accountId: doc.balancingAccountId,
-    description: particulars,
+    description: doc.particulars ?? null,
     referenceNo: docRef,
     paymentTerms: doc.paymentTerms ?? null,
     dueDate: doc.dueDate ?? null,

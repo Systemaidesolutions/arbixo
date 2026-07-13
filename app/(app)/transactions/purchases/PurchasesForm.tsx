@@ -38,6 +38,7 @@ export function PurchasesForm({ companyId, companyPayor, accounts, payableAccoun
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [posted, setPosted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [vendorList, setVendorList] = useState(vendors);
@@ -105,7 +106,15 @@ export function PurchasesForm({ companyId, companyPayor, accounts, payableAccoun
     window.open("/transactions/2307/preview?_embed=1", "_blank");
   }
 
-  async function post(print: boolean) {
+  async function resetForm() {
+    const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=PURCHASE_ON_ACCOUNT`);
+    const nextData = await nextRes.json();
+    setDocumentNo(nextData.documentNo);
+    setVendorId(null); setParticulars(""); setPaymentTerms(""); setDueDate(postingDate); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setPosted(false); setError(null); setSuccess(null);
+  }
+
+  async function post(retain: boolean, printVoucher = false) {
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
       companyId, locationId: locationId || null, documentNo, postingDate, isReturn,
@@ -116,13 +125,10 @@ export function PurchasesForm({ companyId, companyPayor, accounts, payableAccoun
     const res = await fetch("/api/ledger-entries/purchases", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSaving(false);
     if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error ?? "Something went wrong posting this entry."); return; }
-    const postedDocNo = documentNo;
-    setSuccess(`Posted ${isReturn ? "CM" : "PV"} ${postedDocNo}.`);
-    if (print) window.open(`/transactions/voucher/PURCHASE_ON_ACCOUNT/${encodeURIComponent(postedDocNo)}?_embed=1`, "_blank");
-    const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=PURCHASE_ON_ACCOUNT`);
-    const nextData = await nextRes.json();
-    setDocumentNo(nextData.documentNo);
-    setVendorId(null); setParticulars(""); setPaymentTerms(""); setDueDate(postingDate); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setSuccess(`Posted ${isReturn ? "CM" : "PV"} ${documentNo}.`);
+    if (printVoucher) window.open(`/transactions/voucher/PURCHASE_ON_ACCOUNT/${encodeURIComponent(documentNo)}?_embed=1`, "_blank");
+    if (retain) { setPosted(true); return; }
+    await resetForm();
   }
   function handleSubmit(e: React.FormEvent) { e.preventDefault(); post(false); }
 
@@ -238,9 +244,11 @@ export function PurchasesForm({ companyId, companyPayor, accounts, payableAccoun
         {success && <p className="text-sm text-green-600">{success}</p>}
 
         <div className="flex gap-2">
-          <button type="submit" disabled={saving} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save & new"}</button>
-          <button type="button" onClick={() => post(true)} disabled={saving} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save &amp; Print</button>
+          <button type="submit" disabled={saving || posted} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save & new"}</button>
+          <button type="button" onClick={() => post(true)} disabled={saving || posted} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save</button>
+          <button type="button" onClick={() => post(false, true)} disabled={saving || posted} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save &amp; Print</button>
           <button type="button" onClick={print2307} disabled={saving} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Print 2307</button>
+          {posted && <button type="button" onClick={resetForm} className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">New</button>}
         </div>
       </form>
     </main>

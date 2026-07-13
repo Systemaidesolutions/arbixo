@@ -40,6 +40,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [posted, setPosted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [customerList, setCustomerList] = useState(customers);
@@ -83,7 +84,17 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
     }
   }
 
-  async function post() {
+  async function resetForm() {
+    const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=SALES_ON_ACCOUNT`);
+    const nextData = await nextRes.json();
+    setDocumentNo(nextData.documentNo);
+    setCustomerId(null); setParticulars(""); setPaymentTerms(""); setDueDate(todayLocal()); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setPosted(false); setError(null); setSuccess(null);
+  }
+
+  // retain=true keeps the posted data on screen (for review/printing) and
+  // disables the save buttons; retain=false clears for a fresh entry.
+  async function post(retain: boolean) {
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
       companyId, locationId: locationId || null, documentNo, postingDate, isReturn,
@@ -94,14 +105,11 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
     const res = await fetch("/api/ledger-entries/sales", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSaving(false);
     if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error ?? "Something went wrong posting this entry."); return; }
-    const postedDocNo = documentNo;
-    setSuccess(`Posted ${isReturn ? "CM" : "Invoice"} ${postedDocNo}.`);
-    const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=SALES_ON_ACCOUNT`);
-    const nextData = await nextRes.json();
-    setDocumentNo(nextData.documentNo);
-    setCustomerId(null); setParticulars(""); setPaymentTerms(""); setDueDate(todayLocal()); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setSuccess(`Posted ${isReturn ? "CM" : "Invoice"} ${documentNo}.`);
+    if (retain) { setPosted(true); return; }
+    await resetForm();
   }
-  function handleSubmit(e: React.FormEvent) { e.preventDefault(); post(); }
+  function handleSubmit(e: React.FormEvent) { e.preventDefault(); post(false); }
 
   const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const label = "block text-xs text-neutral-500";
@@ -214,7 +222,9 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
         {success && <p className="text-sm text-green-600">{success}</p>}
 
         <div className="flex gap-2">
-          <button type="submit" disabled={saving} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save & new"}</button>
+          <button type="submit" disabled={saving || posted} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save & new"}</button>
+          <button type="button" onClick={() => post(true)} disabled={saving || posted} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save</button>
+          {posted && <button type="button" onClick={resetForm} className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">New</button>}
         </div>
       </form>
     </main>
