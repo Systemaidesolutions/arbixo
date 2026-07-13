@@ -3,30 +3,48 @@ import { requirePostingCompany } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { formatPeso } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
+import type { JournalType } from "@prisma/client";
 
-// Generic printable voucher for a posted Sales on Account document. Open with
+// Generic printable journal voucher for any posted transaction. Open with
 // ?_embed=1 so the app chrome is hidden (see AppShell). Temporary generic
-// journal-voucher format — refine per the client's letterhead later.
-export default async function SalesVoucherPage({ params }: { params: { documentNo: string } }) {
+// format — refine to the client's letterhead later.
+const META: Record<JournalType, { title: string; refLabel: string; partyLabel: string | null; hasCheck: boolean }> = {
+  CASH_RECEIPT: { title: "Cash Receipt Voucher", refLabel: "OR No.", partyLabel: "Payor", hasCheck: false },
+  CASH_DISBURSEMENT: { title: "Cash Disbursement Voucher", refLabel: "CV No.", partyLabel: "Payee", hasCheck: true },
+  SALES_ON_ACCOUNT: { title: "Sales on Account — Journal Voucher", refLabel: "Invoice No.", partyLabel: "Customer", hasCheck: false },
+  PURCHASE_ON_ACCOUNT: { title: "Purchase on Account — Journal Voucher", refLabel: "PV No.", partyLabel: "Supplier", hasCheck: false },
+  GENERAL_JOURNAL: { title: "General Journal — Journal Voucher", refLabel: "JV No.", partyLabel: null, hasCheck: false },
+};
+
+export default async function VoucherPage({ params }: { params: { journalType: string; documentNo: string } }) {
   const company = await requirePostingCompany();
   if (!company) notFound();
 
+  const journalType = params.journalType as JournalType;
+  const meta = META[journalType];
+  if (!meta) notFound();
+
   const documentNo = decodeURIComponent(params.documentNo);
   const entries = await prisma.ledgerEntry.findMany({
-    where: { companyId: company.id, journalType: "SALES_ON_ACCOUNT", documentNo },
-    include: { account: true, customer: true },
+    where: { companyId: company.id, journalType, documentNo },
+    include: { account: true, customer: true, vendor: true, employee: true, contact: true },
     orderBy: { lineNo: "asc" },
   });
   if (entries.length === 0) notFound();
 
-  const first = entries[0];
-  const cust = first.customer;
-  const customerName = cust?.registeredName || cust?.tradeName || [cust?.lastName, cust?.firstName].filter(Boolean).join(", ") || "—";
+  const first = entries.find((e) => e.customer || e.vendor || e.employee || e.contact) ?? entries[0];
+  const c = first.customer || first.vendor || first.contact;
+  const partyName =
+    c?.registeredName || c?.tradeName || (first.employee ? `${first.employee.firstName} ${first.employee.lastName}` : null) ||
+    [c?.lastName, c?.firstName].filter(Boolean).join(", ") || "—";
+  const partyTin = first.customer?.tin ?? first.vendor?.tin ?? first.contact?.tin ?? null;
+  const checkNo = entries.find((e) => e.checkNo)?.checkNo ?? null;
+
   const totalDebit = entries.reduce((s, e) => s + Number(e.debitAmount), 0);
   const totalCredit = entries.reduce((s, e) => s + Number(e.creditAmount), 0);
   const companyName = company.registeredName || company.tradeName;
   const address = [company.businessAddress, company.barangay, company.city, company.province, company.zipCode].filter(Boolean).join(", ");
-  const isCM = first.documentType === "CREDIT_MEMO";
+  const isCM = entries[0].documentType === "CREDIT_MEMO";
 
   const sig = (role: string) => (
     <div className="text-center text-[11px]">
@@ -39,7 +57,6 @@ export default async function SalesVoucherPage({ params }: { params: { documentN
       <PrintControls />
 
       <div className="border border-neutral-400 p-6">
-        {/* Company header */}
         <div className="text-center">
           <div className="text-lg font-semibold uppercase">{companyName}</div>
           {address && <div className="text-[11px] text-neutral-600">{address}</div>}
@@ -47,18 +64,17 @@ export default async function SalesVoucherPage({ params }: { params: { documentN
         </div>
 
         <div className="my-4 border-y border-neutral-400 py-1 text-center text-sm font-semibold tracking-wide">
-          {isCM ? "SALES CREDIT MEMO" : "SALES ON ACCOUNT"} — JOURNAL VOUCHER
+          {isCM ? "CREDIT MEMO — " : ""}{meta.title}
         </div>
 
-        {/* Meta */}
         <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-          <div><span className="text-neutral-500">{isCM ? "CM No." : "Invoice No."}:</span> <span className="font-mono font-medium">{documentNo}</span></div>
-          <div className="text-right"><span className="text-neutral-500">Date:</span> {new Date(first.postingDate).toLocaleDateString()}</div>
-          <div><span className="text-neutral-500">Customer:</span> {customerName}</div>
-          <div className="text-right"><span className="text-neutral-500">Customer TIN:</span> {cust?.tin ?? "—"}</div>
+          <div><span className="text-neutral-500">{meta.refLabel}:</span> <span className="font-mono font-medium">{documentNo}</span></div>
+          <div className="text-right"><span className="text-neutral-500">Date:</span> {new Date(entries[0].postingDate).toLocaleDateString()}</div>
+          {meta.partyLabel && <div><span className="text-neutral-500">{meta.partyLabel}:</span> {partyName}</div>}
+          {meta.partyLabel && <div className="text-right"><span className="text-neutral-500">TIN:</span> {partyTin ?? "—"}</div>}
+          {meta.hasCheck && checkNo && <div><span className="text-neutral-500">Check No.:</span> {checkNo}</div>}
         </div>
 
-        {/* Entries */}
         <table className="mt-4 w-full border-collapse text-xs">
           <thead>
             <tr className="border-y border-neutral-400 text-left">
@@ -90,9 +106,6 @@ export default async function SalesVoucherPage({ params }: { params: { documentN
           </tfoot>
         </table>
 
-        {first.description && <div className="mt-3 text-xs"><span className="text-neutral-500">Particulars:</span> {first.description}</div>}
-
-        {/* Signatures */}
         <div className="mt-10 grid grid-cols-3 gap-6">
           {sig("Prepared by")}
           {sig("Approved by")}

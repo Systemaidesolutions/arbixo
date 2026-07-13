@@ -5,6 +5,7 @@ import { postDocument, DuplicateDocumentError, UnbalancedEntryError, type Ledger
 import { resolvePoster } from "@/lib/currentUser";
 import { logAudit, getClientIp } from "@/lib/audit";
 import { counterpartyFields } from "@/lib/vatLineExpansion";
+import { saveAttachments, type AttachmentInput } from "@/lib/transactionAttachments";
 import { firstSpecialCharError } from "@/lib/textValidation";
 import type { CounterpartyType, VatType } from "@prisma/client";
 
@@ -37,6 +38,7 @@ type RequestBody = {
   postingDate: string;
   particulars?: string | null;
   lines: InputLine[];
+  attachments?: AttachmentInput[];
 };
 
 export async function POST(request: NextRequest) {
@@ -112,6 +114,9 @@ export async function POST(request: NextRequest) {
       createdById: auth.user.id,
       isApproved: auth.capability.canApprove,
     });
+    if (body.attachments?.length) {
+      await saveAttachments(companyId, "GENERAL_JOURNAL", documentNo, body.attachments, auth.user.id);
+    }
     await logAudit({
       companyId,
       username: auth.user.email,

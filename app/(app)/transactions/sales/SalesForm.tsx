@@ -80,7 +80,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
     if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error ?? "Something went wrong posting this entry."); return; }
     const postedDocNo = documentNo;
     setSuccess(`Posted ${isReturn ? "CM" : "Invoice"} ${postedDocNo}.`);
-    if (print) window.open(`/transactions/sales/voucher/${encodeURIComponent(postedDocNo)}?_embed=1`, "_blank");
+    if (print) window.open(`/transactions/voucher/SALES_ON_ACCOUNT/${encodeURIComponent(postedDocNo)}?_embed=1`, "_blank");
     setRefreshKey((k) => k + 1);
     const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=SALES_ON_ACCOUNT`);
     const nextData = await nextRes.json();
