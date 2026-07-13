@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { searchLedgerDocuments } from "@/lib/ledgerSearch";
+import { listAttachments } from "@/lib/transactionAttachments";
 import type { JournalType } from "@prisma/client";
 
 const TITLES: Partial<Record<JournalType, string>> = {
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
   }
 
   const documents = await searchLedgerDocuments(companyId, journalType, q, 1000);
+  const attByDoc = await listAttachments(companyId, journalType, documents.map((d) => d.documentNo));
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet(TITLES[journalType] ?? "Transactions");
@@ -42,6 +44,7 @@ export async function GET(request: NextRequest) {
     { header: "Debit", key: "debit", width: 14 },
     { header: "Credit", key: "credit", width: 14 },
     { header: "Status", key: "status", width: 12 },
+    { header: "Attachments", key: "attachments", width: 40 },
   ];
   ws.getRow(1).font = { bold: true };
 
@@ -57,6 +60,7 @@ export async function GET(request: NextRequest) {
       debit: d.totalDebit,
       credit: d.totalCredit,
       status: d.isCancelled ? "Cancelled" : "Posted",
+      attachments: (attByDoc[d.documentNo] ?? []).map((a) => a.fileName).join("; "),
     });
   }
 

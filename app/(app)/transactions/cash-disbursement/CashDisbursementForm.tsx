@@ -7,6 +7,7 @@ import { branchOptionLabel } from "@/lib/branchLabel";
 import { computeVat, computeWithholding } from "@/lib/vat";
 import type { Account, AtcCode, Contact, CounterpartyType, Customer, Employee, Location, TaxSource, Vendor, VatType } from "@prisma/client";
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
+import { TransactionSearch } from "@/components/TransactionSearch";
 
 type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; taxSource: TaxSource; referenceNo: string };
 type Attachment = { fileName: string; contentType: string; sizeBytes: number; data: string };
@@ -108,7 +109,10 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
     <main className="mx-auto max-w-7xl p-4 sm:p-8">
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-medium text-neutral-900">Cash Disbursement</h1>
-        <a href="/transactions/cash-disbursement/import" className="shrink-0 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Import from Excel</a>
+        <div className="flex shrink-0 items-center gap-2">
+          <TransactionSearch companyId={companyId} journalType="CASH_DISBURSEMENT" title="Cash Disbursement — search" />
+          <a href="/transactions/cash-disbursement/import" className="shrink-0 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Import from Excel</a>
+        </div>
       </div>
       <p className="mt-1 text-sm text-neutral-500">Every peso paid out — check disbursements, cash purchases, expense payments.</p>
 

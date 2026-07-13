@@ -35,6 +35,7 @@ export function TransactionSearch({
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Doc[]>([]);
   const [searched, setSearched] = useState("");
+  const [files, setFiles] = useState<Record<string, { id: string; fileName: string }[]>>({});
 
   async function run() {
     const term = q.trim();
@@ -46,9 +47,19 @@ export function TransactionSearch({
         `/api/ledger-entries/search?companyId=${companyId}&journalType=${journalType}&q=${encodeURIComponent(term)}`
       );
       const data = await res.json().catch(() => ({ documents: [] }));
-      setResults(data.documents ?? []);
+      const docs: Doc[] = data.documents ?? [];
+      setResults(docs);
+      if (docs.length) {
+        const docNos = docs.map((d) => d.documentNo).join(",");
+        const ar = await fetch(`/api/transactions/attachments?journalType=${journalType}&documentNos=${encodeURIComponent(docNos)}`);
+        const aj = await ar.json().catch(() => ({ attachments: {} }));
+        setFiles(aj.attachments ?? {});
+      } else {
+        setFiles({});
+      }
     } catch {
       setResults([]);
+      setFiles({});
     } finally {
       setLoading(false);
     }
@@ -138,6 +149,7 @@ export function TransactionSearch({
                       <th className="px-3 py-2 text-right">VAT</th>
                       <th className="px-3 py-2 text-right">W/tax</th>
                       <th className="px-3 py-2 text-right">Amount</th>
+                      <th className="px-3 py-2">Files</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -159,6 +171,25 @@ export function TransactionSearch({
                         <td className="px-3 py-2 text-right font-mono">{formatPeso(d.totalWithholding)}</td>
                         <td className="px-3 py-2 text-right font-mono">
                           {formatPeso(Math.max(d.totalDebit, d.totalCredit))}
+                        </td>
+                        <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                          {(files[d.documentNo] ?? []).length === 0 ? (
+                            <span className="text-neutral-300">—</span>
+                          ) : (
+                            <span className="flex flex-wrap gap-1.5">
+                              {files[d.documentNo].map((f) => (
+                                <a
+                                  key={f.id}
+                                  href={`/api/transactions/attachments/${f.id}`}
+                                  download
+                                  title={f.fileName}
+                                  className="text-brand-blue hover:underline"
+                                >
+                                  📎
+                                </a>
+                              ))}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}
