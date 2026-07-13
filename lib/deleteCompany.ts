@@ -21,7 +21,6 @@ export async function deleteCompany(companyId: string): Promise<void> {
         // Inventory module: stock movements reference items; purchase-doc lines
         // cascade with their doc.
         await tx.stockMovement.deleteMany({ where: { companyId } });
-        await tx.purchaseDoc.deleteMany({ where: { companyId } });
         await tx.item.deleteMany({ where: { companyId } });
         await tx.transactionAttachment.deleteMany({ where: { companyId } });
         await tx.taxPostingSetup.deleteMany({ where: { companyId } });

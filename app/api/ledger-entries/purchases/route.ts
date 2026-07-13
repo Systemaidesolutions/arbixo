@@ -4,6 +4,7 @@ import { resolvePoster } from "@/lib/currentUser";
 import { logAudit, getClientIp } from "@/lib/audit";
 import { MissingPostingAccountError, type ExpandInputLine } from "@/lib/vatLineExpansion";
 import { postVatJournal, ZeroBalanceError } from "@/lib/vatJournals";
+import { saveAttachments, type AttachmentInput } from "@/lib/transactionAttachments";
 import { firstSpecialCharError } from "@/lib/textValidation";
 import type { CounterpartyType } from "@prisma/client";
 
@@ -18,6 +19,7 @@ type RequestBody = {
   payableAccountId: string;
   particulars?: string | null;
   lines: ExpandInputLine[];
+  attachments?: AttachmentInput[];
 };
 
 export async function POST(request: NextRequest) {
@@ -55,6 +57,9 @@ export async function POST(request: NextRequest) {
       auth.user.id,
       auth.capability.canApprove
     );
+    if (body.attachments?.length) {
+      await saveAttachments(companyId, "PURCHASE_ON_ACCOUNT", documentNo, body.attachments, auth.user.id);
+    }
     await logAudit({
       companyId,
       username: auth.user.email,

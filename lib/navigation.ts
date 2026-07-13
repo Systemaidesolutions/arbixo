@@ -47,11 +47,10 @@ export const NAV_SECTIONS: NavSection[] = [
     title: "Transactions",
     icon: "transactions",
     links: [
-      { href: "/transactions/cash-disbursement", label: "Cash disbursement", icon: "cashOut" },
       { href: "/transactions/cash-receipts", label: "Cash receipts", icon: "cashIn" },
       { href: "/transactions/sales", label: "Sales on Account", icon: "sales" },
-      { href: "/transactions/purchases", label: "Purchase Journal", icon: "purchases" },
-      { href: "/transactions/purchase-on-account", label: "Purchase Order", icon: "purchases" },
+      { href: "/transactions/cash-disbursement", label: "Cash disbursement", icon: "cashOut" },
+      { href: "/transactions/purchases", label: "Purchase on Account", icon: "purchases" },
       { href: "/transactions/importations", label: "Importations", icon: "importations" },
       { href: "/transactions/general-journal", label: "General journal", icon: "journal" },
     ],

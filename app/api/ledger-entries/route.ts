@@ -9,6 +9,9 @@ export type DocumentSummary = {
   particulars: string | null;
   totalDebit: number;
   totalCredit: number;
+  totalNet: number;
+  totalVat: number;
+  totalWithholding: number;
   isCancelled: boolean;
   lineCount: number;
   counterpartyName: string | null;
@@ -49,6 +52,12 @@ export async function GET(request: NextRequest) {
       entry.contact?.tradeName ??
       null;
 
+    // net/VAT/withholding live only on the main account line, so summing them
+    // across a document gives the document's totals (matching the form's lines).
+    const net = Number(entry.netAmount ?? 0);
+    const vat = Number(entry.vatAmount ?? 0);
+    const wtax = Number(entry.withholdingAmt ?? 0);
+
     if (!existing) {
       byDocument.set(entry.documentNo, {
         documentNo: entry.documentNo,
@@ -57,6 +66,9 @@ export async function GET(request: NextRequest) {
         particulars: entry.description,
         totalDebit: Number(entry.debitAmount),
         totalCredit: Number(entry.creditAmount),
+        totalNet: net,
+        totalVat: vat,
+        totalWithholding: wtax,
         isCancelled: entry.isCancelled,
         lineCount: 1,
         counterpartyName,
@@ -64,6 +76,9 @@ export async function GET(request: NextRequest) {
     } else {
       existing.totalDebit += Number(entry.debitAmount);
       existing.totalCredit += Number(entry.creditAmount);
+      existing.totalNet += net;
+      existing.totalVat += vat;
+      existing.totalWithholding += wtax;
       existing.lineCount += 1;
       existing.checkNo = existing.checkNo ?? entry.checkNo;
       existing.counterpartyName = existing.counterpartyName ?? counterpartyName;

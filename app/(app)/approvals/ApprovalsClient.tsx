@@ -17,7 +17,7 @@ const JOURNAL_LABELS: Record<JournalType, string> = {
   CASH_DISBURSEMENT: "Cash Disbursement",
   CASH_RECEIPT: "Cash Receipt",
   SALES_ON_ACCOUNT: "Sales on Account",
-  PURCHASE_ON_ACCOUNT: "Purchase Journal",
+  PURCHASE_ON_ACCOUNT: "Purchase on Account",
   GENERAL_JOURNAL: "General Journal",
 };
 
