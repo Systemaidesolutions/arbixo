@@ -96,7 +96,7 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, a
   const cell = "border-b border-neutral-100 px-2 py-1";
 
   return (
-    <main className="mx-auto max-w-5xl p-4 sm:p-8">
+    <main className="mx-auto max-w-7xl p-4 sm:p-8">
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-medium text-neutral-900">Purchase on Account</h1>
         <a href="/transactions/purchases/import" className="shrink-0 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Import from Excel</a>
@@ -154,7 +154,7 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, a
             <table className="w-full min-w-[900px] text-xs">
               <thead>
                 <tr className="bg-neutral-50 text-left text-neutral-500">
-                  <th className={cell}>Purchase / expense account</th><th className={cell}>Nature</th><th className={cell}>VAT</th><th className={cell}>Amount</th><th className={cell}>Gross/Net</th><th className={cell}>ATC</th><th className={cell}>Ref No.</th>
+                  <th className={cell}>Purchase / expense account</th><th className={cell}>Ref No.</th><th className={cell}>Nature</th><th className={cell}>VAT</th><th className={cell}>Amount</th><th className={cell}>Gross/Net</th><th className={cell}>ATC</th>
                   <th className={`${cell} text-right`}>Net</th><th className={`${cell} text-right`}>VAT</th><th className={`${cell} text-right`}>W/tax</th><th className={`${cell} text-right`}><button type="button" onClick={clearLines} className="font-medium text-red-600 hover:underline">Clear</button></th>
                 </tr>
               </thead>
@@ -162,12 +162,12 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, a
                 {computed.rows.map((r) => (
                   <tr key={r.key}>
                     <td className={cell}><select required value={r.accountId} onChange={(e) => updateLine(r.key, { accountId: e.target.value })} className="w-44 rounded border border-neutral-300 px-1 py-1"><option value="">Select…</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></td>
+                    <td className={cell}><input value={r.referenceNo} onChange={(e) => updateLine(r.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><select value={r.taxSource} onChange={(e) => updateLine(r.key, { taxSource: e.target.value as TaxSource })} className="w-28 rounded border border-neutral-300 px-1 py-1">{Object.entries(NATURE_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td>
                     <td className={cell}><select value={r.vatType} onChange={(e) => updateLine(r.key, { vatType: e.target.value as VatType })} className="w-24 rounded border border-neutral-300 px-1 py-1">{Object.entries(VAT_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td>
                     <td className={cell}><input type="number" step="0.01" value={r.amount || ""} onChange={(e) => updateLine(r.key, { amount: Number(e.target.value) })} className="w-24 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><select value={r.amountIsGross ? "gross" : "net"} disabled={r.vatType !== "VAT_12"} onChange={(e) => updateLine(r.key, { amountIsGross: e.target.value === "gross" })} className="w-20 rounded border border-neutral-300 px-1 py-1 disabled:bg-neutral-100"><option value="gross">Gross</option><option value="net">Net</option></select></td>
                     <td className={cell}><select value={r.atcCodeId ?? ""} onChange={(e) => updateLine(r.key, { atcCodeId: e.target.value || null })} className="w-36 rounded border border-neutral-300 px-1 py-1"><option value="">None</option>{visibleAtc(r.taxSource, r.atcCodeId).map((a) => <option key={a.id} value={a.id}>{a.code} ({Number(a.ratePercent)}%)</option>)}</select></td>
-                    <td className={cell}><input value={r.referenceNo} onChange={(e) => updateLine(r.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.net)}</td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.vat)}</td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.withholdingAmt)}</td>

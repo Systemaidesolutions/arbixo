@@ -98,7 +98,7 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
   const cell = "border-b border-neutral-100 px-2 py-1";
 
   return (
-    <main className="mx-auto max-w-5xl p-4 sm:p-8">
+    <main className="mx-auto max-w-7xl p-4 sm:p-8">
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-medium text-neutral-900">General journal</h1>
         <a href="/transactions/general-journal/import" className="shrink-0 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Import from Excel</a>
@@ -137,7 +137,7 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
             <table className="w-full min-w-[760px] text-xs">
               <thead>
                 <tr className="bg-neutral-50 text-left text-neutral-500">
-                  <th className={cell}>Account</th><th className={`${cell} text-right`}>Debit</th><th className={`${cell} text-right`}>Credit</th><th className={cell}>Line description</th><th className={cell}>Ref No.</th><th className={cell}>Details</th>
+                  <th className={cell}>Account</th><th className={cell}>Ref No.</th><th className={`${cell} text-right`}>Debit</th><th className={`${cell} text-right`}>Credit</th><th className={cell}>Line description</th><th className={cell}>Details</th>
                   <th className={`${cell} text-right`}><button type="button" onClick={clearLines} className="font-medium text-red-600 hover:underline">Clear</button></th>
                 </tr>
               </thead>
@@ -146,10 +146,10 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
                   <Fragment key={line.key}>
                     <tr>
                       <td className={cell}><select required value={line.accountId} onChange={(e) => updateLine(line.key, { accountId: e.target.value })} className="w-48 rounded border border-neutral-300 px-1 py-1"><option value="">Select…</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></td>
+                      <td className={cell}><input value={line.referenceNo} onChange={(e) => updateLine(line.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                       <td className={cell}><input type="number" step="0.01" value={line.debitAmount || ""} onChange={(e) => updateLine(line.key, { debitAmount: Number(e.target.value), creditAmount: 0 })} className="w-24 rounded border border-neutral-300 px-1 py-1 text-right" /></td>
                       <td className={cell}><input type="number" step="0.01" value={line.creditAmount || ""} onChange={(e) => updateLine(line.key, { creditAmount: Number(e.target.value), debitAmount: 0 })} className="w-24 rounded border border-neutral-300 px-1 py-1 text-right" /></td>
                       <td className={cell}><input value={line.description} onChange={(e) => updateLine(line.key, { description: e.target.value })} className="w-40 rounded border border-neutral-300 px-1 py-1" /></td>
-                      <td className={cell}><input value={line.referenceNo} onChange={(e) => updateLine(line.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                       <td className={cell}><button type="button" onClick={() => updateLine(line.key, { expanded: !line.expanded })} className="rounded border border-neutral-300 px-2 py-0.5 text-neutral-600 hover:bg-neutral-50">{line.expanded ? "Hide" : "⋯"}{(line.showParty || line.showVatInfo) && !line.expanded ? " •" : ""}</button></td>
                       <td className={cell}>{lines.length > 2 && <button type="button" onClick={() => removeLine(line.key)} className="text-red-500 hover:text-red-700">✕</button>}</td>
                     </tr>
@@ -189,7 +189,7 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
                 ))}
               </tbody>
               <tfoot>
-                <tr className="bg-neutral-50 font-medium"><td className={cell}>Totals</td><td className={`${cell} text-right font-mono`}>{formatPeso(totals.totalDebit)}</td><td className={`${cell} text-right font-mono`}>{formatPeso(totals.totalCredit)}</td><td className={cell} colSpan={4}></td></tr>
+                <tr className="bg-neutral-50 font-medium"><td className={cell} colSpan={2}>Totals</td><td className={`${cell} text-right font-mono`}>{formatPeso(totals.totalDebit)}</td><td className={`${cell} text-right font-mono`}>{formatPeso(totals.totalCredit)}</td><td className={cell} colSpan={3}></td></tr>
               </tfoot>
             </table>
           </div>

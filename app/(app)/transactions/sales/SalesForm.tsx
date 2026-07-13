@@ -7,6 +7,7 @@ import { branchOptionLabel } from "@/lib/branchLabel";
 import { computeVat, computeWithholding } from "@/lib/vat";
 import type { Account, AtcCode, Customer, Location, VatType } from "@prisma/client";
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
+import { TransactionSearch } from "@/components/TransactionSearch";
 
 type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; referenceNo: string };
 type Attachment = { fileName: string; contentType: string; sizeBytes: number; data: string };
@@ -91,10 +92,13 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
   const cell = "border-b border-neutral-100 px-2 py-1";
 
   return (
-    <main className="mx-auto max-w-5xl p-4 sm:p-8">
+    <main className="mx-auto max-w-7xl p-4 sm:p-8">
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-medium text-neutral-900">Sales on Account</h1>
-        <a href="/transactions/sales/import" className="shrink-0 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Import from Excel</a>
+        <div className="flex shrink-0 items-center gap-2">
+          <TransactionSearch companyId={companyId} journalType="SALES_ON_ACCOUNT" title="Sales on Account — search" />
+          <a href="/transactions/sales/import" className="shrink-0 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Import from Excel</a>
+        </div>
       </div>
       <p className="mt-1 text-sm text-neutral-500">Invoices billed to a customer&apos;s account — no cash moves until they pay (recorded separately, as a Cash Receipt).</p>
 
@@ -149,7 +153,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
             <table className="w-full min-w-[820px] text-xs">
               <thead>
                 <tr className="bg-neutral-50 text-left text-neutral-500">
-                  <th className={cell}>Income account</th><th className={cell}>VAT</th><th className={cell}>Amount</th><th className={cell}>Gross/Net</th><th className={cell}>ATC (withholding)</th><th className={cell}>Ref No.</th>
+                  <th className={cell}>Income account</th><th className={cell}>Ref No.</th><th className={cell}>VAT</th><th className={cell}>Amount</th><th className={cell}>Gross/Net</th><th className={cell}>ATC (withholding)</th>
                   <th className={`${cell} text-right`}>Net</th><th className={`${cell} text-right`}>VAT</th><th className={`${cell} text-right`}>W/tax</th><th className={`${cell} text-right`}><button type="button" onClick={clearLines} className="font-medium text-red-600 hover:underline">Clear</button></th>
                 </tr>
               </thead>
@@ -157,11 +161,11 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
                 {computed.rows.map((r) => (
                   <tr key={r.key}>
                     <td className={cell}><select required value={r.accountId} onChange={(e) => updateLine(r.key, { accountId: e.target.value })} className="w-44 rounded border border-neutral-300 px-1 py-1"><option value="">Select…</option>{incomeAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></td>
+                    <td className={cell}><input value={r.referenceNo} onChange={(e) => updateLine(r.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><select value={r.vatType} onChange={(e) => updateLine(r.key, { vatType: e.target.value as VatType })} className="w-24 rounded border border-neutral-300 px-1 py-1">{Object.entries(VAT_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td>
                     <td className={cell}><input type="number" step="0.01" value={r.amount || ""} onChange={(e) => updateLine(r.key, { amount: Number(e.target.value) })} className="w-24 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><select value={r.amountIsGross ? "gross" : "net"} disabled={r.vatType !== "VAT_12"} onChange={(e) => updateLine(r.key, { amountIsGross: e.target.value === "gross" })} className="w-20 rounded border border-neutral-300 px-1 py-1 disabled:bg-neutral-100"><option value="gross">Gross</option><option value="net">Net</option></select></td>
                     <td className={cell}><select value={r.atcCodeId ?? ""} onChange={(e) => updateLine(r.key, { atcCodeId: e.target.value || null })} className="w-40 rounded border border-neutral-300 px-1 py-1"><option value="">None</option>{atcCodes.map((a) => <option key={a.id} value={a.id}>{a.code} ({Number(a.ratePercent)}%)</option>)}</select></td>
-                    <td className={cell}><input value={r.referenceNo} onChange={(e) => updateLine(r.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.net)}</td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.vat)}</td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.withholdingAmt)}</td>
@@ -193,7 +197,6 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
 
         <div className="flex gap-2">
           <button type="submit" disabled={saving} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save & new"}</button>
-          <button type="button" onClick={() => post(true)} disabled={saving} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save &amp; Print</button>
         </div>
       </form>
     </main>
