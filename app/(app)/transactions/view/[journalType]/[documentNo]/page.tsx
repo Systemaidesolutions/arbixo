@@ -187,6 +187,17 @@ export default async function TransactionViewPage({ params }: { params: { journa
           </ul>
         )}
       </div>
+
+      <TransactionActions
+        companyId={company.id}
+        journalType={journalType}
+        documentNo={documentNo}
+        isCancelled={first.isCancelled}
+        canCancel={Boolean(capability?.canCancel)}
+        showPrint={PRINTABLE.includes(journalType)}
+        show2307={PRINTABLE_2307.includes(journalType)}
+        placement="bottom"
+      />
     </main>
   );
 }

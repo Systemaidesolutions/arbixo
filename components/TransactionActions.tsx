@@ -14,6 +14,7 @@ export function TransactionActions({
   canCancel,
   showPrint,
   show2307,
+  placement = "top",
 }: {
   companyId: string;
   journalType: string;
@@ -22,6 +23,7 @@ export function TransactionActions({
   canCancel: boolean;
   showPrint: boolean;
   show2307?: boolean;
+  placement?: "top" | "bottom";
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -59,35 +61,43 @@ export function TransactionActions({
     router.refresh();
   }
 
+  // Print actions sit in the top bar; the Cancel action sits at the bottom.
+  if (placement === "top") {
+    return (
+      <div className="flex shrink-0 items-center gap-2">
+        {showPrint && (
+          <button
+            type="button"
+            onClick={printVoucher}
+            className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+          >
+            Print voucher
+          </button>
+        )}
+        {show2307 && (
+          <button
+            type="button"
+            onClick={print2307}
+            className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+          >
+            Print 2307
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (isCancelled || !canCancel) return null;
+
   return (
-    <div className="flex shrink-0 items-center gap-2">
-      {showPrint && (
-        <button
-          type="button"
-          onClick={printVoucher}
-          className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
-        >
-          Print voucher
-        </button>
-      )}
-      {show2307 && (
-        <button
-          type="button"
-          onClick={print2307}
-          className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
-        >
-          Print 2307
-        </button>
-      )}
-      {!isCancelled && canCancel && (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="rounded border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
-        >
-          Cancel transaction
-        </button>
-      )}
+    <div className="mt-8 flex justify-end border-t border-neutral-200 pt-4">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="rounded border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+      >
+        Cancel transaction
+      </button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4 sm:p-8" onClick={() => !busy && setOpen(false)}>
