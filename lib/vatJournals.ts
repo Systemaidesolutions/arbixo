@@ -86,9 +86,12 @@ export async function postVatJournal(
   );
   if (balancingAmount <= 0) throw new ZeroBalanceError(cfg.zeroMessage);
 
+  // The balancing line carries the concatenation of the lines' reference nos.
+  const docRef = [...new Set(doc.lines.map((l) => (l.referenceNo ?? "").trim()).filter(Boolean))].join(", ") || null;
   const balLine: LedgerLineInput = {
     accountId: doc.balancingAccountId,
     description: doc.particulars ?? null,
+    referenceNo: docRef,
     ...counterparty,
     ...(cfg.balancingSide === "credit" ? { creditAmount: balancingAmount } : { debitAmount: balancingAmount }),
     ...(cfg.hasCheck ? { checkNo: doc.checkNo ?? null } : {}),

@@ -7,10 +7,9 @@ import { branchOptionLabel } from "@/lib/branchLabel";
 import type { Account, AtcCode, Contact, CounterpartyType, Customer, Employee, Location, Vendor, VatType } from "@prisma/client";
 import { VatComputationFields, type VatComputationValue } from "@/components/VatComputationFields";
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
-import { TransactionSummary } from "@/components/TransactionSummary";
 
 type LineState = {
-  key: string; accountId: string; debitAmount: number; creditAmount: number; description: string; expanded: boolean;
+  key: string; accountId: string; debitAmount: number; creditAmount: number; description: string; referenceNo: string; expanded: boolean;
   showParty: boolean; counterpartyType: CounterpartyType | null; counterpartyId: string | null;
   showVatInfo: boolean; vatType: VatType; vatInputAmount: number; amountIsGross: boolean; atcCodeId: string | null; vatComputed: VatComputationValue | null;
 };
@@ -18,7 +17,7 @@ type Attachment = { fileName: string; contentType: string; sizeBytes: number; da
 
 const uid = () => crypto.randomUUID();
 function newLine(): LineState {
-  return { key: uid(), accountId: "", debitAmount: 0, creditAmount: 0, description: "", expanded: false, showParty: false, counterpartyType: null, counterpartyId: null, showVatInfo: false, vatType: "NON_VAT", vatInputAmount: 0, amountIsGross: true, atcCodeId: null, vatComputed: null };
+  return { key: uid(), accountId: "", debitAmount: 0, creditAmount: 0, description: "", referenceNo: "", expanded: false, showParty: false, counterpartyType: null, counterpartyId: null, showVatInfo: false, vatType: "NON_VAT", vatInputAmount: 0, amountIsGross: true, atcCodeId: null, vatComputed: null };
 }
 const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const MAX_FILE = 3_000_000;
@@ -36,7 +35,6 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [vendorList, setVendorList] = useState(vendors);
   const [employeeList, setEmployeeList] = useState(employees);
   const [contactList, setContactList] = useState(contacts);
@@ -74,7 +72,7 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
     const payload = {
       companyId, locationId: locationId || null, documentNo, postingDate, particulars,
       lines: lines.map((l) => ({
-        accountId: l.accountId, debitAmount: l.debitAmount || 0, creditAmount: l.creditAmount || 0, description: l.description || null,
+        accountId: l.accountId, debitAmount: l.debitAmount || 0, creditAmount: l.creditAmount || 0, description: l.description || null, referenceNo: l.referenceNo || null,
         counterpartyType: l.showParty ? l.counterpartyType : null, counterpartyId: l.showParty ? l.counterpartyId : null,
         vatType: l.showVatInfo ? l.vatType : null, grossAmount: l.showVatInfo ? l.vatComputed?.grossAmount ?? null : null,
         netAmount: l.showVatInfo ? l.vatComputed?.netAmount ?? null : null, vatAmount: l.showVatInfo ? l.vatComputed?.vatAmount ?? null : null,
@@ -88,7 +86,6 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
     const postedDocNo = documentNo;
     setSuccess(`Posted JV ${postedDocNo}.`);
     if (print) window.open(`/transactions/voucher/GENERAL_JOURNAL/${encodeURIComponent(postedDocNo)}?_embed=1`, "_blank");
-    setRefreshKey((k) => k + 1);
     const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=GENERAL_JOURNAL`);
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
@@ -140,7 +137,7 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
             <table className="w-full min-w-[760px] text-xs">
               <thead>
                 <tr className="bg-neutral-50 text-left text-neutral-500">
-                  <th className={cell}>Account</th><th className={`${cell} text-right`}>Debit</th><th className={`${cell} text-right`}>Credit</th><th className={cell}>Line description</th><th className={cell}>Details</th>
+                  <th className={cell}>Account</th><th className={`${cell} text-right`}>Debit</th><th className={`${cell} text-right`}>Credit</th><th className={cell}>Line description</th><th className={cell}>Ref No.</th><th className={cell}>Details</th>
                   <th className={`${cell} text-right`}><button type="button" onClick={clearLines} className="font-medium text-red-600 hover:underline">Clear</button></th>
                 </tr>
               </thead>
@@ -152,12 +149,13 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
                       <td className={cell}><input type="number" step="0.01" value={line.debitAmount || ""} onChange={(e) => updateLine(line.key, { debitAmount: Number(e.target.value), creditAmount: 0 })} className="w-24 rounded border border-neutral-300 px-1 py-1 text-right" /></td>
                       <td className={cell}><input type="number" step="0.01" value={line.creditAmount || ""} onChange={(e) => updateLine(line.key, { creditAmount: Number(e.target.value), debitAmount: 0 })} className="w-24 rounded border border-neutral-300 px-1 py-1 text-right" /></td>
                       <td className={cell}><input value={line.description} onChange={(e) => updateLine(line.key, { description: e.target.value })} className="w-40 rounded border border-neutral-300 px-1 py-1" /></td>
+                      <td className={cell}><input value={line.referenceNo} onChange={(e) => updateLine(line.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                       <td className={cell}><button type="button" onClick={() => updateLine(line.key, { expanded: !line.expanded })} className="rounded border border-neutral-300 px-2 py-0.5 text-neutral-600 hover:bg-neutral-50">{line.expanded ? "Hide" : "⋯"}{(line.showParty || line.showVatInfo) && !line.expanded ? " •" : ""}</button></td>
                       <td className={cell}>{lines.length > 2 && <button type="button" onClick={() => removeLine(line.key)} className="text-red-500 hover:text-red-700">✕</button>}</td>
                     </tr>
                     {line.expanded && (
                       <tr>
-                        <td className="border-b border-neutral-100 bg-neutral-50/60 px-3 py-3" colSpan={6}>
+                        <td className="border-b border-neutral-100 bg-neutral-50/60 px-3 py-3" colSpan={7}>
                           <div className="flex gap-4 text-xs">
                             <button type="button" onClick={() => updateLine(line.key, { showParty: !line.showParty })} className="text-neutral-600 hover:text-neutral-900">{line.showParty ? "− remove party" : "+ attach party"}</button>
                             <button type="button" onClick={() => updateLine(line.key, { showVatInfo: !line.showVatInfo })} className="text-neutral-600 hover:text-neutral-900">{line.showVatInfo ? "− remove VAT info" : "+ VAT info (for BIR reports)"}</button>
@@ -191,7 +189,7 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
                 ))}
               </tbody>
               <tfoot>
-                <tr className="bg-neutral-50 font-medium"><td className={cell}>Totals</td><td className={`${cell} text-right font-mono`}>{formatPeso(totals.totalDebit)}</td><td className={`${cell} text-right font-mono`}>{formatPeso(totals.totalCredit)}</td><td className={cell} colSpan={3}></td></tr>
+                <tr className="bg-neutral-50 font-medium"><td className={cell}>Totals</td><td className={`${cell} text-right font-mono`}>{formatPeso(totals.totalDebit)}</td><td className={`${cell} text-right font-mono`}>{formatPeso(totals.totalCredit)}</td><td className={cell} colSpan={4}></td></tr>
               </tfoot>
             </table>
           </div>
@@ -212,10 +210,6 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
           <button type="button" onClick={() => post(true)} disabled={saving || totals.diff !== 0} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save &amp; Print</button>
         </div>
       </form>
-
-      <div className="mt-10">
-        <TransactionSummary companyId={companyId} journalType="GENERAL_JOURNAL" documentNoLabel="JV no." counterpartyLabel="Party" refreshKey={refreshKey} />
-      </div>
     </main>
   );
 }

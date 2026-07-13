@@ -7,6 +7,7 @@ export type ExpandInputLine = {
   accountId: string;
   amount: number;
   description?: string | null;
+  referenceNo?: string | null;
   vatType?: VatType | null;
   amountIsGross?: boolean;
   atcCodeId?: string | null;
@@ -96,6 +97,7 @@ export async function expandVatLines(
     const mainLine: LedgerLineInput = {
       accountId: line.accountId,
       description: line.description ?? fallbackDescription ?? null,
+      referenceNo: line.referenceNo ?? null,
       ...counterparty,
       vatType,
       grossAmount: vatType ? vat.grossAmount : null,
@@ -119,6 +121,7 @@ export async function expandVatLines(
       glLines.push({
         accountId: vatAccountId,
         description: `${vatAccountLabel} — ${documentNoForLabel ?? ""}`,
+        referenceNo: line.referenceNo ?? null,
         [direction === "DEBIT" ? "debitAmount" : "creditAmount"]: vat.vatAmount,
       });
       totalMain += vat.vatAmount;
@@ -133,6 +136,7 @@ export async function expandVatLines(
       glLines.push({
         accountId: withholdingAccountId,
         description: `${withholdingAccountLabel} (${atc?.code}) — ${documentNoForLabel ?? ""}`,
+        referenceNo: line.referenceNo ?? null,
         // Withholding companion always sits on the OPPOSITE side from the
         // main/VAT lines — it's what makes the balancing amount smaller.
         [direction === "DEBIT" ? "creditAmount" : "debitAmount"]: withholdingAmt,

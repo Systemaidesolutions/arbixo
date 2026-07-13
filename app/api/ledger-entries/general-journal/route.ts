@@ -14,6 +14,7 @@ type InputLine = {
   debitAmount?: number;
   creditAmount?: number;
   description?: string | null;
+  referenceNo?: string | null;
   counterpartyType?: CounterpartyType | null;
   counterpartyId?: string | null;
   // Purely informational tagging for BIR reporting (Summary Lists, VAT
@@ -91,6 +92,7 @@ export async function POST(request: NextRequest) {
       debitAmount: line.debitAmount ?? 0,
       creditAmount: line.creditAmount ?? 0,
       description: line.description ?? body.particulars ?? null,
+      referenceNo: line.referenceNo ?? null,
       ...counterpartyFields(line.counterpartyType, line.counterpartyId),
       vatType: line.vatType ?? null,
       grossAmount: line.grossAmount ?? null,

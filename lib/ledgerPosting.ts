@@ -6,6 +6,7 @@ export type LedgerLineInput = {
   debitAmount?: number;
   creditAmount?: number;
   description?: string | null;
+  referenceNo?: string | null;
   counterpartyType?: CounterpartyType | null;
   customerId?: string | null;
   vendorId?: string | null;
@@ -116,6 +117,7 @@ export async function postDocument(input: PostDocumentInput) {
           debitAmount: line.debitAmount ?? 0,
           creditAmount: line.creditAmount ?? 0,
           description: line.description ?? null,
+          referenceNo: line.referenceNo ?? null,
           counterpartyType: line.counterpartyType ?? null,
           customerId: line.customerId ?? null,
           vendorId: line.vendorId ?? null,

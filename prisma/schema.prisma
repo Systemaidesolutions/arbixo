@@ -712,6 +712,7 @@ model LedgerEntry {
   creditAmount Decimal @db.Decimal(18, 2) @default(0)
 
   description  String? // Particulars / Nature
+  referenceNo  String? // per-line reference; the balancing line carries the concatenation
   checkNo      String? // Cash Disbursement only
   isCancelled  Boolean @default(false)
 
