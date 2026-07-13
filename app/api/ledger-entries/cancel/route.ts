@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     checkNo: e.checkNo,
   }));
 
-  const reversalDocumentNo = `${documentNo}-CANCEL`;
+  const reversalDocumentNo = `${documentNo}-C`;
 
   try {
     await postDocument({
