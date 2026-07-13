@@ -123,7 +123,7 @@ export async function resolvePoster(
       need === "canApprove"
         ? "Only a Manager can approve transactions."
         : need === "canCancel"
-          ? "Only a Manager can void transactions."
+          ? "Your account can't cancel transactions."
           : "Your account is read-only and can't post transactions.";
     return { ok: false, status: 403, error: reason };
   }

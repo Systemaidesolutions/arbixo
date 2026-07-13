@@ -39,7 +39,7 @@ export function capabilitiesFor(
     case "USER":
       return {
         canPost: true,
-        canCancel: false,
+        canCancel: true,
         canApprove: false,
         canGenerateReports: true,
         isReadOnly: false,
@@ -73,6 +73,6 @@ export const SUBTYPE_LABELS: Record<SubscriberSubtype, string> = {
 
 export const SUBTYPE_DESCRIPTIONS: Record<SubscriberSubtype, string> = {
   MANAGER: "Encode, post, edit/void and approve transactions; generate BIR reports.",
-  USER: "Encode and post transactions; generate BIR reports.",
+  USER: "Encode, post and cancel transactions; generate BIR reports.",
   REPORT_CREATOR: "View transactions and generate BIR reports (read-only).",
 };
