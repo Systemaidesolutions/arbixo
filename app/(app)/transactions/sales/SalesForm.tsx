@@ -43,6 +43,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
   const updateLine = (key: string, patch: Partial<LineState>) => setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   const addLine = () => setLines((prev) => [...prev, newLine()]);
   const removeLine = (key: string) => setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.key !== key) : prev));
+  const clearLines = () => { if (window.confirm("Clear all lines? This removes every line you've entered.")) setLines([newLine()]); };
 
   const computed = useMemo(() => {
     const rows = lines.map((l) => {
@@ -142,16 +143,15 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
 
         {/* Lines — list/table */}
         <div>
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2">
             <h2 className="text-sm font-medium text-neutral-900">Lines</h2>
-            <button type="button" onClick={addLine} className="text-xs text-brand-blue hover:underline">+ Add line</button>
           </div>
           <div className="overflow-x-auto rounded-lg border border-neutral-200">
             <table className="w-full min-w-[820px] text-xs">
               <thead>
                 <tr className="bg-neutral-50 text-left text-neutral-500">
                   <th className={cell}>Income account</th><th className={cell}>VAT</th><th className={cell}>Amount</th><th className={cell}>Gross/Net</th><th className={cell}>ATC (withholding)</th>
-                  <th className={`${cell} text-right`}>Net</th><th className={`${cell} text-right`}>VAT</th><th className={`${cell} text-right`}>W/tax</th><th className={cell}></th>
+                  <th className={`${cell} text-right`}>Net</th><th className={`${cell} text-right`}>VAT</th><th className={`${cell} text-right`}>W/tax</th><th className={`${cell} text-right`}><button type="button" onClick={clearLines} className="font-medium text-red-600 hover:underline">Clear</button></th>
                 </tr>
               </thead>
               <tbody>
@@ -179,6 +179,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
               </tfoot>
             </table>
           </div>
+          <button type="button" onClick={addLine} className="mt-2 text-xs text-brand-blue hover:underline">+ Add line</button>
         </div>
 
         <div className="grid grid-cols-1 gap-3 rounded-lg bg-neutral-50 p-4 text-sm sm:grid-cols-3">
