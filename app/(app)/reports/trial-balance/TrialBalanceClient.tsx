@@ -53,6 +53,14 @@ export function TrialBalanceClient({ companyId }: { companyId: string }) {
     window.open(`/api/reports/trial-balance/export?${params}`, "_blank");
   }
 
+  // Open the print-preview page (report header + company letterhead) in a new tab.
+  function printReport() {
+    const params = new URLSearchParams({ mode, _embed: "1" });
+    if (mode === "YEAR_TO_DATE") params.set("asOfDate", asOfDate);
+    else { params.set("dateFrom", dateFrom); params.set("dateTo", dateTo); }
+    window.open(`/reports/trial-balance/print?${params}`, "_blank");
+  }
+
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const isBalanced = Math.round((totals.totalDebit - totals.totalCredit) * 100) === 0;
 
@@ -69,7 +77,7 @@ export function TrialBalanceClient({ companyId }: { companyId: string }) {
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-medium text-neutral-900">Trial balance</h1>
         <div className="flex shrink-0 gap-2 print:hidden">
-          <button onClick={() => window.print()} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Print</button>
+          <button onClick={printReport} disabled={loading || rows.length === 0} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
           <button onClick={exportExcel} disabled={loading || rows.length === 0} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
         </div>
       </div>
