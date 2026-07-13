@@ -10,13 +10,27 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function TrialBalanceClient({ companyId }: { companyId: string }) {
+const DEFAULT_DESCRIPTION =
+  "Year-to-Date includes each account's opening balance plus every entry ever posted up to the date shown — this is what should tie out to the Balance Sheet. Current Net Change shows only movement within the period, with no opening balance.";
+
+// Trial-balance-style report. Reused as the output template for the Equity and
+// Cash Flow statements by passing a title and a classification filter.
+export function TrialBalanceClient({
+  companyId,
+  title = "Trial balance",
+  description = DEFAULT_DESCRIPTION,
+  classifications,
+}: {
+  companyId: string;
+  title?: string;
+  description?: string;
+  classifications?: string[];
+}) {
   const [mode, setMode] = useState<"YEAR_TO_DATE" | "NET_CHANGE">("YEAR_TO_DATE");
   const [asOfDate, setAsOfDate] = useState(todayStr());
   const [dateFrom, setDateFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(todayStr());
   const [rows, setRows] = useState<TrialBalanceRow[]>([]);
-  const [totals, setTotals] = useState({ totalDebit: 0, totalCredit: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,11 +48,10 @@ export function TrialBalanceClient({ companyId }: { companyId: string }) {
     const data = await res.json();
     setLoading(false);
     if (!res.ok) {
-      setError(data.error ?? "Failed to load trial balance.");
+      setError(data.error ?? "Failed to load report.");
       return;
     }
     setRows(data.rows);
-    setTotals({ totalDebit: data.totalDebit, totalCredit: data.totalCredit });
   }
 
   useEffect(() => {
@@ -46,27 +59,39 @@ export function TrialBalanceClient({ companyId }: { companyId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, asOfDate, dateFrom, dateTo]);
 
-  function exportExcel() {
-    const params = new URLSearchParams({ companyId, mode });
+  function reportParams() {
+    const params = new URLSearchParams({ mode });
     if (mode === "YEAR_TO_DATE") params.set("asOfDate", asOfDate);
     else { params.set("dateFrom", dateFrom); params.set("dateTo", dateTo); }
+    if (title !== "Trial balance") params.set("title", title);
+    if (classifications?.length) params.set("classifications", classifications.join(","));
+    return params;
+  }
+
+  function exportExcel() {
+    const params = reportParams();
+    params.set("companyId", companyId);
     window.open(`/api/reports/trial-balance/export?${params}`, "_blank");
   }
 
   // Open the print-preview page (report header + company letterhead) in a new tab.
   function printReport() {
-    const params = new URLSearchParams({ mode, _embed: "1" });
-    if (mode === "YEAR_TO_DATE") params.set("asOfDate", asOfDate);
-    else { params.set("dateFrom", dateFrom); params.set("dateTo", dateTo); }
+    const params = reportParams();
+    params.set("_embed", "1");
     window.open(`/reports/trial-balance/print?${params}`, "_blank");
   }
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
-  const isBalanced = Math.round((totals.totalDebit - totals.totalCredit) * 100) === 0;
+
+  // Filter to the requested classifications (whole report if none), then total.
+  const shown = classifications ? rows.filter((r) => classifications.includes(r.classification)) : rows;
+  const totalDebit = Math.round(shown.reduce((s, r) => s + r.debit, 0) * 100) / 100;
+  const totalCredit = Math.round(shown.reduce((s, r) => s + r.credit, 0) * 100) / 100;
+  const isBalanced = Math.round((totalDebit - totalCredit) * 100) === 0;
 
   // Group rows by classification, in the manual's own Chart of Accounts order.
   const byClassification = new Map<string, TrialBalanceRow[]>();
-  for (const row of rows) {
+  for (const row of shown) {
     const list = byClassification.get(row.classification) ?? [];
     list.push(row);
     byClassification.set(row.classification, list);
@@ -75,17 +100,13 @@ export function TrialBalanceClient({ companyId }: { companyId: string }) {
   return (
     <main className="mx-auto max-w-3xl p-4 sm:p-8">
       <div className="flex items-start justify-between gap-3">
-        <h1 className="text-xl font-medium text-neutral-900">Trial balance</h1>
+        <h1 className="text-xl font-medium text-neutral-900">{title}</h1>
         <div className="flex shrink-0 gap-2 print:hidden">
-          <button onClick={printReport} disabled={loading || rows.length === 0} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
-          <button onClick={exportExcel} disabled={loading || rows.length === 0} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
+          <button onClick={printReport} disabled={loading || shown.length === 0} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
+          <button onClick={exportExcel} disabled={loading || shown.length === 0} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
         </div>
       </div>
-      <p className="mt-1 text-sm text-neutral-500">
-        Year-to-Date includes each account's opening balance plus every entry ever posted up to
-        the date shown — this is what should tie out to the Balance Sheet. Current Net Change
-        shows only movement within the period, with no opening balance.
-      </p>
+      <p className="mt-1 text-sm text-neutral-500">{description}</p>
 
       <div className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">
         <label className="text-xs text-neutral-500">
@@ -153,7 +174,7 @@ export function TrialBalanceClient({ companyId }: { companyId: string }) {
                   Loading…
                 </td>
               </tr>
-            ) : rows.length === 0 ? (
+            ) : shown.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-3 py-4 text-center text-neutral-400">
                   No balances for this period
@@ -188,14 +209,14 @@ export function TrialBalanceClient({ companyId }: { companyId: string }) {
               <td colSpan={2} className="px-3 py-2">
                 Total
               </td>
-              <td className="px-3 py-2 text-right font-mono">{formatPeso(totals.totalDebit)}</td>
-              <td className="px-3 py-2 text-right font-mono">{formatPeso(totals.totalCredit)}</td>
+              <td className="px-3 py-2 text-right font-mono">{formatPeso(totalDebit)}</td>
+              <td className="px-3 py-2 text-right font-mono">{formatPeso(totalCredit)}</td>
             </tr>
           </tfoot>
         </table>
       </div>
 
-      {!loading && rows.length > 0 && (
+      {!loading && shown.length > 0 && !classifications && (
         <p className={`mt-3 text-sm ${isBalanced ? "text-green-600" : "text-red-600"}`}>
           {isBalanced
             ? "Debits equal credits — the ledger balances."

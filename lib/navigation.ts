@@ -56,14 +56,22 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    title: "Reports",
+    title: "Financial Report",
     icon: "reports",
     links: [
       { href: "/reports/trial-balance", label: "Trial balance", icon: "trialBalance" },
-      { href: "/reports/general-ledger", label: "General ledger", icon: "generalLedger" },
-      { href: "/reports/subsidiary-ledger", label: "Debtors' / creditors' ledger", icon: "subsidiary" },
-      { href: "/reports/income-statement", label: "Income statement", icon: "income" },
       { href: "/reports/balance-sheet", label: "Balance sheet", icon: "balance" },
+      { href: "/reports/income-statement", label: "Income statement", icon: "income" },
+      { href: "/reports/equity-statement", label: "Equity statement", icon: "balance" },
+      { href: "/reports/cash-flow-statement", label: "Cash flow statement", icon: "cashIn" },
+      { href: "/reports/subsidiary-ledger", label: "Debtors' / creditors' ledger", icon: "subsidiary" },
+      { href: "/reports/general-ledger", label: "General ledger", icon: "generalLedger" },
+    ],
+  },
+  {
+    title: "BIR Reports",
+    icon: "reports",
+    links: [
       { href: "/reports/bir/vat-return", label: "Monthly VAT return (BIR 2550M)", icon: "vat" },
       { href: "/reports/bir/sls", label: "Summary List of Sales (SLS)", icon: "sales" },
       { href: "/reports/bir/slp", label: "Summary List of Purchases (SLP)", icon: "purchases" },

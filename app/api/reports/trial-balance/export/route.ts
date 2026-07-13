@@ -43,6 +43,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });
   }
 
+  const reportTitle = (params.get("title") ?? "Trial Balance").toUpperCase();
+  const classifications = params.get("classifications")?.split(",").filter(Boolean) ?? null;
+  const dispRows = classifications ? result.rows.filter((r) => classifications.includes(r.classification)) : result.rows;
+  const totalDebit = Math.round(dispRows.reduce((s, r) => s + r.debit, 0) * 100) / 100;
+  const totalCredit = Math.round(dispRows.reduce((s, r) => s + r.credit, 0) * 100) / 100;
+
   const company = await prisma.company.findUnique({ where: { id: companyId } });
   const companyName = company?.registeredName || company?.tradeName || "";
   const addr = [company?.businessAddress, company?.barangay, company?.city, company?.province, company?.zipCode].filter(Boolean).join(", ");
@@ -64,7 +70,7 @@ export async function GET(request: NextRequest) {
   heading(companyName, { bold: true, size: 12 });
   if (addr) heading(addr, { size: 9, color: { argb: "FF666666" } });
   if (company?.tin) heading(`TIN: ${company.tin}`, { size: 9, color: { argb: "FF666666" } });
-  heading("TRIAL BALANCE", { bold: true, size: 14 });
+  heading(reportTitle, { bold: true, size: 14 });
   heading(coverage, { size: 9, color: { argb: "FF666666" } });
   ws.addRow([]);
 
@@ -73,7 +79,7 @@ export async function GET(request: NextRequest) {
   headerRow.eachCell((c) => (c.border = { bottom: { style: "thin" } }));
 
   let i = 0;
-  for (const row of result.rows) {
+  for (const row of dispRows) {
     const r = ws.addRow([
       row.code,
       row.title,
@@ -87,7 +93,7 @@ export async function GET(request: NextRequest) {
       }
     }
   }
-  const totalRow = ws.addRow(["", "Total", "", result.totalDebit, result.totalCredit]);
+  const totalRow = ws.addRow(["", "Total", "", totalDebit, totalCredit]);
   totalRow.font = { bold: true };
   totalRow.eachCell((c) => (c.border = { top: { style: "thin" } }));
 

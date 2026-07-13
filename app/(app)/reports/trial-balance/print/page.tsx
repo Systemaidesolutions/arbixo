@@ -13,7 +13,7 @@ import type { AccountClassification } from "@prisma/client";
 export default async function TrialBalancePrintPage({
   searchParams,
 }: {
-  searchParams: { mode?: string; asOfDate?: string; dateFrom?: string; dateTo?: string };
+  searchParams: { mode?: string; asOfDate?: string; dateFrom?: string; dateTo?: string; title?: string; classifications?: string };
 }) {
   const company = await requirePostingCompany();
   if (!company) notFound();
@@ -34,9 +34,15 @@ export default async function TrialBalancePrintPage({
     coverage = `For the period ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
   }
 
+  const reportTitle = searchParams.title ?? "Trial Balance";
+  const classifications = searchParams.classifications?.split(",").filter(Boolean) ?? null;
+  const dispRows = classifications ? result.rows.filter((r) => classifications.includes(r.classification)) : result.rows;
+  const totalDebit = Math.round(dispRows.reduce((s, r) => s + r.debit, 0) * 100) / 100;
+  const totalCredit = Math.round(dispRows.reduce((s, r) => s + r.credit, 0) * 100) / 100;
+
   // Group rows by classification, preserving the report's account order.
   const groups = new Map<string, TrialBalanceRow[]>();
-  for (const row of result.rows) {
+  for (const row of dispRows) {
     const list = groups.get(row.classification) ?? [];
     if (!groups.has(row.classification)) groups.set(row.classification, list);
     list.push(row);
@@ -62,7 +68,7 @@ export default async function TrialBalancePrintPage({
             {company.tin && <div className="text-[11px] text-neutral-600">TIN: {company.tin}</div>}
           </div>
         </div>
-        <div className="mt-4 text-center text-2xl font-bold uppercase tracking-[0.2em] text-neutral-900">Trial Balance</div>
+        <div className="mt-4 text-center text-2xl font-bold uppercase tracking-[0.2em] text-neutral-900">{reportTitle}</div>
         <div className="mt-1 text-center text-xs text-neutral-600">{coverage}</div>
       </header>
 
@@ -77,7 +83,7 @@ export default async function TrialBalancePrintPage({
           </tr>
         </thead>
         <tbody>
-          {result.rows.length === 0 ? (
+          {dispRows.length === 0 ? (
             <tr><td colSpan={4} className="py-4 text-center text-neutral-400">No balances for this period</td></tr>
           ) : (
             (() => {
@@ -105,8 +111,8 @@ export default async function TrialBalancePrintPage({
         <tfoot>
           <tr className="border-t-2 border-neutral-800 font-semibold">
             <td colSpan={2} className="py-2">Total</td>
-            <td className="py-2 text-right font-mono">{formatPeso(result.totalDebit)}</td>
-            <td className="py-2 text-right font-mono">{formatPeso(result.totalCredit)}</td>
+            <td className="py-2 text-right font-mono">{formatPeso(totalDebit)}</td>
+            <td className="py-2 text-right font-mono">{formatPeso(totalCredit)}</td>
           </tr>
         </tfoot>
       </table>
