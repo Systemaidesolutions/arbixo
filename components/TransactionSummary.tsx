@@ -27,6 +27,7 @@ export function TransactionSummary({
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
+  const [attachments, setAttachments] = useState<Record<string, { id: string; fileName: string }[]>>({});
   const [loading, setLoading] = useState(false);
 
   async function load() {
@@ -35,8 +36,15 @@ export function TransactionSummary({
       `/api/ledger-entries?companyId=${companyId}&journalType=${journalType}&month=${month}&year=${year}`
     );
     const data = await res.json();
-    setDocuments(data.documents ?? []);
+    const docs: DocumentSummary[] = data.documents ?? [];
+    setDocuments(docs);
     setLoading(false);
+    if (docs.length) {
+      const q = docs.map((d) => encodeURIComponent(d.documentNo)).join(",");
+      const ar = await fetch(`/api/transactions/attachments?journalType=${journalType}&documentNos=${q}`);
+      const aj = await ar.json().catch(() => ({}));
+      setAttachments(aj.attachments ?? {});
+    } else setAttachments({});
   }
 
   useEffect(() => {
@@ -91,19 +99,20 @@ export function TransactionSummary({
               <th className="px-3 py-2 text-left">Particulars</th>
               <th className="px-3 py-2 text-right">Debit</th>
               <th className="px-3 py-2 text-right">Credit</th>
+              <th className="px-3 py-2 text-center">Files</th>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-3 py-4 text-center text-neutral-400">
+                <td colSpan={8} className="px-3 py-4 text-center text-neutral-400">
                   Loading…
                 </td>
               </tr>
             ) : documents.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-4 text-center text-neutral-400">
+                <td colSpan={8} className="px-3 py-4 text-center text-neutral-400">
                   No entries for this month
                 </td>
               </tr>
@@ -116,6 +125,17 @@ export function TransactionSummary({
                   <td className="px-3 py-2 text-neutral-500">{doc.particulars ?? "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">{formatPeso(doc.totalDebit)}</td>
                   <td className="px-3 py-2 text-right font-mono">{formatPeso(doc.totalCredit)}</td>
+                  <td className="px-3 py-2 text-center">
+                    {(attachments[doc.documentNo] ?? []).length === 0 ? (
+                      <span className="text-neutral-300">—</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1">
+                        {attachments[doc.documentNo].map((a) => (
+                          <a key={a.id} href={`/api/transactions/attachments/${a.id}`} download title={a.fileName} className="text-brand-blue hover:underline">📎</a>
+                        ))}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-right">
                     <button
                       onClick={() => toggleCancel(doc)}

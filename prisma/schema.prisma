@@ -256,8 +256,8 @@ model Company {
   subscriptionPayments SubscriptionPayment[]
   items          Item[]
   purchaseDocs   PurchaseDoc[]
-  salesDocs      SalesDoc[]
   stockMovements StockMovement[]
+  transactionAttachments TransactionAttachment[]
 }
 
 // Importation record for the BIR Summary List of Importations (SLI). Kept as a
@@ -939,67 +939,22 @@ model StockMovement {
 }
 
 // ============================================================
-// Sales document (Sales Order) — mirror of PurchaseDoc. Sells items to a
-// customer: posts revenue (Dr A/R, Cr Sales income + Output VAT) and, for
-// INVENTORY items, cost of goods sold at the item's moving-average cost
-// (Dr COGS, Cr Inventory) plus a negative StockMovement. Reuses PurchaseDocStatus.
+// Files attached to a posted transaction, keyed by journal + document no.
+// Stored as base64 data URLs (same approach as company logos), so no external
+// object store is needed. Cap upload size in the API.
 // ============================================================
-model SalesDoc {
-  id         String            @id @default(cuid())
-  company    Company           @relation(fields: [companyId], references: [id])
-  companyId  String
-  status     PurchaseDocStatus @default(DRAFT)
+model TransactionAttachment {
+  id           String      @id @default(cuid())
+  company      Company     @relation(fields: [companyId], references: [id])
+  companyId    String
+  journalType  JournalType
+  documentNo   String
+  fileName     String
+  contentType  String?
+  sizeBytes    Int?
+  data         String      @db.Text // base64 data URL
+  uploadedById String?
+  createdAt    DateTime    @default(now())
 
-  transactionNo   String // SO-2026-000001
-  transactionDate DateTime
-  customerId      String?
-  customerTin     String?
-  locationId      String?
-  terms           String?
-  dueDate         DateTime?
-  referenceNo     String? // customer PO / reference
-  currency        String    @default("PHP")
-  remarks         String?
-
-  receivableAccountId String? // A/R account debited on post
-  vatInclusive        Boolean @default(true)
-
-  totalBeforeVat Decimal @db.Decimal(18, 2) @default(0)
-  discountAmount Decimal @db.Decimal(18, 2) @default(0)
-  otherCharges   Decimal @db.Decimal(18, 2) @default(0)
-  totalVat       Decimal @db.Decimal(18, 2) @default(0)
-  totalAmount    Decimal @db.Decimal(18, 2) @default(0)
-
-  postedAt    DateTime?
-  createdById String?
-  postedById  String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  lines SalesDocLine[]
-
-  @@unique([companyId, transactionNo])
-  @@index([companyId, status])
-}
-
-model SalesDocLine {
-  id     String   @id @default(cuid())
-  doc    SalesDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
-  docId  String
-  lineNo Int
-
-  itemId          String?
-  itemCode        String?
-  description     String
-  quantity        Decimal @db.Decimal(18, 4) @default(1)
-  uom             String?
-  unitPrice       Decimal @db.Decimal(18, 4) @default(0)
-  discountPercent Decimal @db.Decimal(9, 4) @default(0)
-  vatType         VatType @default(VAT_12)
-
-  amount    Decimal @db.Decimal(18, 2) @default(0) // net, before VAT
-  vatAmount Decimal @db.Decimal(18, 2) @default(0)
-  accountId String? // income account this line posts to
-
-  @@index([docId])
+  @@index([companyId, journalType, documentNo])
 }
