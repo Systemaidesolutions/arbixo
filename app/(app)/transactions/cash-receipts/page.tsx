@@ -32,16 +32,9 @@ export default async function CashReceiptsPage() {
       suggestNextDocumentNo(company.id, "CASH_RECEIPT"),
     ]);
 
-  const companyPayee = {
-    name: company.registeredName || company.tradeName,
-    tin: company.tin ?? "",
-    address: [company.businessAddress, company.barangay, company.city, company.province, company.zipCode].filter(Boolean).join(", "),
-  };
-
   return (
     <CashReceiptsForm
       companyId={company.id}
-      companyPayee={companyPayee}
       accounts={toPlain(accounts)}
       cashAccounts={toPlain(cashAccounts)}
       vendors={vendors}

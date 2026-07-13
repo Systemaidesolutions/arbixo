@@ -18,10 +18,8 @@ const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT
 const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const MAX_FILE = 3_000_000;
 
-type Payee = { name: string; tin: string; address: string };
-
-export function CashReceiptsForm({ companyId, companyPayee, accounts, cashAccounts, vendors, employees, contacts, customers, atcCodes, locations, suggestedDocumentNo }: {
-  companyId: string; companyPayee: Payee; accounts: Account[]; cashAccounts: Account[]; vendors: Vendor[]; employees: Employee[]; contacts: Contact[]; customers: Customer[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
+export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, employees, contacts, customers, atcCodes, locations, suggestedDocumentNo }: {
+  companyId: string; accounts: Account[]; cashAccounts: Account[]; vendors: Vendor[]; employees: Employee[]; contacts: Contact[]; customers: Customer[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
 }) {
   const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
   const [locationId, setLocationId] = useLastBranch(companyId, locations);
@@ -74,37 +72,6 @@ export function CashReceiptsForm({ companyId, companyPayee, accounts, cashAccoun
       const data = await new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result as string); r.onerror = reject; r.readAsDataURL(f); });
       setAttachments((prev) => [...prev, { fileName: f.name, contentType: f.type, sizeBytes: f.size, data }]);
     }
-  }
-
-  // Print the 2307 from the currently-entered data without posting.
-  function print2307() {
-    const map = new Map<string, { atc: string; description: string; income: number; tax: number }>();
-    for (const r of computed.rows) {
-      if (!r.atcCodeId || r.withholdingAmt <= 0) continue;
-      const atc = atcById.get(r.atcCodeId);
-      const key = atc?.code ?? "—";
-      const existing = map.get(key);
-      if (existing) { existing.income += r.net; existing.tax += r.withholdingAmt; }
-      else map.set(key, { atc: atc?.code ?? "", description: atc?.description ?? "", income: r.net, tax: r.withholdingAmt });
-    }
-    const lists: Record<string, Array<Record<string, unknown>>> = {
-      CUSTOMER: customerList as unknown as Array<Record<string, unknown>>,
-      VENDOR: vendorList as unknown as Array<Record<string, unknown>>,
-      EMPLOYEE: employeeList as unknown as Array<Record<string, unknown>>,
-      CONTACT: contactList as unknown as Array<Record<string, unknown>>,
-    };
-    const party = counterpartyType && counterpartyId ? lists[counterpartyType]?.find((x) => x.id === counterpartyId) : null;
-    const s = (v: unknown) => (typeof v === "string" ? v : "");
-    const payorObj = party
-      ? {
-          name: s(party.registeredName) || s(party.tradeName) || [s(party.lastName), s(party.firstName)].filter(Boolean).join(", "),
-          tin: s(party.tin),
-          address: s(party.address),
-        }
-      : { name: "", tin: "", address: "" };
-    const payload = { payee: companyPayee, payor: payorObj, postingDate, documentNo, rows: [...map.values()] };
-    localStorage.setItem("arbixo_2307_preview", JSON.stringify(payload));
-    window.open("/transactions/2307/preview?_embed=1", "_blank");
   }
 
   async function post() {
@@ -218,7 +185,6 @@ export function CashReceiptsForm({ companyId, companyPayee, accounts, cashAccoun
 
         <div className="flex gap-2">
           <button type="submit" disabled={saving} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save & new"}</button>
-          <button type="button" onClick={print2307} disabled={saving} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Print 2307</button>
         </div>
       </form>
     </main>

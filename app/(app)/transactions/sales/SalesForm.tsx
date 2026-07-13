@@ -23,10 +23,8 @@ const todayLocal = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-type Payee = { name: string; tin: string; address: string };
-
-export function SalesForm({ companyId, companyPayee, accounts, receivableAccounts, customers, atcCodes, locations, suggestedDocumentNo }: {
-  companyId: string; companyPayee: Payee; accounts: Account[]; receivableAccounts: Account[]; customers: Customer[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
+export function SalesForm({ companyId, accounts, receivableAccounts, customers, atcCodes, locations, suggestedDocumentNo }: {
+  companyId: string; accounts: Account[]; receivableAccounts: Account[]; customers: Customer[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
 }) {
   const [postingDate, setPostingDate] = useState(todayLocal());
   const [locationId, setLocationId] = useLastBranch(companyId, locations);
@@ -72,27 +70,6 @@ export function SalesForm({ companyId, companyPayee, accounts, receivableAccount
       const data = await new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result as string); r.onerror = reject; r.readAsDataURL(f); });
       setAttachments((prev) => [...prev, { fileName: f.name, contentType: f.type, sizeBytes: f.size, data }]);
     }
-  }
-
-  // Print the 2307 from the CURRENTLY-ENTERED data without posting. Stashes a
-  // payload in localStorage and opens the preview page, which renders + prints.
-  function print2307() {
-    const map = new Map<string, { atc: string; description: string; income: number; tax: number }>();
-    for (const r of computed.rows) {
-      if (!r.atcCodeId || r.withholdingAmt <= 0) continue;
-      const atc = atcById.get(r.atcCodeId);
-      const key = atc?.code ?? "—";
-      const existing = map.get(key);
-      if (existing) { existing.income += r.net; existing.tax += r.withholdingAmt; }
-      else map.set(key, { atc: atc?.code ?? "", description: atc?.description ?? "", income: r.net, tax: r.withholdingAmt });
-    }
-    const payor = customerList.find((c) => c.id === customerId);
-    const payorObj = payor
-      ? { name: payor.registeredName || payor.tradeName || [payor.lastName, payor.firstName].filter(Boolean).join(", "), tin: payor.tin ?? "", address: payor.address ?? "" }
-      : { name: "", tin: "", address: "" };
-    const payload = { payee: companyPayee, payor: payorObj, postingDate, documentNo, rows: [...map.values()] };
-    localStorage.setItem("arbixo_2307_preview", JSON.stringify(payload));
-    window.open("/transactions/2307/preview?_embed=1", "_blank");
   }
 
   async function post() {
@@ -226,7 +203,6 @@ export function SalesForm({ companyId, companyPayee, accounts, receivableAccount
 
         <div className="flex gap-2">
           <button type="submit" disabled={saving} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save & new"}</button>
-          <button type="button" onClick={print2307} disabled={saving} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Print 2307</button>
         </div>
       </form>
     </main>

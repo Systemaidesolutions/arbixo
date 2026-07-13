@@ -28,9 +28,17 @@ export default async function PurchasesPage() {
     suggestNextDocumentNo(company.id, "PURCHASE_ON_ACCOUNT"),
   ]);
 
+  const companyPayor = {
+    name: company.registeredName || company.tradeName,
+    tin: company.tin ?? "",
+    address: [company.businessAddress, company.barangay, company.city, company.province].filter(Boolean).join(", "),
+    zip: company.zipCode ?? "",
+  };
+
   return (
     <PurchasesForm
       companyId={company.id}
+      companyPayor={companyPayor}
       accounts={toPlain(accounts)}
       payableAccounts={toPlain(payableAccounts)}
       vendors={vendors}

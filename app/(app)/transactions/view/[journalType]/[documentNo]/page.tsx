@@ -13,8 +13,8 @@ const fileSize = (n: number | null) =>
 // The Check-Voucher / Purchase-Voucher print format only applies to money-out
 // documents, so the detail view offers "Print voucher" for just these two.
 const PRINTABLE: JournalType[] = ["CASH_DISBURSEMENT", "PURCHASE_ON_ACCOUNT"];
-// Income journals whose withholding can be certified with a BIR 2307.
-const PRINTABLE_2307: JournalType[] = ["CASH_RECEIPT", "SALES_ON_ACCOUNT"];
+// Money-out journals where the company withholds and issues a BIR 2307.
+const PRINTABLE_2307: JournalType[] = ["CASH_DISBURSEMENT", "PURCHASE_ON_ACCOUNT"];
 
 // Read-only detail view of a posted transaction — the "open the transaction"
 // target for the search results (as opposed to the printable voucher). Opens

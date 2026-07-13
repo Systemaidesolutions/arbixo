@@ -4,9 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { Form2307, type Row2307 } from "@/components/Form2307";
 import type { JournalType } from "@prisma/client";
 
-// BIR 2307 for a POSTED document. For income journals (Cash Receipt / Sales),
-// the company is the payee whose income had tax withheld, and the counterparty
-// is the payor / withholding agent (matching how SAWT reads this data).
+// BIR 2307 for a POSTED document. Used by the money-out journals (Purchase on
+// Account / Cash Disbursement): the company is the PAYOR / withholding agent,
+// and the counterparty (supplier) is the PAYEE whose income had tax withheld.
 export default async function Form2307Page({ params }: { params: { journalType: string; documentNo: string } }) {
   const company = await requirePostingCompany();
   if (!company) notFound();
@@ -20,15 +20,17 @@ export default async function Form2307Page({ params }: { params: { journalType: 
   });
   if (entries.length === 0) notFound();
 
+  // Payee = the counterparty (supplier).
   const withParty = entries.find((e) => e.customer || e.vendor || e.employee || e.contact);
-  const cp = withParty?.customer || withParty?.vendor || withParty?.contact;
-  const payorName =
+  const cp = withParty?.vendor || withParty?.customer || withParty?.contact;
+  const payeeName =
     cp?.registeredName || cp?.tradeName ||
     (withParty?.employee ? `${withParty.employee.firstName} ${withParty.employee.lastName}` : null) ||
     [cp?.lastName, cp?.firstName].filter(Boolean).join(", ") || "";
-  const payorTin = withParty?.customer?.tin ?? withParty?.vendor?.tin ?? withParty?.contact?.tin ?? "";
+  const payeeTin = withParty?.vendor?.tin ?? withParty?.customer?.tin ?? withParty?.contact?.tin ?? "";
 
-  const payeeAddr = [company.businessAddress, company.barangay, company.city, company.province, company.zipCode]
+  // Payor = the company (withholding agent).
+  const payorAddr = [company.businessAddress, company.barangay, company.city, company.province]
     .filter(Boolean)
     .join(", ");
 
@@ -50,8 +52,8 @@ export default async function Form2307Page({ params }: { params: { journalType: 
   return (
     <Form2307
       data={{
-        payee: { name: company.registeredName || company.tradeName, tin: company.tin ?? "", address: payeeAddr },
-        payor: { name: payorName, tin: payorTin, address: cp?.address ?? "" },
+        payee: { name: payeeName, tin: payeeTin, address: cp?.address ?? "", zip: "" },
+        payor: { name: company.registeredName || company.tradeName, tin: company.tin ?? "", address: payorAddr, zip: company.zipCode ?? "" },
         postingDate: new Date(entries[0].postingDate).toISOString().slice(0, 10),
         documentNo,
         rows: [...rowsByAtc.values()],
