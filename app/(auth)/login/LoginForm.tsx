@@ -16,20 +16,32 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    setLoading(false);
+    let res: Response;
+    try {
+      res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+    } catch {
+      // Network error — re-enable so the user can retry.
+      setLoading(false);
+      setError("Couldn't reach the server. Check your connection and try again.");
+      return;
+    }
 
     if (!res.ok) {
+      // Failed login — re-enable the button for another attempt.
+      setLoading(false);
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Something went wrong logging in.");
       return;
     }
 
+    // Success: keep the button disabled while we navigate to the main page.
+    // This component unmounts on navigation, so we deliberately do NOT clear
+    // `loading` here — otherwise the button re-enables during the (possibly
+    // slow) page load and the user could submit again.
     router.push(searchParams.get("next") ?? "/");
     router.refresh();
   }
