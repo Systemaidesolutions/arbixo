@@ -94,14 +94,18 @@ export function Form2307({ data, autoPrint = true }: { data: Form2307Data; autoP
 
   // Part III detail rows (income sits in the quarter's month column), padded.
   const ewtRows = [...rows];
-  while (ewtRows.length < 6) ewtRows.push({ atc: "", description: "", income: 0, tax: 0 });
+  while (ewtRows.length < 4) ewtRows.push({ atc: "", description: "", income: 0, tax: 0 });
 
   const cellTd = "border border-black px-1 py-[3px] align-top";
   const numTd = "border border-black px-1 py-[3px] text-right font-mono align-top";
 
   return (
-    <div className="mx-auto w-[8in] bg-white text-[9px] leading-tight text-black print:w-full">
-      <style>{`@media print { @page { size: 8.5in 14in; margin: 0.3in; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}</style>
+    <div className="mx-auto w-[7.9in] bg-white text-[9px] leading-tight text-black">
+      <style>{`@media print {
+        @page { size: 8.5in 14in; margin: 0.25in; }
+        html, body { height: auto !important; overflow: visible !important; }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      }`}</style>
       {autoPrint && <PrintControls auto={false} />}
 
       <div className={B}>
@@ -249,7 +253,7 @@ export function Form2307({ data, autoPrint = true }: { data: Form2307Data; autoP
             <tr className={`font-bold ${GREY}`}>
               <td colSpan={7} className="border border-black px-1 py-[3px] text-center">Money Payments Subject to Withholding of Business Tax</td>
             </tr>
-            {[0, 1, 2].map((i) => (
+            {[0, 1].map((i) => (
               <tr key={`b${i}`}>
                 <td className={cellTd}>&nbsp;</td>
                 <td className={`${cellTd} ${GREY}`} />
@@ -281,7 +285,7 @@ export function Form2307({ data, autoPrint = true }: { data: Form2307Data; autoP
         </div>
 
         {/* Payor signature */}
-        <div className="border-t border-black px-2 pb-1 pt-8 text-center">
+        <div className="border-t border-black px-2 pb-1 pt-5 text-center" style={{ breakInside: "avoid" }}>
           <div className="mx-auto max-w-[420px] border-t border-black pt-[2px] font-semibold uppercase">{payor.name}</div>
           <div className="text-[8px]">Signature over Printed Name of Payor/Payor&apos;s Authorized Representative/Tax Agent</div>
           <div className="text-[8px] italic">(Indicate Title/Designation and TIN)</div>
@@ -297,7 +301,7 @@ export function Form2307({ data, autoPrint = true }: { data: Form2307Data; autoP
 
         {/* Conforme / Payee signature */}
         <div className={`border-t border-black px-2 py-[2px] text-center font-bold ${GREY}`}>CONFORME:</div>
-        <div className="border-t border-black px-2 pb-1 pt-8 text-center">
+        <div className="border-t border-black px-2 pb-1 pt-5 text-center" style={{ breakInside: "avoid" }}>
           <div className="mx-auto max-w-[420px] border-t border-black pt-[2px] font-semibold uppercase">{payee.name}</div>
           <div className="text-[8px]">Signature over Printed Name of Payee/Payee&apos;s Authorized Representative/Tax Agent</div>
           <div className="text-[8px] italic">(Indicate Title/Designation and TIN)</div>
