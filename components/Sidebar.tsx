@@ -41,7 +41,9 @@ import {
   NAV_SECTIONS,
   ADMIN_NAV_SECTIONS,
   HISTORY_SECTION,
+  isNavGroup,
   type NavIcon,
+  type NavLink,
   type NavSection,
 } from "@/lib/navigation";
 import { capabilitiesFor } from "@/lib/permissions";
@@ -159,6 +161,35 @@ function NavList({
 }) {
   const dashActive = pathname === dashboardHref;
   const pageStack = usePageStack();
+
+  const renderLink = (link: NavLink) => {
+    const Icon = LINK_ICONS[link.icon];
+    const active = pathname === link.href;
+    const stackable = Boolean(pageStack);
+    return (
+      <li key={link.href}>
+        <a
+          href={link.href}
+          onClick={(e) => {
+            if (stackable) {
+              e.preventDefault();
+              pageStack!.open(link.href, link.label);
+            }
+            onNavigate?.();
+          }}
+          className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+            active
+              ? "bg-gradient-to-r from-brand-blue to-[#1668c9] font-medium text-white shadow-sm"
+              : "text-[#c9d6ea] hover:bg-white/5 hover:text-white"
+          }`}
+        >
+          <Icon size={17} className={`shrink-0 ${active ? "text-white" : "text-brand-blue"}`} />
+          <span className="min-w-0">{link.label}</span>
+        </a>
+      </li>
+    );
+  };
+
   return (
     <nav className="flex-1 overflow-y-auto px-3 py-4">
       {/* Prominent Dashboard button at the top of the nav pane. */}
@@ -191,36 +222,29 @@ function NavList({
 
             {isOpen && (
               <ul className="mt-1 space-y-0.5">
-                {section.links.map((link) => {
-                  const Icon = LINK_ICONS[link.icon];
-                  const active = pathname === link.href;
-                  const stackable = Boolean(pageStack);
-                  return (
-                    <li key={link.href}>
-                      <a
-                        href={link.href}
-                        onClick={(e) => {
-                          if (stackable) {
-                            e.preventDefault();
-                            pageStack!.open(link.href, link.label);
-                          }
-                          onNavigate?.();
-                        }}
-                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                          active
-                            ? "bg-gradient-to-r from-brand-blue to-[#1668c9] font-medium text-white shadow-sm"
-                            : "text-[#c9d6ea] hover:bg-white/5 hover:text-white"
-                        }`}
+                {section.links.map((item) =>
+                  isNavGroup(item) ? (
+                    <li key={item.group}>
+                      <button
+                        onClick={() => toggleSection(item.group)}
+                        className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#8ea6c8] hover:text-white"
                       >
-                        <Icon
-                          size={17}
-                          className={`shrink-0 ${active ? "text-white" : "text-brand-blue"}`}
+                        {item.group}
+                        <ChevronDown
+                          size={13}
+                          className={`transition-transform ${openSections[item.group] ? "" : "-rotate-90"}`}
                         />
-                        <span className="min-w-0">{link.label}</span>
-                      </a>
+                      </button>
+                      {openSections[item.group] && (
+                        <ul className="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
+                          {item.links.map(renderLink)}
+                        </ul>
+                      )}
                     </li>
-                  );
-                })}
+                  ) : (
+                    renderLink(item)
+                  )
+                )}
               </ul>
             )}
           </div>
@@ -261,8 +285,9 @@ export function Sidebar({
       const saved = JSON.parse(raw) as Record<string, boolean>;
       setOpenSections((prev) => {
         const next = { ...prev };
-        for (const s of sections) {
-          if (typeof saved[s.title] === "boolean") next[s.title] = saved[s.title];
+        // Restore section AND sub-group open states (keyed by title / group name).
+        for (const [k, v] of Object.entries(saved)) {
+          if (typeof v === "boolean") next[k] = v;
         }
         return next;
       });

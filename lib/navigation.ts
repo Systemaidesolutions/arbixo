@@ -34,10 +34,15 @@ export type NavIcon =
   | "contacts";
 
 export type NavLink = { href: string; label: string; icon: NavIcon };
+// A collapsible sub-group of links nested inside a section (e.g. "Relief Files"
+// under BIR Reports).
+export type NavGroup = { group: string; links: NavLink[] };
+export type NavItem = NavLink | NavGroup;
+export const isNavGroup = (i: NavItem): i is NavGroup => "group" in i;
 export type NavSection = {
   title: string;
   icon: "settings" | "transactions" | "reports" | "admin";
-  links: NavLink[];
+  links: NavItem[];
 };
 
 // Shown to subscriber (USER role) accounts — each is scoped to their
@@ -73,11 +78,17 @@ export const NAV_SECTIONS: NavSection[] = [
     icon: "reports",
     links: [
       { href: "/reports/bir/vat-return", label: "VAT Return", icon: "vat" },
-      { href: "/reports/bir/sls", label: "Summary List of Sales (SLS)", icon: "sales" },
-      { href: "/reports/bir/slp", label: "Summary List of Purchases (SLP)", icon: "purchases" },
-      { href: "/reports/bir/sli", label: "Summary List of Importations (SLI)", icon: "importations" },
-      { href: "/reports/bir/qap", label: "Quarterly Alphalist of Payees (QAP)", icon: "withholding" },
-      { href: "/reports/bir/sawt", label: "Summary Alphalist of Withholding Taxes (SAWT)", icon: "withholding" },
+      { href: "/reports/bir/expanded-withholding", label: "Expanded Withholding Tax", icon: "withholding" },
+      {
+        group: "Relief Files",
+        links: [
+          { href: "/reports/bir/sls", label: "Summary List of Sales (SLS)", icon: "sales" },
+          { href: "/reports/bir/slp", label: "Summary List of Purchases (SLP)", icon: "purchases" },
+          { href: "/reports/bir/sli", label: "Summary List of Importations (SLI)", icon: "importations" },
+          { href: "/reports/bir/qap", label: "Quarterly Alphalist of Payees (QAP)", icon: "withholding" },
+          { href: "/reports/bir/sawt", label: "Summary Alphalist of Withholding Taxes (SAWT)", icon: "withholding" },
+        ],
+      },
     ],
   },
   {
