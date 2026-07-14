@@ -62,9 +62,31 @@ export function GeneralLedgerBookClient({ registeredName }: { registeredName: st
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const bal = (n: number) => `${formatPeso(Math.abs(n))} ${n < 0 ? "Cr" : "Dr"}`;
 
+  function exportCsv() {
+    if (!data) return;
+    const esc = (v: string | number) => { const s = String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const out: (string | number)[][] = [["General Ledger", registeredName, `${from} to ${to}`], [], ["Account", "Date", "Doc No.", "Journal", "Particulars", "Debit", "Credit", "Balance"]];
+    for (const acc of data.accounts) {
+      out.push([`${acc.code} — ${acc.title}`, "", "", "", `Beginning ${bal(acc.beginningBalance)}`, "", "", ""]);
+      for (const e of acc.entries) out.push(["", e.postingDate.slice(0, 10), e.documentNo, JOURNAL_LABELS[e.journalType], e.particulars ?? e.counterparty ?? "", e.debit ? e.debit.toFixed(2) : "", e.credit ? e.credit.toFixed(2) : "", bal(e.balance)]);
+      out.push(["", "", "", "", `Ending ${bal(acc.endingBalance)}`, acc.totalDebit.toFixed(2), acc.totalCredit.toFixed(2), ""]);
+    }
+    const blob = new Blob(["﻿" + out.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `general-ledger-book_${from}_to_${to}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <main className="mx-auto max-w-6xl p-4 sm:p-8">
-      <h1 className="text-xl font-medium text-neutral-900">General Ledger</h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-xl font-medium text-neutral-900">General Ledger</h1>
+        <div className="flex shrink-0 gap-2 print:hidden">
+          <button onClick={() => window.open(`/books/general-ledger/print?from=${from}&to=${to}&_embed=1`, "_blank")} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
+          <button onClick={exportCsv} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
+        </div>
+      </div>
       <p className="mt-1 text-sm text-neutral-500">{registeredName}</p>
 
       <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">
@@ -76,7 +98,6 @@ export function GeneralLedgerBookClient({ registeredName }: { registeredName: st
           To
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={`mt-1 block ${field}`} />
         </label>
-        <button onClick={() => window.print()} className="ml-auto rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Print</button>
       </div>
 
       <p className="mt-3 text-xs text-neutral-400">Covering {from} to {to}. Balance shown debit (Dr) / credit (Cr).</p>

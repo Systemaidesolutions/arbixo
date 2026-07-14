@@ -79,7 +79,13 @@ export function JournalBookClient({
 
   return (
     <main className="mx-auto max-w-6xl p-4 sm:p-8">
-      <h1 className="text-xl font-medium text-neutral-900">{title}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-xl font-medium text-neutral-900">{title}</h1>
+        <div className="flex shrink-0 gap-2 print:hidden">
+          <button onClick={() => window.open(`/books/journal/print?book=${book}&from=${from}&to=${to}&_embed=1`, "_blank")} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
+          <button onClick={exportCsv} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
+        </div>
+      </div>
       <p className="mt-1 text-sm text-neutral-500">{registeredName}</p>
 
       <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">
@@ -91,10 +97,6 @@ export function JournalBookClient({
           To
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={`mt-1 block ${field}`} />
         </label>
-        <div className="ml-auto flex gap-2">
-          <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Export CSV</button>
-          <button onClick={() => window.print()} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Print</button>
-        </div>
       </div>
 
       <p className="mt-3 text-xs text-neutral-400">Covering {from} to {to}.</p>
