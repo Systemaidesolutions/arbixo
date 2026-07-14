@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { formatPeso } from "@/lib/format";
-import type { VatReturn } from "@/lib/bir";
+import { computeVat2550Q, emptyVat2550QManual, type VatReturn, type Vat2550QManual } from "@/lib/bir";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -31,13 +31,13 @@ export function VatReturnClient({
   registeredName: string;
 }) {
   const now = new Date();
-  const [mode, setMode] = useState<"month" | "quarter" | "year" | "custom">("month");
+  const [mode, setMode] = useState<"month" | "quarter" | "year" | "custom">("quarter");
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [quarter, setQuarter] = useState(Math.floor(now.getMonth() / 3) + 1);
   const [dateFrom, setDateFrom] = useState(`${now.getFullYear()}-01-01`);
   const [dateTo, setDateTo] = useState(now.toISOString().slice(0, 10));
-  const [inputTaxCarriedOver, setInputTaxCarriedOver] = useState(0);
+  const [manual, setManual] = useState<Vat2550QManual>(emptyVat2550QManual);
   const [data, setData] = useState<VatReturn | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -62,22 +62,37 @@ export function VatReturnClient({
   }, [companyId, range.from, range.to]);
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
-  const row = "flex justify-between px-3 py-2 text-sm";
+  const L = data ? computeVat2550Q(data, manual) : null;
 
-  const totalAllowableInputTax = data ? Math.max(0, data.totalCurrentInputTax + inputTaxCarriedOver) : 0;
-  const vatPayable = data ? round2(data.outputTax - totalAllowableInputTax) : 0;
-  const excessInputTax = vatPayable < 0 ? round2(-vatPayable) : 0;
-
-  function round2(n: number) {
-    return Math.round((n + Number.EPSILON) * 100) / 100;
-  }
-
-  const q = `carryover=${inputTaxCarriedOver || 0}&label=${encodeURIComponent(range.label)}`;
+  const q = `label=${encodeURIComponent(range.label)}&adj=${encodeURIComponent(JSON.stringify(manual))}`;
   const printHref = `/reports/bir/vat-return/print?dateFrom=${range.from}&dateTo=${range.to}&${q}&_embed=1`;
   const exportHref = `/api/reports/bir/vat-return/export?companyId=${companyId}&dateFrom=${range.from}&dateTo=${range.to}&${q}`;
 
+  const setM = (k: keyof Vat2550QManual, v: number) => setManual((m) => ({ ...m, [k]: v }));
+
+  const td = "border-b border-neutral-100 px-2 py-1.5 align-top text-sm";
+  const tdNum = `${td} text-right font-mono whitespace-nowrap`;
+  const lineNo = `${td} w-10 text-neutral-400`;
+  const inCell = "w-28 rounded border border-neutral-300 px-2 py-1 text-right font-mono text-sm";
+  const money = (v: number) => formatPeso(v);
+  const mInput = (k: keyof Vat2550QManual) => (
+    <input type="number" step="0.01" value={manual[k] || ""} onChange={(e) => setM(k, Number(e.target.value))} className={inCell} />
+  );
+
+  const sect = (t: string) => (
+    <tr><td colSpan={4} className="bg-neutral-50 px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-600">{t}</td></tr>
+  );
+  const line = (n: string, desc: string, a: ReactNode, b: ReactNode, bold = false) => (
+    <tr className={bold ? "font-semibold" : ""}>
+      <td className={lineNo}>{n}</td>
+      <td className={td}>{desc}</td>
+      <td className={tdNum}>{a}</td>
+      <td className={tdNum}>{b}</td>
+    </tr>
+  );
+
   return (
-    <main className="mx-auto max-w-2xl p-4 sm:p-8">
+    <main className="mx-auto max-w-3xl p-4 sm:p-8">
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-medium text-neutral-900">VAT Return</h1>
         <div className="flex shrink-0 gap-2 print:hidden">
@@ -86,8 +101,9 @@ export function VatReturnClient({
         </div>
       </div>
       <p className="mt-1 text-sm text-neutral-500">
-        BIR Form 2550M shape, computed from posted ledger entries. Not a substitute for the actual
-        eFPS/eBIRForms filing — verify before submitting.
+        BIR Form 2550Q, Part IV — Details of VAT Computation. Sales and purchases are computed from
+        posted ledger entries; the adjustment / other lines are manual entries. Not a substitute for
+        the actual eFPS/eBIRForms filing — verify before submitting.
       </p>
 
       <div className="mt-6 rounded-lg border border-neutral-200 p-4 text-sm text-neutral-600">
@@ -142,104 +158,71 @@ export function VatReturnClient({
       </div>
       <p className="mt-2 text-xs text-neutral-400">For {range.label}.</p>
 
-      {loading || !data ? (
+      {loading || !data || !L ? (
         <p className="mt-6 text-sm text-neutral-400">Loading…</p>
       ) : (
-        <div className="mt-6 space-y-6">
-          <section>
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
-              Sales/receipts for the month
-            </h2>
-            <div className="divide-y divide-neutral-100 rounded-lg border border-neutral-200">
-              <div className={row}>
-                <span>12A. Vatable sales/receipts — Private</span>
-                <span className="font-mono">{formatPeso(data.vatableSalesPrivate)}</span>
-              </div>
-              <div className={row}>
-                <span>13. Sales to Government</span>
-                <span className="font-mono">{formatPeso(data.salesToGovernment)}</span>
-              </div>
-              <div className={row}>
-                <span>14. Zero-rated sales/receipts</span>
-                <span className="font-mono">{formatPeso(data.zeroRatedSales)}</span>
-              </div>
-              <div className={row}>
-                <span>15. Exempt sales/receipts</span>
-                <span className="font-mono">{formatPeso(data.exemptSales)}</span>
-              </div>
-              <div className={`${row} bg-neutral-50 font-medium`}>
-                <span>16A. Total sales/receipts</span>
-                <span className="font-mono">{formatPeso(data.totalSales)}</span>
-              </div>
-              <div className={`${row} bg-neutral-50 font-medium`}>
-                <span>16B. Output tax due</span>
-                <span className="font-mono">{formatPeso(data.outputTax)}</span>
-              </div>
-            </div>
-          </section>
+        <div className="mt-6">
+          <div className="overflow-x-auto rounded-lg border border-neutral-200">
+            <table className="w-full min-w-[560px]">
+              <thead>
+                <tr className="bg-neutral-100 text-left text-xs uppercase tracking-wide text-neutral-500">
+                  <th className="px-2 py-1.5">#</th>
+                  <th className="px-2 py-1.5">Details of VAT Computation</th>
+                  <th className="px-2 py-1.5 text-right">Sales / Purchases</th>
+                  <th className="px-2 py-1.5 text-right">Output / Input Tax</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sect("Total Sales and Output Tax")}
+                {line("31", "VATable Sales", money(L.l31A), money(L.l31B))}
+                {line("32", "Zero-Rated Sales", money(L.l32A), "")}
+                {line("33", "Exempt Sales", money(L.l33A), "")}
+                {line("34", "Total Sales and Output Tax Due", money(L.l34A), money(L.l34B), true)}
+                {line("35", "Less: Output VAT on Uncollected Receivables", "", mInput("l35"))}
+                {line("36", "Add: Output VAT on Recovered Uncollected Receivables Previously Deducted", "", mInput("l36"))}
+                {line("37", "Total Adjusted Output Tax Due", "", money(L.l37B), true)}
 
-          <section>
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
-              Purchases for the month
-            </h2>
-            <div className="divide-y divide-neutral-100 rounded-lg border border-neutral-200">
-              <div className={row}>
-                <span>18A/B. Purchase of capital goods (net / input tax)</span>
-                <span className="font-mono">
-                  {formatPeso(data.capitalGoodsPurchases)} / {formatPeso(data.capitalGoodsInputTax)}
-                </span>
-              </div>
-              <div className={row}>
-                <span>19A/B. Other purchases (net / input tax)</span>
-                <span className="font-mono">
-                  {formatPeso(data.otherPurchases)} / {formatPeso(data.otherInputTax)}
-                </span>
-              </div>
-              <div className={`${row} bg-neutral-50 font-medium`}>
-                <span>Total current input tax</span>
-                <span className="font-mono">{formatPeso(data.totalCurrentInputTax)}</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-2 text-sm">
-                <label htmlFor="carryover">17A. Input tax carried over from previous period</label>
-                <input
-                  id="carryover"
-                  type="number"
-                  step="0.01"
-                  value={inputTaxCarriedOver || ""}
-                  onChange={(e) => setInputTaxCarriedOver(Number(e.target.value))}
-                  className={`${field} w-32 text-right font-mono`}
-                />
-              </div>
-              <div className={`${row} bg-neutral-50 font-medium`}>
-                <span>17F. Total allowable input tax</span>
-                <span className="font-mono">{formatPeso(totalAllowableInputTax)}</span>
-              </div>
-            </div>
-            <p className="mt-2 text-xs text-neutral-400">
-              Matches the manual's own documented limitation: only current-period transactions are
-              computed automatically. Carried-over input tax is a manual adjustment here, exactly
-              as it is in the original system.
-            </p>
-          </section>
+                {sect("Less: Allowable Input Tax")}
+                {line("38", "Input Tax Carried Over from Previous Quarter", "", mInput("l38"))}
+                {line("39", "Input Tax Deferred on Capital Goods Exceeding P1M from Previous Quarter", "", mInput("l39"))}
+                {line("40", "Transitional Input Tax", "", mInput("l40"))}
+                {line("41", "Presumptive Input Tax", "", mInput("l41"))}
+                {line("42", "Others", "", mInput("l42"))}
+                {line("43", "Total Allowable Input Tax (Sum of Items 38 to 42)", "", money(L.l43B), true)}
+
+                {sect("Current Transactions")}
+                {line("44", "Domestic Purchases", money(L.l44A), money(L.l44B))}
+                {line("45", "Services Rendered by Non-Residents", mInput("l45A"), mInput("l45B"))}
+                {line("46", "Importations", mInput("l46A"), mInput("l46B"))}
+                {line("47", "Others", mInput("l47A"), mInput("l47B"))}
+                {line("48", "Domestic Purchases with No Input Tax", mInput("l48A"), "")}
+                {line("49", "VAT-Exempt Importations", mInput("l49A"), "")}
+                {line("50", "Total Current Purchases / Input Tax", money(L.l50A), money(L.l50B), true)}
+                {line("51", "Total Available Input Tax", "", money(L.l51B), true)}
+
+                {sect("Less: Adjustments / Deductions from Input Tax")}
+                {line("52", "Input Tax on Capital Goods exceeding P1M deferred for the succeeding period", "", mInput("l52"))}
+                {line("53", "Input Tax Attributable to VAT-Exempt Sales", "", mInput("l53"))}
+                {line("54", "VAT Refund / TCC Claimed", "", mInput("l54"))}
+                {line("55", "Input VAT on Unpaid Payables", "", mInput("l55"))}
+                {line("56", "Others", "", mInput("l56"))}
+                {line("57", "Total Deductions from Input Tax (Sum of Items 52 to 56)", "", money(L.l57B), true)}
+                {line("58", "Add: Input VAT on Settled Unpaid Payables Previously Deducted", "", mInput("l58"))}
+                {line("59", "Adjusted Deductions from Input Tax", "", money(L.l59B), true)}
+                {line("60", "Total Allowable Input Tax", "", money(L.l60B), true)}
+              </tbody>
+            </table>
+          </div>
 
           <div
-            className={`flex justify-between rounded-lg border px-4 py-3 text-base font-medium ${
-              vatPayable > 0
+            className={`mt-4 flex items-center justify-between rounded-lg border px-4 py-3 text-base font-medium ${
+              L.l61B >= 0
                 ? "border-amber-200 bg-amber-50 text-amber-900"
                 : "border-green-200 bg-green-50 text-green-800"
             }`}
           >
-            {vatPayable > 0 ? (
-              <>
-                <span>VAT payable</span>
-                <span className="font-mono">{formatPeso(vatPayable)}</span>
-              </>
-            ) : (
-              <>
-                <span>Excess input tax (carry to next period)</span>
-                <span className="font-mono">{formatPeso(excessInputTax)}</span>
-              </>
-            )}
+            <span>61. {L.l61B >= 0 ? "Net VAT Payable" : "Excess Input Tax (carry to next period)"}</span>
+            <span className="font-mono">{formatPeso(Math.abs(L.l61B))}</span>
           </div>
         </div>
       )}
