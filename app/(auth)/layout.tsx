@@ -6,7 +6,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
 
   return (
     <main
-      className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-[#0b3a8f] via-[#2563eb] to-[#60a5fa] px-4 py-12"
+      className="relative flex min-h-screen flex-col items-center justify-center bg-neutral-50 px-4 py-12"
       style={
         branding.login
           ? {
@@ -18,7 +18,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
       }
     >
       {branding.login && <div aria-hidden className="pointer-events-none absolute inset-0 bg-black/20" />}
-      <div className="relative w-full max-w-sm rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
+      <div className="relative w-full max-w-sm rounded-2xl bg-[#e9f1fe] p-8 shadow-[0_25px_60px_-15px_rgba(11,42,95,0.45)] ring-1 ring-blue-900/10">
         <Image
           src="/arbixo-logo.jpg"
           alt="Arbixo — Accounting Intelligence. Business Excellence."
