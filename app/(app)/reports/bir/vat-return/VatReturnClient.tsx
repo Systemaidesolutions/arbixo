@@ -76,7 +76,7 @@ export function VatReturnClient({
   const inCell = "w-28 rounded border border-neutral-300 px-2 py-1 text-right font-mono text-sm";
   const money = (v: number) => formatPeso(v);
   const mInput = (k: keyof Vat2550QManual) => (
-    <input type="number" step="0.01" value={manual[k] || ""} onChange={(e) => setM(k, Number(e.target.value))} className={inCell} />
+    <input type="number" step="0.01" placeholder="0.00" value={manual[k] || ""} onChange={(e) => setM(k, Number(e.target.value))} className={inCell} />
   );
 
   const sect = (t: string) => (
