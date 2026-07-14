@@ -6,7 +6,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
 
   return (
     <main
-      className="relative flex min-h-screen flex-col items-center justify-center bg-neutral-50 px-4 py-12"
+      className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-[#1e40af] to-[#3b82f6] px-4 py-12"
       style={
         branding.login
           ? {
