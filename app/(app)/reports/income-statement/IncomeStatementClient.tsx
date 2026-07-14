@@ -82,7 +82,13 @@ export function IncomeStatementClient({ companyId }: { companyId: string }) {
 
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-8">
-      <h1 className="text-xl font-medium text-neutral-900">Income statement</h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-xl font-medium text-neutral-900">Income statement</h1>
+        <div className="flex shrink-0 gap-2 print:hidden">
+          <button onClick={() => window.open(`/reports/income-statement/print?dateFrom=${range.from}&dateTo=${range.to}&_embed=1`, "_blank")} disabled={!statement} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
+          <button onClick={exportCsv} disabled={!statement} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
+        </div>
+      </div>
       <p className="mt-1 text-sm text-neutral-500">For {range.label}.</p>
 
       <div className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">
@@ -129,14 +135,6 @@ export function IncomeStatementClient({ companyId }: { companyId: string }) {
             </label>
           </>
         )}
-        <div className="ml-auto flex gap-2">
-          <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
-            Export to Excel
-          </button>
-          <button onClick={() => window.open(`/reports/income-statement/print?dateFrom=${range.from}&dateTo=${range.to}&_embed=1`, "_blank")} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
-            Print
-          </button>
-        </div>
       </div>
 
       {loading || !statement ? (

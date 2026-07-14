@@ -5,6 +5,7 @@ import { getTrialBalance, type TrialBalanceRow } from "@/lib/reports";
 import { CLASSIFICATION_LABELS } from "@/lib/accounts";
 import { formatPeso } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
+import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
 import type { AccountClassification } from "@prisma/client";
 
 // Print-preview of the Trial Balance: company letterhead + report header
@@ -48,29 +49,11 @@ export default async function TrialBalancePrintPage({
     list.push(row);
   }
 
-  const companyName = company.registeredName || company.tradeName;
-  const addr = [company.businessAddress, company.barangay, company.city, company.province, company.zipCode].filter(Boolean).join(", ");
-
   return (
     <main className="mx-auto max-w-3xl bg-white p-6 text-neutral-900 print:p-0">
       <PrintControls auto={false} />
 
-      {/* Report header */}
-      <header className="border-b-2 border-neutral-800 pb-3 text-center">
-        <div className="flex items-center justify-center gap-3">
-          {company.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={company.logoUrl} alt="" className="h-12 w-auto max-w-[100px] object-contain" />
-          )}
-          <div>
-            <div className="text-base font-bold uppercase">{companyName}</div>
-            {addr && <div className="text-[11px] text-neutral-600">{addr}</div>}
-            {company.tin && <div className="text-[11px] text-neutral-600">TIN: {company.tin}</div>}
-          </div>
-        </div>
-        <div className="mt-4 text-center text-2xl font-bold uppercase tracking-[0.2em] text-neutral-900">{reportTitle}</div>
-        <div className="mt-1 text-center text-xs text-neutral-600">{coverage}</div>
-      </header>
+      <ReportHeader company={company} title={reportTitle} coverage={coverage} />
 
       {/* Table */}
       <table className="mt-4 w-full text-sm" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
@@ -117,7 +100,7 @@ export default async function TrialBalancePrintPage({
         </tfoot>
       </table>
 
-      <footer className="mt-6 text-center text-[10px] text-neutral-500">Page 1 of 1</footer>
+      <ReportFooter />
     </main>
   );
 }

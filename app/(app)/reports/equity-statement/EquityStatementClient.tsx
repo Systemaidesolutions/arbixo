@@ -21,6 +21,30 @@ export function EquityStatementClient({ companyId }: { companyId: string }) {
     return () => { active = false; };
   }, [companyId, dateFrom, dateTo]);
 
+  function exportCsv() {
+    if (!data) return;
+    const esc = (v: string | number) => {
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows: (string | number)[][] = [
+      ["Statement of Changes in Equity", `${dateFrom} to ${dateTo}`],
+      [],
+      ["Item", "Amount"],
+      ["Equity, beginning of period", data.beginningEquity.toFixed(2)],
+      [data.netIncome >= 0 ? "Add: Net income for the period" : "Less: Net loss for the period", data.netIncome.toFixed(2)],
+      [data.netContributions >= 0 ? "Add: Additional contributions" : "Less: Owner's drawings", data.netContributions.toFixed(2)],
+      ["Equity, end of period", data.endingEquity.toFixed(2)],
+    ];
+    const blob = new Blob(["﻿" + rows.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `equity-statement_${dateFrom}_to_${dateTo}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
 
   // A movement line: "Add" when positive, "Less" when negative (shown in parens).
@@ -46,6 +70,13 @@ export function EquityStatementClient({ companyId }: { companyId: string }) {
             className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40"
           >
             Print
+          </button>
+          <button
+            onClick={exportCsv}
+            disabled={loading || !data}
+            className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40"
+          >
+            Export to Excel
           </button>
         </div>
       </div>
