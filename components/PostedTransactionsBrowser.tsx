@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatPeso } from "@/lib/format";
+import { usePageStack } from "@/components/PageStack";
 
 type Doc = {
   documentNo: string;
@@ -34,6 +35,7 @@ export function PostedTransactionsBrowser({
   description: string;
 }) {
   const router = useRouter();
+  const ps = usePageStack();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [search, setSearch] = useState("");
@@ -83,7 +85,15 @@ export function PostedTransactionsBrowser({
     window.open(`/api/ledger-entries/export?${params.toString()}`, "_blank");
   }
 
-  const openDoc = (docNo: string) => router.push(`/transactions/view/${journalType}/${encodeURIComponent(docNo)}`);
+  // Open the transaction detail chrome-less (as a stacked page), rather than
+  // navigating inside the History iframe which would show the full app nav.
+  const openDoc = (docNo: string) => {
+    const href = `/transactions/view/${journalType}/${encodeURIComponent(docNo)}`;
+    if (ps) ps.open(href, docNo);
+    else if (typeof window !== "undefined" && window.parent !== window)
+      window.parent.postMessage({ type: "stack:open", href, title: docNo }, window.location.origin);
+    else router.push(href);
+  };
   const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
 
