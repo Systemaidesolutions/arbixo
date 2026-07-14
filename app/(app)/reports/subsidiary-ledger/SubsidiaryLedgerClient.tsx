@@ -77,12 +77,36 @@ export function SubsidiaryLedgerClient({
   }, [partyType, partyId, dateFrom, dateTo]);
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
+  const partyLabel = (() => { const p = parties.find((x) => x.id === partyId); return p ? `${p.code} — ${partyName(p)}` : ""; })();
+
+  function exportCsv() {
+    const esc = (v: string | number) => { const s = String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const out: (string | number)[][] = [
+      [partyType === "CUSTOMER" ? "Debtors' Ledger" : "Creditors' Ledger", partyLabel, `${dateFrom} to ${dateTo}`],
+      [],
+      ["Date", "Journal", "Doc no.", "Account", "Debit", "Credit", "Balance"],
+      ["", "", "", "Beginning balance", "", "", beginningBalance.toFixed(2)],
+      ...rows.map((r) => [r.postingDate.slice(0, 10), r.journalType.replaceAll("_", " "), r.documentNo, `${r.accountCode} — ${r.accountTitle}`, r.debit ? r.debit.toFixed(2) : "", r.credit ? r.credit.toFixed(2) : "", r.runningBalance.toFixed(2)]),
+      ["", "", "", "Ending balance", "", "", endingBalance.toFixed(2)],
+    ];
+    const blob = new Blob(["﻿" + out.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `subsidiary-ledger_${dateFrom}_to_${dateTo}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <main className="mx-auto max-w-4xl p-4 sm:p-8">
-      <h1 className="text-xl font-medium text-neutral-900">
-        {partyType === "CUSTOMER" ? "Debtors' ledger" : "Creditors' ledger"}
-      </h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-xl font-medium text-neutral-900">
+          {partyType === "CUSTOMER" ? "Debtors' ledger" : "Creditors' ledger"}
+        </h1>
+        <div className="flex shrink-0 gap-2 print:hidden">
+          <button onClick={() => window.open(`/reports/subsidiary-ledger/print?partyType=${partyType}&partyId=${partyId}&dateFrom=${dateFrom}&dateTo=${dateTo}&_embed=1`, "_blank")} disabled={!partyId || loading} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
+          <button onClick={exportCsv} disabled={!partyId || loading} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
+        </div>
+      </div>
       <p className="mt-1 text-sm text-neutral-500">
         A single {partyType === "CUSTOMER" ? "customer's" : "vendor's"} Accounts{" "}
         {partyType === "CUSTOMER" ? "Receivable" : "Payable"} movements — not every line tagged
