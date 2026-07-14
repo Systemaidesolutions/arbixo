@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { Sidebar } from "@/components/Sidebar";
@@ -41,7 +41,24 @@ export function AppShell({
   // When a page is opened inside the stack it loads with ?_embed=1 — render it
   // chrome-less (no header/sidebar/footer) so only its content shows in the
   // overlay, and intercept its links so they open deeper on the parent's stack.
-  const embedded = useSearchParams().get("_embed") === "1";
+  //
+  // The ?_embed=1 flag is only reliable on the FIRST load of a panel. A client
+  // navigation inside the iframe (a router.push, a post-submit redirect, …) can
+  // drop the query param, which would otherwise make AppShell paint the full
+  // header + sidebar INSIDE the panel. Stacked pages always run inside an
+  // iframe and top-level pages never do, so treat "I'm in an iframe" as embedded
+  // too — that keeps a panel chrome-less no matter how you navigate within it.
+  const embedParam = useSearchParams().get("_embed") === "1";
+  const [inFrame, setInFrame] = useState(false);
+  useEffect(() => {
+    try {
+      setInFrame(window.self !== window.top);
+    } catch {
+      // Cross-origin access throws — that only happens when we ARE framed.
+      setInFrame(true);
+    }
+  }, []);
+  const embedded = embedParam || inFrame;
 
   if (embedded) {
     return (
