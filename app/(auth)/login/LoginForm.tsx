@@ -34,12 +34,12 @@ export function LoginForm() {
     router.refresh();
   }
 
-  const field = "mt-1 w-full rounded border border-neutral-300 px-3 py-2 text-sm";
-  const label = "block text-xs text-neutral-500";
+  const field = "mt-1 w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900";
+  const label = "block text-xs text-blue-100";
 
   return (
     <div>
-      <h1 className="text-lg font-medium text-neutral-900">Log in</h1>
+      <h1 className="text-lg font-medium text-white">Log in</h1>
       <form onSubmit={handleSubmit} className="mt-4 space-y-3">
         <label className={label}>
           Email
@@ -75,13 +75,13 @@ export function LoginForm() {
       </form>
 
       <p className="mt-3 text-center text-sm">
-        <a href="/forgot-password" className="text-brand-blue hover:underline">
+        <a href="/forgot-password" className="text-sky-300 hover:text-white hover:underline">
           Forgot password?
         </a>
       </p>
-      <p className="mt-2 text-center text-sm text-neutral-500">
+      <p className="mt-2 text-center text-sm text-blue-100">
         Don't have an account?{" "}
-        <a href="/register" className="text-brand-blue hover:underline">
+        <a href="/register" className="text-sky-300 hover:text-white hover:underline">
           Register
         </a>
       </p>

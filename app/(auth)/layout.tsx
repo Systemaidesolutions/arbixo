@@ -18,15 +18,17 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
       }
     >
       {branding.login && <div aria-hidden className="pointer-events-none absolute inset-0 bg-black/20" />}
-      <div className="relative w-full max-w-sm rounded-2xl bg-[#c3d9f7] p-8 shadow-[0_25px_60px_-15px_rgba(11,42,95,0.45)] ring-1 ring-blue-900/10">
-        <Image
-          src="/arbixo-logo.jpg"
-          alt="Arbixo — Accounting Intelligence. Business Excellence."
-          width={360}
-          height={202}
-          priority
-          className="mx-auto mb-6 h-auto w-full max-w-[220px]"
-        />
+      <div className="relative w-full max-w-sm rounded-2xl bg-[#123A73] p-8 shadow-[0_25px_60px_-15px_rgba(11,42,95,0.55)] ring-1 ring-white/10">
+        <div className="mx-auto mb-6 flex w-fit justify-center rounded-xl bg-white p-3 shadow-sm">
+          <Image
+            src="/arbixo-logo.jpg"
+            alt="Arbixo — Accounting Intelligence. Business Excellence."
+            width={360}
+            height={202}
+            priority
+            className="h-auto w-[200px]"
+          />
+        </div>
         {children}
       </div>
     </main>
