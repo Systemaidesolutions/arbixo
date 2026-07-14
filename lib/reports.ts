@@ -152,6 +152,37 @@ export async function getIncomeStatement(
   return { revenue, expense, totalRevenue, totalExpense, netIncome: round2(totalRevenue - totalExpense) };
 }
 
+export type EquityStatement = {
+  beginningEquity: number;
+  netIncome: number;
+  netContributions: number; // capital contributed less drawings, posted during the period
+  endingEquity: number;
+};
+
+// Statement of Changes in Equity: opening equity balance + net income for the
+// period + net owner contributions/(drawings) posted during the period.
+export async function getEquityStatement(companyId: string, dateFrom: Date, dateTo: Date): Promise<EquityStatement> {
+  const dayBefore = new Date(dateFrom);
+  dayBefore.setDate(dayBefore.getDate() - 1);
+
+  const [beginTB, endTB, is] = await Promise.all([
+    getTrialBalance(companyId, { mode: "YEAR_TO_DATE", asOfDate: dayBefore }),
+    getTrialBalance(companyId, { mode: "YEAR_TO_DATE", asOfDate: dateTo }),
+    getIncomeStatement(companyId, dateFrom, dateTo),
+  ]);
+
+  const equityBalance = (rows: TrialBalanceRow[]) =>
+    rows
+      .filter((r) => r.classification === "EQUITY_DOES_NOT_CLOSE" || r.classification === "EQUITY_GETS_CLOSED")
+      .reduce((s, r) => s + (r.credit - r.debit), 0);
+
+  const beginningEquity = round2(equityBalance(beginTB.rows));
+  const netContributions = round2(equityBalance(endTB.rows) - beginningEquity);
+  const netIncome = is.netIncome;
+  const endingEquity = round2(beginningEquity + netContributions + netIncome);
+  return { beginningEquity, netIncome, netContributions, endingEquity };
+}
+
 const ASSET_CLASSIFICATIONS: AccountClassification[] = [
   "CASH_IN_BANK", "CASH_ON_HAND", "ACCOUNTS_RECEIVABLE", "OTHER_CURRENT_ASSET",
   "INVENTORY", "FIXED_ASSET", "ACCUMULATED_DEPRECIATION", "OTHER_ASSET",

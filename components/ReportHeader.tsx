@@ -1,0 +1,46 @@
+// Shared print header for financial reports: company letterhead + centered
+// report name + date coverage. Presentational (usable in server pages).
+export function ReportHeader({
+  company,
+  title,
+  coverage,
+}: {
+  company: {
+    registeredName: string | null;
+    tradeName: string;
+    businessAddress: string | null;
+    barangay: string | null;
+    city: string | null;
+    province: string | null;
+    zipCode: string | null;
+    tin: string | null;
+    logoUrl: string | null;
+  };
+  title: string;
+  coverage: string;
+}) {
+  const companyName = company.registeredName || company.tradeName;
+  const addr = [company.businessAddress, company.barangay, company.city, company.province, company.zipCode].filter(Boolean).join(", ");
+  return (
+    <header className="border-b-2 border-neutral-800 pb-3 text-center">
+      <div className="flex items-center justify-center gap-3">
+        {company.logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={company.logoUrl} alt="" className="h-12 w-auto max-w-[100px] object-contain" />
+        )}
+        <div>
+          <div className="text-base font-bold uppercase">{companyName}</div>
+          {addr && <div className="text-[11px] text-neutral-600">{addr}</div>}
+          {company.tin && <div className="text-[11px] text-neutral-600">TIN: {company.tin}</div>}
+        </div>
+      </div>
+      <div className="mt-4 text-center text-2xl font-bold uppercase tracking-[0.2em] text-neutral-900">{title}</div>
+      <div className="mt-1 text-center text-xs text-neutral-600">{coverage}</div>
+    </header>
+  );
+}
+
+// Report footer with the page number aligned to the right.
+export function ReportFooter() {
+  return <footer className="mt-6 text-right text-[10px] text-neutral-500">Page 1 of 1</footer>;
+}

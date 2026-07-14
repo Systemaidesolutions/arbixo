@@ -133,7 +133,7 @@ export function IncomeStatementClient({ companyId }: { companyId: string }) {
           <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
             Export to Excel
           </button>
-          <button onClick={() => window.print()} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
+          <button onClick={() => window.open(`/reports/income-statement/print?dateFrom=${range.from}&dateTo=${range.to}&_embed=1`, "_blank")} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
             Print
           </button>
         </div>

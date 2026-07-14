@@ -1,5 +1,5 @@
 import { getCurrentCompany } from "@/lib/currentUser";
-import { TrialBalanceClient } from "../trial-balance/TrialBalanceClient";
+import { EquityStatementClient } from "./EquityStatementClient";
 
 export default async function EquityStatementPage() {
   const company = await getCurrentCompany();
@@ -13,12 +13,5 @@ export default async function EquityStatementPage() {
     );
   }
 
-  return (
-    <TrialBalanceClient
-      companyId={company.id}
-      title="Equity statement"
-      description="Balances of the company's equity accounts for the selected period. Year-to-Date carries the opening balance; Current Net Change shows only the movement within the period."
-      classifications={["EQUITY_DOES_NOT_CLOSE", "EQUITY_GETS_CLOSED"]}
-    />
-  );
+  return <EquityStatementClient companyId={company.id} />;
 }
