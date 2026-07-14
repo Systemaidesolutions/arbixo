@@ -183,6 +183,89 @@ export async function getEquityStatement(companyId: string, dateFrom: Date, date
   return { beginningEquity, netIncome, netContributions, endingEquity };
 }
 
+export type CashFlowLine = { code: string | null; title: string; amount: number };
+
+export type CashFlowStatement = {
+  netIncome: number;
+  operatingAdjustments: CashFlowLine[];
+  operatingAdjustmentsTotal: number;
+  netOperating: number;
+  investing: CashFlowLine[];
+  netInvesting: number;
+  financing: CashFlowLine[];
+  netFinancing: number;
+  netChange: number;
+  beginningCash: number;
+  endingCash: number;
+};
+
+// Indirect-method Statement of Cash Flows. Built purely from account movements:
+// because every posted document is balanced, the sum of all accounts' net
+// debit movements is zero, so the cash movement equals minus the sum of every
+// non-cash account's movement. Each non-cash account therefore contributes
+// -(its net debit movement) as a cash effect, grouped by activity. Net income
+// is shown separately (it is -(revenue+expense movements)). This ties out to
+// the actual change in the cash accounts exactly.
+export async function getCashFlowStatement(
+  companyId: string,
+  dateFrom: Date,
+  dateTo: Date
+): Promise<CashFlowStatement> {
+  const dayBefore = new Date(dateFrom);
+  dayBefore.setDate(dayBefore.getDate() - 1);
+
+  const [netChange, beginTB, endTB, is] = await Promise.all([
+    getTrialBalance(companyId, { mode: "NET_CHANGE", dateFrom, dateTo }),
+    getTrialBalance(companyId, { mode: "YEAR_TO_DATE", asOfDate: dayBefore }),
+    getTrialBalance(companyId, { mode: "YEAR_TO_DATE", asOfDate: dateTo }),
+    getIncomeStatement(companyId, dateFrom, dateTo),
+  ]);
+
+  const CASH: AccountClassification[] = ["CASH_IN_BANK", "CASH_ON_HAND"];
+  const OPERATING: AccountClassification[] = [
+    "ACCOUNTS_RECEIVABLE", "OTHER_CURRENT_ASSET", "INVENTORY",
+    "ACCUMULATED_DEPRECIATION", "ACCOUNTS_PAYABLE", "OTHER_CURRENT_LIABILITY",
+  ];
+  const INVESTING: AccountClassification[] = ["FIXED_ASSET", "OTHER_ASSET"];
+  const FINANCING: AccountClassification[] = ["LONG_TERM_PAYABLE", "EQUITY_DOES_NOT_CLOSE", "EQUITY_GETS_CLOSED"];
+
+  const cashBalance = (rows: TrialBalanceRow[]) =>
+    rows.filter((r) => (CASH as string[]).includes(r.classification)).reduce((s, r) => s + (r.debit - r.credit), 0);
+  const beginningCash = round2(cashBalance(beginTB.rows));
+  const endingCash = round2(cashBalance(endTB.rows));
+
+  // Cash effect of an account's period movement = -(debit - credit).
+  const pick = (classes: AccountClassification[]): CashFlowLine[] =>
+    netChange.rows
+      .filter((r) => (classes as string[]).includes(r.classification))
+      .map((r) => ({ code: r.code, title: r.title, amount: round2(-(r.debit - r.credit)) }))
+      .filter((l) => Math.abs(l.amount) >= 0.005);
+  const sum = (ls: CashFlowLine[]) => round2(ls.reduce((s, l) => s + l.amount, 0));
+
+  const operatingAdjustments = pick(OPERATING);
+  const investing = pick(INVESTING);
+  const financing = pick(FINANCING);
+  const operatingAdjustmentsTotal = sum(operatingAdjustments);
+  const netOperating = round2(is.netIncome + operatingAdjustmentsTotal);
+  const netInvesting = sum(investing);
+  const netFinancing = sum(financing);
+  const netChangeTotal = round2(netOperating + netInvesting + netFinancing);
+
+  return {
+    netIncome: is.netIncome,
+    operatingAdjustments,
+    operatingAdjustmentsTotal,
+    netOperating,
+    investing,
+    netInvesting,
+    financing,
+    netFinancing,
+    netChange: netChangeTotal,
+    beginningCash,
+    endingCash,
+  };
+}
+
 const ASSET_CLASSIFICATIONS: AccountClassification[] = [
   "CASH_IN_BANK", "CASH_ON_HAND", "ACCOUNTS_RECEIVABLE", "OTHER_CURRENT_ASSET",
   "INVENTORY", "FIXED_ASSET", "ACCUMULATED_DEPRECIATION", "OTHER_ASSET",
