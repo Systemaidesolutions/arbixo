@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord } from "@/lib/currentUser";
-import { getVatReturn, computeVat2550Q, emptyVat2550QManual, type Vat2550QManual } from "@/lib/bir";
+import { getVatReturn, computeVat2550Q, emptyVat2550QManual, VAT_2550Q_LABELS, VAT_2550Q_SECTIONS, type Vat2550QManual } from "@/lib/bir";
 
 function parseManual(raw: string | null): Vat2550QManual {
   const base = emptyVat2550QManual();
@@ -77,58 +77,56 @@ export async function GET(request: NextRequest) {
     r.getCell(1).font = { bold: true, size: 10 };
     r.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F2F2" } };
   };
-  const line = (n: string, desc: string, a: number | null, b: number | null, opts: { bold?: boolean; topBorder?: boolean } = {}) => {
-    const r = ws.addRow([n, desc, a, b]);
+  const line = (n: string, a: number | null, b: number | null, opts: { bold?: boolean; topBorder?: boolean; desc?: string } = {}) => {
+    const r = ws.addRow([n, opts.desc ?? VAT_2550Q_LABELS[n], a, b]);
     if (opts.bold) r.font = { bold: true };
     if (opts.topBorder) r.eachCell((c) => (c.border = { top: { style: "thin" } }));
     r.getCell(3).numFmt = "#,##0.00";
     r.getCell(4).numFmt = "#,##0.00";
   };
 
-  section("Total Sales and Output Tax");
-  line("31", "VATable Sales", L.l31A, L.l31B);
-  line("32", "Zero-Rated Sales", L.l32A, null);
-  line("33", "Exempt Sales", L.l33A, null);
-  line("34", "Total Sales and Output Tax Due", L.l34A, L.l34B, { bold: true, topBorder: true });
-  line("35", "Less: Output VAT on Uncollected Receivables", null, manual.l35);
-  line("36", "Add: Output VAT on Recovered Uncollected Receivables Previously Deducted", null, manual.l36);
-  line("37", "Total Adjusted Output Tax Due", null, L.l37B, { bold: true });
+  section(VAT_2550Q_SECTIONS.sales);
+  line("31", L.l31A, L.l31B);
+  line("32", L.l32A, null);
+  line("33", L.l33A, null);
+  line("34", L.l34A, L.l34B, { bold: true, topBorder: true });
+  line("35", null, manual.l35);
+  line("36", null, manual.l36);
+  line("37", null, L.l37B, { bold: true });
 
-  section("Less: Allowable Input Tax");
-  line("38", "Input Tax Carried Over from Previous Quarter", null, manual.l38);
-  line("39", "Input Tax Deferred on Capital Goods Exceeding P1M from Previous Quarter", null, manual.l39);
-  line("40", "Transitional Input Tax", null, manual.l40);
-  line("41", "Presumptive Input Tax", null, manual.l41);
-  line("42", "Others", null, manual.l42);
-  line("43", "Total Allowable Input Tax (Sum of Items 38 to 42)", null, L.l43B, { bold: true, topBorder: true });
+  section(VAT_2550Q_SECTIONS.allowableInput);
+  line("38", null, manual.l38);
+  line("39", null, manual.l39);
+  line("40", null, manual.l40);
+  line("41", null, manual.l41);
+  line("42", null, manual.l42);
+  line("43", null, L.l43B, { bold: true, topBorder: true });
 
-  section("Current Transactions");
-  line("44", "Domestic Purchases", L.l44A, L.l44B);
-  line("45", "Services Rendered by Non-Residents", manual.l45A, manual.l45B);
-  line("46", "Importations", manual.l46A, manual.l46B);
-  line("47", "Others", manual.l47A, manual.l47B);
-  line("48", "Domestic Purchases with No Input Tax", manual.l48A, null);
-  line("49", "VAT-Exempt Importations", manual.l49A, null);
-  line("50", "Total Current Purchases / Input Tax", L.l50A, L.l50B, { bold: true, topBorder: true });
-  line("51", "Total Available Input Tax", null, L.l51B, { bold: true });
+  section(VAT_2550Q_SECTIONS.currentTransactions);
+  line("44", L.l44A, L.l44B);
+  line("45", manual.l45A, manual.l45B);
+  line("46", manual.l46A, manual.l46B);
+  line("47", manual.l47A, manual.l47B);
+  line("48", manual.l48A, null);
+  line("49", manual.l49A, null);
+  line("50", L.l50A, L.l50B, { bold: true, topBorder: true });
+  line("51", null, L.l51B, { bold: true });
 
-  section("Less: Adjustments / Deductions from Input Tax");
-  line("52", "Input Tax on Capital Goods exceeding P1M deferred for the succeeding period", null, manual.l52);
-  line("53", "Input Tax Attributable to VAT-Exempt Sales", null, manual.l53);
-  line("54", "VAT Refund / TCC Claimed", null, manual.l54);
-  line("55", "Input VAT on Unpaid Payables", null, manual.l55);
-  line("56", "Others", null, manual.l56);
-  line("57", "Total Deductions from Input Tax (Sum of Items 52 to 56)", null, L.l57B, { bold: true, topBorder: true });
-  line("58", "Add: Input VAT on Settled Unpaid Payables Previously Deducted", null, manual.l58);
-  line("59", "Adjusted Deductions from Input Tax", null, L.l59B, { bold: true });
-  line("60", "Total Allowable Input Tax", null, L.l60B, { bold: true });
-  line(
-    "61",
-    L.l61B >= 0 ? "Net VAT Payable" : "Excess Input Tax (carry to next period)",
-    null,
-    Math.abs(L.l61B),
-    { bold: true, topBorder: true }
-  );
+  section(VAT_2550Q_SECTIONS.adjustments);
+  line("52", null, manual.l52);
+  line("53", null, manual.l53);
+  line("54", null, manual.l54);
+  line("55", null, manual.l55);
+  line("56", null, manual.l56);
+  line("57", null, L.l57B, { bold: true, topBorder: true });
+  line("58", null, manual.l58);
+  line("59", null, L.l59B, { bold: true });
+  line("60", null, L.l60B, { bold: true });
+  line("61", null, Math.abs(L.l61B), {
+    bold: true,
+    topBorder: true,
+    desc: L.l61B >= 0 ? "Net VAT Payable" : "Excess Input Tax (carry to next period)",
+  });
 
   const buffer = await wb.xlsx.writeBuffer();
   return new NextResponse(buffer, {

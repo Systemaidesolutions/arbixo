@@ -170,6 +170,48 @@ export function emptyVat2550QManual(): Vat2550QManual {
   return Object.fromEntries(VAT_2550Q_MANUAL_KEYS.map((k) => [k, 0])) as Vat2550QManual;
 }
 
+// Exact line labels from BIR Form 2550Q (April 2024 ENCS), Part IV. Line 61 is
+// rendered specially (Net VAT Payable vs Excess Input Tax) so it's omitted here.
+export const VAT_2550Q_LABELS: Record<string, string> = {
+  "31": "VATable Sales",
+  "32": "Zero-Rated Sales",
+  "33": "Exempt Sales",
+  "34": "Total Sales and Output Tax Due (Sum of Items 31A to 33A)(Item 31B)",
+  "35": "Less: Output VAT on Uncollected Receivables",
+  "36": "Add: Output VAT on Recovered Uncollected Receivables Previously Deducted",
+  "37": "Total Adjusted Output Tax Due (Item 34B Less Item 35B Add Item 36B)",
+  "38": "Input Tax Carried Over from Previous Quarter",
+  "39": "Input Tax Deferred on Capital Goods Exceeding 1 Million from Previous Quarter",
+  "40": "Transitional Input Tax",
+  "41": "Presumptive Input Tax",
+  "42": "Others (Specify)",
+  "43": "Total (Sum of Items 38B to 42B)",
+  "44": "Domestic Purchases",
+  "45": "Services Rendered by Non-Residents",
+  "46": "Importations",
+  "47": "Others (Specify)",
+  "48": "Domestic Purchases with No Input Tax",
+  "49": "VAT-Exempt Importations",
+  "50": "Total Current Purchases/Input Tax (Sum of Items 44A to 49A)(Sum of Items 44B to 47B)",
+  "51": "Total Available Input Tax (Sum of Items 43B and 50B)",
+  "52": "Input Tax on Purchases/Importation of Capital Goods exceeding P1 Million deferred for the succeeding period",
+  "53": "Input Tax Attributable to VAT-Exempt Sales",
+  "54": "VAT Refund/TCC Claimed",
+  "55": "Input VAT on Unpaid Payables",
+  "56": "Others (Specify)",
+  "57": "Total Deductions from Input Tax (Sum of Items 52B to 56B)",
+  "58": "Add: Input VAT on Settled Unpaid Payables Previously Deducted",
+  "59": "Adjusted Deductions from Input Tax (Sum of Items 57B and 58B)",
+  "60": "Total Allowable Input Tax (Item 51B Less Item 59B)",
+};
+
+export const VAT_2550Q_SECTIONS = {
+  sales: "Total Sales and Output Tax",
+  allowableInput: "Less: Allowable Input Tax",
+  currentTransactions: "Current Transactions",
+  adjustments: "Less: Adjustment/Deductions from Input Tax",
+};
+
 export function computeVat2550Q(base: VatReturn, m: Vat2550QManual): Vat2550QLines {
   const l31A = round2(base.vatableSalesPrivate + base.salesToGovernment);
   const l31B = base.outputTax;

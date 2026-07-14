@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { formatPeso } from "@/lib/format";
-import { computeVat2550Q, emptyVat2550QManual, type VatReturn, type Vat2550QManual } from "@/lib/bir";
+import { computeVat2550Q, emptyVat2550QManual, VAT_2550Q_LABELS, VAT_2550Q_SECTIONS, type VatReturn, type Vat2550QManual } from "@/lib/bir";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -82,10 +82,10 @@ export function VatReturnClient({
   const sect = (t: string) => (
     <tr><td colSpan={4} className="bg-neutral-50 px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-600">{t}</td></tr>
   );
-  const line = (n: string, desc: string, a: ReactNode, b: ReactNode, bold = false) => (
+  const line = (n: string, a: ReactNode, b: ReactNode, bold = false) => (
     <tr className={bold ? "font-semibold" : ""}>
       <td className={lineNo}>{n}</td>
-      <td className={td}>{desc}</td>
+      <td className={td}>{VAT_2550Q_LABELS[n]}</td>
       <td className={tdNum}>{a}</td>
       <td className={tdNum}>{b}</td>
     </tr>
@@ -173,43 +173,43 @@ export function VatReturnClient({
                 </tr>
               </thead>
               <tbody>
-                {sect("Total Sales and Output Tax")}
-                {line("31", "VATable Sales", money(L.l31A), money(L.l31B))}
-                {line("32", "Zero-Rated Sales", money(L.l32A), "")}
-                {line("33", "Exempt Sales", money(L.l33A), "")}
-                {line("34", "Total Sales and Output Tax Due", money(L.l34A), money(L.l34B), true)}
-                {line("35", "Less: Output VAT on Uncollected Receivables", "", mInput("l35"))}
-                {line("36", "Add: Output VAT on Recovered Uncollected Receivables Previously Deducted", "", mInput("l36"))}
-                {line("37", "Total Adjusted Output Tax Due", "", money(L.l37B), true)}
+                {sect(VAT_2550Q_SECTIONS.sales)}
+                {line("31", money(L.l31A), money(L.l31B))}
+                {line("32", money(L.l32A), "")}
+                {line("33", money(L.l33A), "")}
+                {line("34", money(L.l34A), money(L.l34B), true)}
+                {line("35", "", mInput("l35"))}
+                {line("36", "", mInput("l36"))}
+                {line("37", "", money(L.l37B), true)}
 
-                {sect("Less: Allowable Input Tax")}
-                {line("38", "Input Tax Carried Over from Previous Quarter", "", mInput("l38"))}
-                {line("39", "Input Tax Deferred on Capital Goods Exceeding P1M from Previous Quarter", "", mInput("l39"))}
-                {line("40", "Transitional Input Tax", "", mInput("l40"))}
-                {line("41", "Presumptive Input Tax", "", mInput("l41"))}
-                {line("42", "Others", "", mInput("l42"))}
-                {line("43", "Total Allowable Input Tax (Sum of Items 38 to 42)", "", money(L.l43B), true)}
+                {sect(VAT_2550Q_SECTIONS.allowableInput)}
+                {line("38", "", mInput("l38"))}
+                {line("39", "", mInput("l39"))}
+                {line("40", "", mInput("l40"))}
+                {line("41", "", mInput("l41"))}
+                {line("42", "", mInput("l42"))}
+                {line("43", "", money(L.l43B), true)}
 
-                {sect("Current Transactions")}
-                {line("44", "Domestic Purchases", money(L.l44A), money(L.l44B))}
-                {line("45", "Services Rendered by Non-Residents", mInput("l45A"), mInput("l45B"))}
-                {line("46", "Importations", mInput("l46A"), mInput("l46B"))}
-                {line("47", "Others", mInput("l47A"), mInput("l47B"))}
-                {line("48", "Domestic Purchases with No Input Tax", mInput("l48A"), "")}
-                {line("49", "VAT-Exempt Importations", mInput("l49A"), "")}
-                {line("50", "Total Current Purchases / Input Tax", money(L.l50A), money(L.l50B), true)}
-                {line("51", "Total Available Input Tax", "", money(L.l51B), true)}
+                {sect(VAT_2550Q_SECTIONS.currentTransactions)}
+                {line("44", money(L.l44A), money(L.l44B))}
+                {line("45", mInput("l45A"), mInput("l45B"))}
+                {line("46", mInput("l46A"), mInput("l46B"))}
+                {line("47", mInput("l47A"), mInput("l47B"))}
+                {line("48", mInput("l48A"), "")}
+                {line("49", mInput("l49A"), "")}
+                {line("50", money(L.l50A), money(L.l50B), true)}
+                {line("51", "", money(L.l51B), true)}
 
-                {sect("Less: Adjustments / Deductions from Input Tax")}
-                {line("52", "Input Tax on Capital Goods exceeding P1M deferred for the succeeding period", "", mInput("l52"))}
-                {line("53", "Input Tax Attributable to VAT-Exempt Sales", "", mInput("l53"))}
-                {line("54", "VAT Refund / TCC Claimed", "", mInput("l54"))}
-                {line("55", "Input VAT on Unpaid Payables", "", mInput("l55"))}
-                {line("56", "Others", "", mInput("l56"))}
-                {line("57", "Total Deductions from Input Tax (Sum of Items 52 to 56)", "", money(L.l57B), true)}
-                {line("58", "Add: Input VAT on Settled Unpaid Payables Previously Deducted", "", mInput("l58"))}
-                {line("59", "Adjusted Deductions from Input Tax", "", money(L.l59B), true)}
-                {line("60", "Total Allowable Input Tax", "", money(L.l60B), true)}
+                {sect(VAT_2550Q_SECTIONS.adjustments)}
+                {line("52", "", mInput("l52"))}
+                {line("53", "", mInput("l53"))}
+                {line("54", "", mInput("l54"))}
+                {line("55", "", mInput("l55"))}
+                {line("56", "", mInput("l56"))}
+                {line("57", "", money(L.l57B), true)}
+                {line("58", "", mInput("l58"))}
+                {line("59", "", money(L.l59B), true)}
+                {line("60", "", money(L.l60B), true)}
               </tbody>
             </table>
           </div>
