@@ -49,9 +49,55 @@ export function VatReturnClient({
     return Math.round((n + Number.EPSILON) * 100) / 100;
   }
 
+  const printHref = `/reports/bir/vat-return/print?year=${year}&month=${month}&carryover=${inputTaxCarriedOver || 0}&_embed=1`;
+
+  function exportCsv() {
+    if (!data) return;
+    const esc = (v: string | number) => {
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows: (string | number)[][] = [
+      ["VAT Return", `${MONTHS[month - 1]} ${year}`],
+      ["TIN", tin],
+      ["Registered name", registeredName],
+      [],
+      ["Line", "Description", "Amount"],
+      ["12A", "Vatable sales/receipts — Private", data.vatableSalesPrivate.toFixed(2)],
+      ["13", "Sales to Government", data.salesToGovernment.toFixed(2)],
+      ["14", "Zero-rated sales/receipts", data.zeroRatedSales.toFixed(2)],
+      ["15", "Exempt sales/receipts", data.exemptSales.toFixed(2)],
+      ["16A", "Total sales/receipts", data.totalSales.toFixed(2)],
+      ["16B", "Output tax due", data.outputTax.toFixed(2)],
+      [],
+      ["18A", "Purchase of capital goods (net)", data.capitalGoodsPurchases.toFixed(2)],
+      ["18B", "Purchase of capital goods (input tax)", data.capitalGoodsInputTax.toFixed(2)],
+      ["19A", "Other purchases (net)", data.otherPurchases.toFixed(2)],
+      ["19B", "Other purchases (input tax)", data.otherInputTax.toFixed(2)],
+      ["", "Total current input tax", data.totalCurrentInputTax.toFixed(2)],
+      ["17A", "Input tax carried over from previous period", inputTaxCarriedOver.toFixed(2)],
+      ["17F", "Total allowable input tax", totalAllowableInputTax.toFixed(2)],
+      [],
+      [vatPayable > 0 ? "VAT payable" : "Excess input tax (carry to next period)", "", (vatPayable > 0 ? vatPayable : excessInputTax).toFixed(2)],
+    ];
+    const blob = new Blob(["﻿" + rows.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `vat-return_${year}-${String(month).padStart(2, "0")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-8">
-      <h1 className="text-xl font-medium text-neutral-900">Monthly VAT return</h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-xl font-medium text-neutral-900">VAT Return</h1>
+        <div className="flex shrink-0 gap-2 print:hidden">
+          <button onClick={() => window.open(printHref, "_blank")} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
+          <button onClick={exportCsv} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
+        </div>
+      </div>
       <p className="mt-1 text-sm text-neutral-500">
         BIR Form 2550M shape, computed from posted ledger entries. Not a substitute for the actual
         eFPS/eBIRForms filing — verify before submitting.
