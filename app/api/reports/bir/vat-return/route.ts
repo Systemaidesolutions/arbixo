@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMonthlyVatReturn } from "@/lib/bir";
+import { getVatReturn } from "@/lib/bir";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const companyId = params.get("companyId");
-  const year = params.get("year");
-  const month = params.get("month");
+  const dateFrom = params.get("dateFrom");
+  const dateTo = params.get("dateTo");
 
-  if (!companyId || !year || !month) {
+  if (!companyId || !dateFrom || !dateTo) {
     return NextResponse.json(
-      { error: "companyId, year, and month query parameters are required" },
+      { error: "companyId, dateFrom, and dateTo query parameters are required" },
       { status: 400 }
     );
   }
 
-  const result = await getMonthlyVatReturn(companyId, Number(year), Number(month));
+  const result = await getVatReturn(
+    companyId,
+    new Date(`${dateFrom}T00:00:00`),
+    new Date(`${dateTo}T23:59:59.999`)
+  );
   return NextResponse.json(result);
 }

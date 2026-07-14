@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import type { VatReturn } from "@/lib/bir";
 
@@ -8,6 +8,18 @@ const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+const p2 = (n: number) => String(n).padStart(2, "0");
+
+function monthRange(y: number, m: number) {
+  const last = new Date(y, m, 0).getDate();
+  return { from: `${y}-${p2(m)}-01`, to: `${y}-${p2(m)}-${p2(last)}`, label: `${MONTHS[m - 1]} ${y}` };
+}
+function quarterRange(y: number, q: number) {
+  const sm = (q - 1) * 3 + 1;
+  const em = sm + 2;
+  const last = new Date(y, em, 0).getDate();
+  return { from: `${y}-${p2(sm)}-01`, to: `${y}-${p2(em)}-${p2(last)}`, label: `Q${q} ${y}` };
+}
 
 export function VatReturnClient({
   companyId,
@@ -19,24 +31,35 @@ export function VatReturnClient({
   registeredName: string;
 }) {
   const now = new Date();
+  const [mode, setMode] = useState<"month" | "quarter" | "year" | "custom">("month");
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [quarter, setQuarter] = useState(Math.floor(now.getMonth() / 3) + 1);
+  const [dateFrom, setDateFrom] = useState(`${now.getFullYear()}-01-01`);
+  const [dateTo, setDateTo] = useState(now.toISOString().slice(0, 10));
   const [inputTaxCarriedOver, setInputTaxCarriedOver] = useState(0);
   const [data, setData] = useState<VatReturn | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function load() {
-    setLoading(true);
-    const res = await fetch(`/api/reports/bir/vat-return?companyId=${companyId}&year=${year}&month=${month}`);
-    const json = await res.json();
-    setLoading(false);
-    setData(json);
-  }
+  const range = useMemo(() => {
+    if (mode === "month") return monthRange(year, month);
+    if (mode === "quarter") return quarterRange(year, quarter);
+    if (mode === "year") return { from: `${year}-01-01`, to: `${year}-12-31`, label: `Year ${year}` };
+    return { from: dateFrom, to: dateTo, label: `${dateFrom} to ${dateTo}` };
+  }, [mode, year, month, quarter, dateFrom, dateTo]);
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [year, month]);
+    let active = true;
+    setLoading(true);
+    const params = new URLSearchParams({ companyId, dateFrom: range.from, dateTo: range.to });
+    fetch(`/api/reports/bir/vat-return?${params}`)
+      .then((r) => r.json())
+      .then((d) => active && setData(d))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [companyId, range.from, range.to]);
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const row = "flex justify-between px-3 py-2 text-sm";
@@ -49,8 +72,9 @@ export function VatReturnClient({
     return Math.round((n + Number.EPSILON) * 100) / 100;
   }
 
-  const printHref = `/reports/bir/vat-return/print?year=${year}&month=${month}&carryover=${inputTaxCarriedOver || 0}&_embed=1`;
-  const exportHref = `/api/reports/bir/vat-return/export?companyId=${companyId}&year=${year}&month=${month}&carryover=${inputTaxCarriedOver || 0}`;
+  const q = `carryover=${inputTaxCarriedOver || 0}&label=${encodeURIComponent(range.label)}`;
+  const printHref = `/reports/bir/vat-return/print?dateFrom=${range.from}&dateTo=${range.to}&${q}&_embed=1`;
+  const exportHref = `/api/reports/bir/vat-return/export?companyId=${companyId}&dateFrom=${range.from}&dateTo=${range.to}&${q}`;
 
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-8">
@@ -71,27 +95,52 @@ export function VatReturnClient({
         <div>Registered name: {registeredName}</div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4">
+      <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">
         <label className="text-xs text-neutral-500">
-          Month
-          <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className={`mt-1 block ${field}`}>
-            {MONTHS.map((m, i) => (
-              <option key={m} value={i + 1}>
-                {m}
-              </option>
-            ))}
+          Period
+          <select value={mode} onChange={(e) => setMode(e.target.value as typeof mode)} className={`mt-1 block ${field}`}>
+            <option value="month">Monthly</option>
+            <option value="quarter">Quarterly</option>
+            <option value="year">Annual</option>
+            <option value="custom">Date range</option>
           </select>
         </label>
-        <label className="text-xs text-neutral-500">
-          Year
-          <input
-            type="number"
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            className={`mt-1 block ${field} w-24`}
-          />
-        </label>
+        {mode !== "custom" && (
+          <label className="text-xs text-neutral-500">
+            Year
+            <input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} className={`mt-1 block w-24 ${field}`} />
+          </label>
+        )}
+        {mode === "month" && (
+          <label className="text-xs text-neutral-500">
+            Month
+            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className={`mt-1 block ${field}`}>
+              {MONTHS.map((m, i) => (<option key={m} value={i + 1}>{m}</option>))}
+            </select>
+          </label>
+        )}
+        {mode === "quarter" && (
+          <label className="text-xs text-neutral-500">
+            Quarter
+            <select value={quarter} onChange={(e) => setQuarter(Number(e.target.value))} className={`mt-1 block ${field}`}>
+              {[1, 2, 3, 4].map((qn) => (<option key={qn} value={qn}>Q{qn}</option>))}
+            </select>
+          </label>
+        )}
+        {mode === "custom" && (
+          <>
+            <label className="text-xs text-neutral-500">
+              From
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={`mt-1 block ${field}`} />
+            </label>
+            <label className="text-xs text-neutral-500">
+              To
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={`mt-1 block ${field}`} />
+            </label>
+          </>
+        )}
       </div>
+      <p className="mt-2 text-xs text-neutral-400">For {range.label}.</p>
 
       {loading || !data ? (
         <p className="mt-6 text-sm text-neutral-400">Loading…</p>

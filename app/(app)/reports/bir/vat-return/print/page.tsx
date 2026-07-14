@@ -1,14 +1,9 @@
 import { notFound } from "next/navigation";
 import { requirePostingCompany } from "@/lib/currentUser";
-import { getMonthlyVatReturn } from "@/lib/bir";
+import { getVatReturn } from "@/lib/bir";
 import { formatPeso } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
-
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -17,22 +12,23 @@ const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 export default async function VatReturnPrintPage({
   searchParams,
 }: {
-  searchParams: { year?: string; month?: string; carryover?: string };
+  searchParams: { dateFrom?: string; dateTo?: string; carryover?: string; label?: string };
 }) {
   const company = await requirePostingCompany();
   if (!company) notFound();
 
   const now = new Date();
-  const year = Number(searchParams.year) || now.getFullYear();
-  const month = Number(searchParams.month) || now.getMonth() + 1;
+  const dateFrom = searchParams.dateFrom ?? `${now.getFullYear()}-01-01`;
+  const dateTo = searchParams.dateTo ?? now.toISOString().slice(0, 10);
   const carryover = Number(searchParams.carryover) || 0;
 
-  const data = await getMonthlyVatReturn(company.id, year, month);
+  const data = await getVatReturn(company.id, new Date(`${dateFrom}T00:00:00`), new Date(`${dateTo}T23:59:59.999`));
   const totalAllowableInputTax = Math.max(0, data.totalCurrentInputTax + carryover);
   const vatPayable = round2(data.outputTax - totalAllowableInputTax);
   const excessInputTax = vatPayable < 0 ? round2(-vatPayable) : 0;
 
-  const coverage = `For the month of ${MONTHS[month - 1]} ${year}`;
+  const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  const coverage = searchParams.label ? `For ${searchParams.label}` : `For the period ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
   const num = "py-1 pr-2 text-right font-mono";
   const zebra = (i: number) => (i % 2 === 1 ? "bg-neutral-50" : "bg-white");
 

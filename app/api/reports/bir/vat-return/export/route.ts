@@ -2,26 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord } from "@/lib/currentUser";
-import { getMonthlyVatReturn } from "@/lib/bir";
+import { getVatReturn } from "@/lib/bir";
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 // Streams the VAT Return as .xlsx, formatted like the print-out: company
-// letterhead, centered report title, month coverage, and a "Page N of M"
+// letterhead, centered report title, period coverage, and a "Page N of M"
 // footer. Carried-over input tax (17A) is passed through so totals match
 // the on-screen figures.
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const companyId = params.get("companyId");
-  const year = Number(params.get("year"));
-  const month = Number(params.get("month"));
+  const dateFrom = params.get("dateFrom");
+  const dateTo = params.get("dateTo");
   const carryover = Number(params.get("carryover")) || 0;
-  if (!companyId || !year || !month) {
-    return NextResponse.json({ error: "companyId, year, and month are required" }, { status: 400 });
+  if (!companyId || !dateFrom || !dateTo) {
+    return NextResponse.json({ error: "companyId, dateFrom, and dateTo are required" }, { status: 400 });
   }
 
   const user = await getCurrentUserRecord();
@@ -29,7 +25,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const data = await getMonthlyVatReturn(companyId, year, month);
+  const data = await getVatReturn(companyId, new Date(`${dateFrom}T00:00:00`), new Date(`${dateTo}T23:59:59.999`));
   const totalAllowableInputTax = Math.max(0, data.totalCurrentInputTax + carryover);
   const vatPayable = round2(data.outputTax - totalAllowableInputTax);
   const excessInputTax = vatPayable < 0 ? round2(-vatPayable) : 0;
@@ -37,7 +33,8 @@ export async function GET(request: NextRequest) {
   const company = await prisma.company.findUnique({ where: { id: companyId } });
   const companyName = company?.registeredName || company?.tradeName || "";
   const addr = [company?.businessAddress, company?.barangay, company?.city, company?.province, company?.zipCode].filter(Boolean).join(", ");
-  const coverage = `For the month of ${MONTHS[month - 1]} ${year}`;
+  const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  const coverage = params.get("label") ? `For ${params.get("label")}` : `For the period ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("VAT Return", {
@@ -103,7 +100,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(buffer, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="vat-return_${year}-${String(month).padStart(2, "0")}.xlsx"`,
+      "Content-Disposition": `attachment; filename="vat-return_${dateFrom}_to_${dateTo}.xlsx"`,
     },
   });
 }

@@ -8,8 +8,6 @@ function num(d: unknown): number {
 }
 
 export type VatReturn = {
-  year: number;
-  month: number;
   // Sales/receipts side
   vatableSalesPrivate: number;
   salesToGovernment: number;
@@ -45,10 +43,12 @@ export type VatReturn = {
  * else, rather than faking a Goods/Services split with no real data
  * behind it.
  */
-export async function getMonthlyVatReturn(companyId: string, year: number, month: number): Promise<VatReturn> {
-  const start = new Date(year, month - 1, 1);
-  const end = new Date(year, month, 0); // last day of the month
-
+/**
+ * Range-based VAT return: same computation over an arbitrary period (used by
+ * the monthly/quarterly/annual/custom filters). See getMonthlyVatReturn for
+ * the manual-behavior notes.
+ */
+export async function getVatReturn(companyId: string, start: Date, end: Date): Promise<VatReturn> {
   const salesLines = await prisma.ledgerEntry.findMany({
     where: {
       companyId,
@@ -114,8 +114,6 @@ export async function getMonthlyVatReturn(companyId: string, year: number, month
   }
 
   return {
-    year,
-    month,
     vatableSalesPrivate: round2(vatableSalesPrivate),
     salesToGovernment: round2(salesToGovernment),
     zeroRatedSales: round2(zeroRatedSales),
@@ -128,4 +126,10 @@ export async function getMonthlyVatReturn(companyId: string, year: number, month
     otherInputTax: round2(otherInputTax),
     totalCurrentInputTax: round2(capitalGoodsInputTax + otherInputTax),
   };
+}
+
+export async function getMonthlyVatReturn(companyId: string, year: number, month: number): Promise<VatReturn> {
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 0, 23, 59, 59, 999); // last day of the month
+  return getVatReturn(companyId, start, end);
 }
