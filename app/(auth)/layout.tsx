@@ -26,7 +26,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
             width={360}
             height={202}
             priority
-            className="h-auto w-[200px]"
+            className="h-auto w-[280px]"
           />
         </div>
         {children}
