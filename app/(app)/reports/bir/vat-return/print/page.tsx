@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { requirePostingCompany } from "@/lib/currentUser";
-import { getVatReturn, computeVat2550Q, emptyVat2550QManual, VAT_2550Q_LABELS, VAT_2550Q_SECTIONS, type Vat2550QManual } from "@/lib/bir";
+import { getVatReturn } from "@/lib/bir";
+import { computeVat2550Q, emptyVat2550QManual, VAT_2550Q_LABELS, VAT_2550Q_SECTIONS, type Vat2550QManual } from "@/lib/vat2550q";
 import { formatPeso } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { formatPeso } from "@/lib/format";
-import { computeVat2550Q, emptyVat2550QManual, VAT_2550Q_LABELS, VAT_2550Q_SECTIONS, type VatReturn, type Vat2550QManual } from "@/lib/bir";
+import { computeVat2550Q, emptyVat2550QManual, VAT_2550Q_LABELS, VAT_2550Q_SECTIONS, type VatReturn, type Vat2550QManual } from "@/lib/vat2550q";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",

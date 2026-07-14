@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord } from "@/lib/currentUser";
-import { getVatReturn, computeVat2550Q, emptyVat2550QManual, VAT_2550Q_LABELS, VAT_2550Q_SECTIONS, type Vat2550QManual } from "@/lib/bir";
+import { getVatReturn } from "@/lib/bir";
+import { computeVat2550Q, emptyVat2550QManual, VAT_2550Q_LABELS, VAT_2550Q_SECTIONS, type Vat2550QManual } from "@/lib/vat2550q";
 
 function parseManual(raw: string | null): Vat2550QManual {
   const base = emptyVat2550QManual();
