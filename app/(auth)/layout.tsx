@@ -31,6 +31,17 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           />
         </div>
         {children}
+        <div className="mx-auto mt-6 flex w-fit justify-center rounded-xl bg-white p-3 shadow-sm">
+          <Image
+            src="/login-footer-logo.png"
+            alt="Accounting Intelligence. Business Excellence. Powered by: Systemaide Solutions Inc."
+            width={1598}
+            height={145}
+            sizes="240px"
+            className="h-auto max-w-full"
+            style={{ width: 240 }}
+          />
+        </div>
       </div>
     </main>
   );
