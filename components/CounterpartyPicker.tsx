@@ -10,6 +10,17 @@ function displayName(party: { tradeName?: string | null; firstName?: string | nu
   return party.tradeName || `${party.firstName ?? ""} ${party.lastName ?? ""}`.trim();
 }
 
+function partyDetails(party: AnyParty): { tin: string; address: string } {
+  const p = party as unknown as {
+    tin?: string | null; address?: string | null; barangay?: string | null;
+    city?: string | null; province?: string | null; zipCode?: string | null;
+  };
+  return {
+    tin: p.tin ?? "",
+    address: [p.address, p.barangay, p.city, p.province, p.zipCode].filter(Boolean).join(", "),
+  };
+}
+
 const TYPE_LABELS: Record<CounterpartyType, string> = {
   VENDOR: "Vendor",
   EMPLOYEE: "Employee",
@@ -32,6 +43,7 @@ export function CounterpartyPicker({
   label = "Payee",
   companyId,
   onCreated,
+  showDetails = false,
 }: {
   counterpartyType: CounterpartyType | null;
   counterpartyId: string | null;
@@ -47,6 +59,8 @@ export function CounterpartyPicker({
   // and, on success, calls onCreated so the parent form can append + select.
   companyId?: string;
   onCreated?: (type: CounterpartyType, record: AnyParty) => void;
+  // Show the selected party's TIN and address beneath the dropdown.
+  showDetails?: boolean;
 }) {
   const [showNew, setShowNew] = useState(false);
 
@@ -62,6 +76,16 @@ export function CounterpartyPicker({
             : [];
 
   const canCreate = !!companyId && !!onCreated && !!counterpartyType;
+
+  const selected = counterpartyId ? options.find((o) => o.id === counterpartyId) : undefined;
+  const details = selected ? partyDetails(selected) : null;
+  const detailBlock =
+    showDetails && details && (details.tin || details.address) ? (
+      <div className="mt-1 rounded border border-neutral-200 bg-neutral-50 px-2 py-1 text-xs text-neutral-500">
+        {details.tin ? <div>TIN: <span className="font-mono text-neutral-700">{details.tin}</span></div> : null}
+        {details.address ? <div>{details.address}</div> : null}
+      </div>
+    ) : null;
 
   const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const label_ = "block text-xs text-neutral-500";
@@ -118,6 +142,7 @@ export function CounterpartyPicker({
       <label className={label_}>
         {label}
         {partySelect(false)}
+        {detailBlock}
         {modal}
       </label>
     );
@@ -147,6 +172,7 @@ export function CounterpartyPicker({
       <label className={label_}>
         {label}
         {partySelect(!counterpartyType)}
+        {detailBlock}
       </label>
       {modal}
     </div>

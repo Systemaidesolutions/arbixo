@@ -141,7 +141,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
           <label className={label}>Branch<select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={field}><option value="">—</option>{locations.map((l) => <option key={l.id} value={l.id}>{branchOptionLabel(l)}</option>)}</select></label>
 
           <div className="sm:col-span-4">
-            <CounterpartyPicker counterpartyType={counterpartyType} counterpartyId={counterpartyId} onTypeChange={setCounterpartyType} onIdChange={setCounterpartyId} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} label="Payee" companyId={companyId} onCreated={onPartyCreated} />
+            <CounterpartyPicker counterpartyType={counterpartyType} counterpartyId={counterpartyId} onTypeChange={setCounterpartyType} onIdChange={setCounterpartyId} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} label="Payee" companyId={companyId} onCreated={onPartyCreated} showDetails />
           </div>
           <label className={label}>Cash account<select required value={cashAccountId} onChange={(e) => setCashAccountId(e.target.value)} className={field}>{cashAccounts.length === 0 && <option value="">No Cash accounts yet</option>}{cashAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
           <label className="block text-xs text-neutral-500 sm:col-span-4">Particulars<input value={particulars} onChange={(e) => setParticulars(e.target.value)} className={field} /></label>
