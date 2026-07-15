@@ -14,6 +14,13 @@ function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+// A purchase debits an expense or asset account. This lets us tell a real
+// purchase line from the input-VAT companion (no vatType) and from non-purchase
+// disbursements such as loan/AP payments (which debit liabilities).
+const PURCHASE_CLASSES: string[] = [
+  "EXPENSE", "INVENTORY", "FIXED_ASSET", "OTHER_CURRENT_ASSET", "OTHER_ASSET",
+];
+
 type PartyLike = {
   tin: string | null;
   address?: string | null;
@@ -89,10 +96,14 @@ export async function getPurchaseSubsidiaryJournal(
 
   const rows: PurchaseSubsidiaryRow[] = [];
   for (const [key, lines] of groups) {
+    // Real purchase lines: a debit to an expense/asset account carrying any
+    // vatType (VAT_12, NON_VAT, VAT_EXEMPT, ZERO_RATED). NON_VAT purchases are
+    // included; the input-VAT companion (no vatType) and non-purchase debits
+    // (liabilities, cash) are excluded.
     const purchaseLines = lines.filter(
-      (l) => num(l.debitAmount) > 0 && l.vatType && ["VAT_12", "ZERO_RATED", "VAT_EXEMPT"].includes(l.vatType)
+      (l) => num(l.debitAmount) > 0 && l.vatType != null && PURCHASE_CLASSES.includes(l.account.classification)
     );
-    if (purchaseLines.length === 0) continue; // not a VAT purchase invoice
+    if (purchaseLines.length === 0) continue; // not a purchase invoice
 
     const first = lines[0];
     const partySrc = (lines.find((l) => l.vendor)?.vendor ??
@@ -108,15 +119,16 @@ export async function getPurchaseSubsidiaryJournal(
     const accountTitles = new Set<string>();
     for (const l of purchaseLines) {
       const sign = l.isReturn ? -1 : 1;
-      const net = num(l.netAmount) * sign;
+      const net = (num(l.netAmount) || num(l.debitAmount)) * sign;
       const vat = num(l.vatAmount) * sign;
       if (l.vatType === "VAT_12") {
         vatPurchLocal += net;
         inputVat += vat;
-      } else if (l.vatType === "VAT_EXEMPT") {
-        nonVatLocal += net;
       } else if (l.vatType === "ZERO_RATED") {
         nonVatZero += net;
+      } else {
+        // NON_VAT and VAT_EXEMPT → Non-VAT Purchases (Goods), Local
+        nonVatLocal += net;
       }
       totalInvoice += net + vat;
       accountTitles.add(l.account.title);
