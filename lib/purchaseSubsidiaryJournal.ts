@@ -37,7 +37,8 @@ function partyAddress(p: PartyLike): string {
 export type PurchaseSubsidiaryRow = {
   key: string;
   postingDate: string;
-  documentNo: string; // Invoice number
+  documentNo: string; // internal PV / document number (grouping key)
+  invoiceNo: string; // supplier invoice = the line reference no.
   supplierName: string;
   supplierAddress: string;
   vatRegNo: string; // supplier TIN
@@ -117,6 +118,7 @@ export async function getPurchaseSubsidiaryJournal(
     let inputVat = 0;
     let totalInvoice = 0;
     const accountTitles = new Set<string>();
+    const refs = new Set<string>();
     for (const l of purchaseLines) {
       const sign = l.isReturn ? -1 : 1;
       const net = (num(l.netAmount) || num(l.debitAmount)) * sign;
@@ -132,7 +134,10 @@ export async function getPurchaseSubsidiaryJournal(
       }
       totalInvoice += net + vat;
       accountTitles.add(l.account.title);
+      if (l.referenceNo) refs.add(l.referenceNo);
     }
+    // Fall back to any line's reference if the main lines had none.
+    if (refs.size === 0) for (const l of lines) if (l.referenceNo) refs.add(l.referenceNo);
 
     let glDebit = 0;
     let glCredit = 0;
@@ -146,6 +151,7 @@ export async function getPurchaseSubsidiaryJournal(
       key,
       postingDate: first.postingDate.toISOString(),
       documentNo: first.documentNo,
+      invoiceNo: [...refs].join(", ") || first.documentNo,
       supplierName: partySrc ? partyName(partySrc) : "",
       supplierAddress: partySrc ? partyAddress(partySrc) : "",
       vatRegNo: partySrc?.tin ?? "",

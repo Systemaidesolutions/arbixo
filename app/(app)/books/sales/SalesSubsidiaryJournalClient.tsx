@@ -18,11 +18,12 @@ export function SalesSubsidiaryJournalClient({ registeredName }: { registeredNam
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!from || !to) return; // a date field is mid-edit / cleared — don't fetch
     let active = true;
     setLoading(true);
     fetch(`/api/books/sales-subsidiary?from=${from}&to=${to}`)
       .then((r) => r.json())
-      .then((j) => active && setData(j))
+      .then((j) => active && j && Array.isArray(j.rows) && setData(j))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
@@ -33,8 +34,8 @@ export function SalesSubsidiaryJournalClient({ registeredName }: { registeredNam
   const num = (v: number) => (v ? formatPeso(v) : "");
   const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
 
-  const cashTotal = data ? data.rows.filter((r) => r.terms === "Cash").reduce((s, r) => s + r.totalInvoice, 0) : 0;
-  const acctTotal = data ? data.rows.filter((r) => r.terms === "Account").reduce((s, r) => s + r.totalInvoice, 0) : 0;
+  const cashTotal = data?.rows ? data.rows.filter((r) => r.terms === "Cash").reduce((s, r) => s + r.totalInvoice, 0) : 0;
+  const acctTotal = data?.rows ? data.rows.filter((r) => r.terms === "Account").reduce((s, r) => s + r.totalInvoice, 0) : 0;
 
   const th = "border border-neutral-300 px-2 py-1 text-center align-middle font-medium";
   const td = "border border-neutral-200 px-2 py-1 align-top";
@@ -62,7 +63,7 @@ export function SalesSubsidiaryJournalClient({ registeredName }: { registeredNam
         </label>
       </div>
 
-      {loading || !data ? (
+      {loading || !data?.rows ? (
         <p className="mt-6 text-sm text-neutral-400">Loading…</p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-lg border border-neutral-200">

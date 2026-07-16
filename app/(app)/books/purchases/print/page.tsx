@@ -74,7 +74,7 @@ export default async function PurchaseSubsidiaryJournalPrintPage({
                   {r.supplierAddress ? <div className="text-neutral-500">{r.supplierAddress}</div> : null}
                 </td>
                 <td className={td} />
-                <td className={`${td} font-mono`}>{r.documentNo}</td>
+                <td className={`${td} font-mono`}>{r.invoiceNo}</td>
                 <td className={`${td} font-mono`}>{r.vatRegNo || "—"}</td>
                 <td className={tdNum}>{num(r.vatPurchLocal)}</td>
                 <td className={td} />

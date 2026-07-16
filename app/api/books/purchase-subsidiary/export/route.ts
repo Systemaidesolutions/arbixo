@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       rowDate(r.postingDate),
       [r.supplierName, r.supplierAddress].filter(Boolean).join("\n"),
       "",
-      r.documentNo,
+      r.invoiceNo,
       r.vatRegNo,
       amt(r.vatPurchLocal),
       null,
