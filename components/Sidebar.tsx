@@ -34,6 +34,7 @@ import {
   Coins,
   Ticket,
   Wallet,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import type { SubscriberSubtype } from "@prisma/client";
@@ -95,6 +96,7 @@ function sectionsFor(role: "ADMIN" | "USER", subtype: SubscriberSubtype | null):
 }
 
 const LINK_ICONS: Record<NavIcon, LucideIcon> = {
+  assistant: Sparkles,
   company: Building2,
   tax: ReceiptText,
   accounts: ListTree,

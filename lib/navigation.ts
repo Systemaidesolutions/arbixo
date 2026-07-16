@@ -1,4 +1,5 @@
 export type NavIcon =
+  | "assistant"
   | "company"
   | "tax"
   | "accounts"
@@ -48,6 +49,11 @@ export type NavSection = {
 // Shown to subscriber (USER role) accounts — each is scoped to their
 // own company via lib/currentUser.ts.
 export const NAV_SECTIONS: NavSection[] = [
+  {
+    title: "Ask ARbi",
+    icon: "reports",
+    links: [{ href: "/ask-arbi", label: "Ask ARbi", icon: "assistant" }],
+  },
   {
     title: "Transactions",
     icon: "transactions",
