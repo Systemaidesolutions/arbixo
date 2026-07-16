@@ -45,7 +45,6 @@ export default async function JournalBookPrintPage({
             <th className="px-1 py-1">Date</th>
             <th className="px-1 py-1">Doc No.</th>
             <th className="px-1 py-1">Account</th>
-            <th className="px-1 py-1">Particulars</th>
             <th className="px-1 py-1">{meta.partyLabel}</th>
             <th className="px-1 py-1 text-right">Debit</th>
             <th className="px-1 py-1 text-right">Credit</th>
@@ -53,14 +52,13 @@ export default async function JournalBookPrintPage({
         </thead>
         <tbody>
           {data.lines.length === 0 ? (
-            <tr><td colSpan={7} className="py-4 text-center text-neutral-400">No entries in this period</td></tr>
+            <tr><td colSpan={6} className="py-4 text-center text-neutral-400">No entries in this period</td></tr>
           ) : (
             data.lines.map((l, i) => (
               <tr key={l.id} className={i % 2 === 1 ? "bg-neutral-50" : "bg-white"}>
                 <td className="whitespace-nowrap px-1 py-1">{new Date(l.postingDate).toISOString().slice(0, 10)}</td>
                 <td className="px-1 py-1 font-mono">{l.documentNo}</td>
                 <td className="px-1 py-1"><span className="font-mono text-neutral-400">{l.accountCode}</span> {l.accountTitle}</td>
-                <td className="max-w-[180px] truncate px-1 py-1 text-neutral-600">{l.particulars ?? "—"}</td>
                 <td className="px-1 py-1 text-neutral-600">{l.counterparty ?? "—"}</td>
                 <td className={num}>{l.debit ? formatPeso(l.debit) : ""}</td>
                 <td className={num}>{l.credit ? formatPeso(l.credit) : ""}</td>
@@ -68,7 +66,7 @@ export default async function JournalBookPrintPage({
             ))
           )}
           <tr className="border-t-2 border-neutral-800 font-bold">
-            <td colSpan={5} className="px-1 py-1">TOTAL</td>
+            <td colSpan={4} className="px-1 py-1">TOTAL</td>
             <td className={num}>{formatPeso(data.totalDebit)}</td>
             <td className={num}>{formatPeso(data.totalCredit)}</td>
           </tr>

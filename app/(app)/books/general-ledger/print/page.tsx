@@ -48,7 +48,7 @@ export default async function GeneralLedgerBookPrintPage({
                     <th className="px-1 py-[3px]">Date</th>
                     <th className="px-1 py-[3px]">Doc No.</th>
                     <th className="px-1 py-[3px]">Jrnl</th>
-                    <th className="px-1 py-[3px]">Particulars</th>
+                    <th className="px-1 py-[3px]">Party</th>
                     <th className="px-1 py-[3px] text-right">Debit</th>
                     <th className="px-1 py-[3px] text-right">Credit</th>
                     <th className="px-1 py-[3px] text-right">Balance</th>
@@ -60,7 +60,7 @@ export default async function GeneralLedgerBookPrintPage({
                       <td className="whitespace-nowrap px-1 py-[3px]">{new Date(e.postingDate).toISOString().slice(0, 10)}</td>
                       <td className="px-1 py-[3px] font-mono">{e.documentNo}</td>
                       <td className="px-1 py-[3px] text-neutral-500">{JRNL[e.journalType]}</td>
-                      <td className="max-w-[200px] truncate px-1 py-[3px] text-neutral-600">{e.particulars ?? e.counterparty ?? "—"}</td>
+                      <td className="max-w-[200px] truncate px-1 py-[3px] text-neutral-600">{e.counterparty ?? "—"}</td>
                       <td className={num}>{e.debit ? formatPeso(e.debit) : ""}</td>
                       <td className={num}>{e.credit ? formatPeso(e.credit) : ""}</td>
                       <td className={num}>{bal(e.balance)}</td>

@@ -145,7 +145,6 @@ export function TransactionSearch({
                       <th className="px-3 py-2">Doc no.</th>
                       <th className="px-3 py-2">Date</th>
                       <th className="px-3 py-2">Party</th>
-                      <th className="px-3 py-2">Particulars</th>
                       <th className="px-3 py-2 text-right">Net</th>
                       <th className="px-3 py-2 text-right">VAT</th>
                       <th className="px-3 py-2 text-right">W/tax</th>
@@ -166,7 +165,6 @@ export function TransactionSearch({
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">{fmtDate(d.postingDate)}</td>
                         <td className="px-3 py-2">{d.counterpartyName ?? "—"}</td>
-                        <td className="px-3 py-2 max-w-[180px] truncate">{d.particulars ?? "—"}</td>
                         <td className="px-3 py-2 text-right font-mono">{formatPeso(d.totalNet)}</td>
                         <td className="px-3 py-2 text-right font-mono">{formatPeso(d.totalVat)}</td>
                         <td className="px-3 py-2 text-right font-mono">{formatPeso(d.totalWithholding)}</td>

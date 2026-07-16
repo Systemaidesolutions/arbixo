@@ -93,7 +93,7 @@ export function LedgerEntriesBrowser({
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Doc no., account, particulars"
+            placeholder="Doc no., account, party"
             className={`mt-1 block w-56 ${field}`}
           />
         </label>
@@ -120,7 +120,6 @@ export function LedgerEntriesBrowser({
                   <th className="px-3 py-2">Doc No.</th>
                   <th className="px-3 py-2">Account</th>
                   <th className="px-3 py-2">Counterparty</th>
-                  <th className="px-3 py-2">Particulars</th>
                   <th className="px-3 py-2 text-right">Debit</th>
                   <th className="px-3 py-2 text-right">Credit</th>
                 </tr>
@@ -136,9 +135,6 @@ export function LedgerEntriesBrowser({
                       <span className="font-mono text-neutral-400">{r.accountCode}</span> {r.accountTitle}
                     </td>
                     <td className="px-3 py-1.5 text-xs text-neutral-600">{r.counterparty ?? "—"}</td>
-                    <td className="max-w-[220px] truncate px-3 py-1.5 text-xs text-neutral-500" title={r.description ?? ""}>
-                      {r.description ?? "—"}
-                    </td>
                     <td className="px-3 py-1.5 text-right font-mono">{r.debit ? formatPeso(r.debit) : ""}</td>
                     <td className="px-3 py-1.5 text-right font-mono">{r.credit ? formatPeso(r.credit) : ""}</td>
                   </tr>
@@ -146,7 +142,7 @@ export function LedgerEntriesBrowser({
               </tbody>
               <tfoot>
                 <tr className="bg-neutral-50 font-medium">
-                  <td className="px-3 py-2" colSpan={7}>Total (all filtered entries)</td>
+                  <td className="px-3 py-2" colSpan={6}>Total (all filtered entries)</td>
                   <td className="px-3 py-2 text-right font-mono">{formatPeso(data.totalDebit)}</td>
                   <td className="px-3 py-2 text-right font-mono">{formatPeso(data.totalCredit)}</td>
                 </tr>

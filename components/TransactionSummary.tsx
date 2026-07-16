@@ -96,7 +96,6 @@ export function TransactionSummary({
               <th className="px-3 py-2 text-left">{documentNoLabel}</th>
               <th className="px-3 py-2 text-left">Date</th>
               <th className="px-3 py-2 text-left">{counterpartyLabel}</th>
-              <th className="px-3 py-2 text-left">Particulars</th>
               <th className="px-3 py-2 text-right">Net</th>
               <th className="px-3 py-2 text-right">VAT</th>
               <th className="px-3 py-2 text-right">W/tax</th>
@@ -107,13 +106,13 @@ export function TransactionSummary({
           <tbody className="divide-y divide-neutral-100">
             {loading ? (
               <tr>
-                <td colSpan={9} className="px-3 py-4 text-center text-neutral-400">
+                <td colSpan={8} className="px-3 py-4 text-center text-neutral-400">
                   Loading…
                 </td>
               </tr>
             ) : documents.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-3 py-4 text-center text-neutral-400">
+                <td colSpan={8} className="px-3 py-4 text-center text-neutral-400">
                   No entries for this month
                 </td>
               </tr>
@@ -123,7 +122,6 @@ export function TransactionSummary({
                   <td className="px-3 py-2 font-mono">{doc.documentNo}</td>
                   <td className="px-3 py-2">{new Date(doc.postingDate).toLocaleDateString()}</td>
                   <td className="px-3 py-2">{doc.counterpartyName ?? "—"}</td>
-                  <td className="px-3 py-2 text-neutral-500">{doc.particulars ?? "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">{formatPeso(doc.totalNet)}</td>
                   <td className="px-3 py-2 text-right font-mono">{formatPeso(doc.totalVat)}</td>
                   <td className="px-3 py-2 text-right font-mono">{formatPeso(doc.totalWithholding)}</td>

@@ -48,8 +48,6 @@ export default async function VoucherPage({ params }: { params: { journalType: s
   const approvedBy = company.authorizedRep ?? "";
   const approvedTitle = company.authorizedRepPosition ?? "";
 
-  // The document Particulars is the same on every line — show it once.
-  const docParticulars = entries.find((e) => e.description)?.description ?? "";
   // Line items below it come from the main (income/expense) lines, labelled
   // by their per-line Description; fall back to debit lines / the account title.
   let particulars = entries
@@ -119,11 +117,6 @@ export default async function VoucherPage({ params }: { params: { journalType: s
           </tr>
         </thead>
         <tbody>
-          {docParticulars && (
-            <tr>
-              <td colSpan={2} className={`border-b border-neutral-800 px-2 py-1 font-semibold`}>{docParticulars}</td>
-            </tr>
-          )}
           {particulars.map((r, i) => (
             <tr key={i}>
               <td className={`border-r border-neutral-800 px-2 py-1 pl-4`}>{r.name}</td>

@@ -62,9 +62,9 @@ export function GeneralLedgerClient({ companyId, accounts }: { companyId: string
     const out: (string | number)[][] = [
       ["General Ledger", accountLabel, `${dateFrom} to ${dateTo}`],
       [],
-      ["Date", "Journal", "Doc no.", "Particulars", "Debit", "Credit", "Balance"],
+      ["Date", "Journal", "Doc no.", "Debit", "Credit", "Balance"],
       ["", "", "", "Beginning balance", "", "", beginningBalance.toFixed(2)],
-      ...rows.map((r) => [r.postingDate.slice(0, 10), r.journalType.replaceAll("_", " "), r.documentNo, r.description ?? "", r.debit ? r.debit.toFixed(2) : "", r.credit ? r.credit.toFixed(2) : "", r.runningBalance.toFixed(2)]),
+      ...rows.map((r) => [r.postingDate.slice(0, 10), r.journalType.replaceAll("_", " "), r.documentNo, r.debit ? r.debit.toFixed(2) : "", r.credit ? r.credit.toFixed(2) : "", r.runningBalance.toFixed(2)]),
       ["", "", "", "Ending balance", "", "", endingBalance.toFixed(2)],
     ];
     const blob = new Blob(["﻿" + out.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
@@ -131,7 +131,6 @@ export function GeneralLedgerClient({ companyId, accounts }: { companyId: string
               <th className="px-3 py-2 text-left">Date</th>
               <th className="px-3 py-2 text-left">Journal</th>
               <th className="px-3 py-2 text-left">Doc no.</th>
-              <th className="px-3 py-2 text-left">Particulars</th>
               <th className="px-3 py-2 text-right">Debit</th>
               <th className="px-3 py-2 text-right">Credit</th>
               <th className="px-3 py-2 text-right">Balance</th>
@@ -139,7 +138,7 @@ export function GeneralLedgerClient({ companyId, accounts }: { companyId: string
           </thead>
           <tbody className="divide-y divide-neutral-100">
             <tr className="bg-neutral-50/50">
-              <td colSpan={6} className="px-3 py-2 text-xs font-medium text-neutral-500">
+              <td colSpan={5} className="px-3 py-2 text-xs font-medium text-neutral-500">
                 Beginning balance
               </td>
               <td className="px-3 py-2 text-right font-mono text-xs font-medium text-neutral-500">
@@ -148,13 +147,13 @@ export function GeneralLedgerClient({ companyId, accounts }: { companyId: string
             </tr>
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-3 py-4 text-center text-neutral-400">
+                <td colSpan={6} className="px-3 py-4 text-center text-neutral-400">
                   Loading…
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-4 text-center text-neutral-400">
+                <td colSpan={6} className="px-3 py-4 text-center text-neutral-400">
                   No entries for this period
                 </td>
               </tr>
@@ -164,7 +163,6 @@ export function GeneralLedgerClient({ companyId, accounts }: { companyId: string
                   <td className="px-3 py-2">{new Date(row.postingDate).toLocaleDateString()}</td>
                   <td className="px-3 py-2 text-neutral-500">{row.journalType.replaceAll("_", " ")}</td>
                   <td className="px-3 py-2 font-mono">{row.documentNo}</td>
-                  <td className="px-3 py-2 text-neutral-500">{row.description ?? "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">{row.debit > 0 ? formatPeso(row.debit) : ""}</td>
                   <td className="px-3 py-2 text-right font-mono">{row.credit > 0 ? formatPeso(row.credit) : ""}</td>
                   <td className="px-3 py-2 text-right font-mono">{formatBalance(row.runningBalance)}</td>
@@ -174,7 +172,7 @@ export function GeneralLedgerClient({ companyId, accounts }: { companyId: string
           </tbody>
           <tfoot className="border-t-2 border-neutral-300 bg-neutral-50 font-medium">
             <tr>
-              <td colSpan={6} className="px-3 py-2">
+              <td colSpan={5} className="px-3 py-2">
                 Ending balance
               </td>
               <td className="px-3 py-2 text-right font-mono">{formatBalance(endingBalance)}</td>

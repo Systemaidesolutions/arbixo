@@ -29,7 +29,6 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, e
   const [isReturn, setIsReturn] = useState(false);
   const [vendorId, setVendorId] = useState<string | null>(null);
   const [payableAccountId, setPayableAccountId] = useState(payableAccounts[0]?.id ?? "");
-  const [particulars, setParticulars] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
   const [lines, setLines] = useState<LineState[]>([newLine()]);
@@ -101,7 +100,7 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, e
     const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=PURCHASE_ON_ACCOUNT`);
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
-    setVendorId(null); setParticulars(""); setPaymentTerms(""); setDueDate(postingDate); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setVendorId(null); setPaymentTerms(""); setDueDate(postingDate); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
     setPosted(false); setError(null); setSuccess(null);
   }
 
@@ -109,7 +108,7 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, e
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
       companyId, locationId: locationId || null, documentNo, postingDate, isReturn,
-      counterpartyType: "VENDOR" as const, counterpartyId: vendorId, payableAccountId, particulars, paymentTerms: paymentTerms || null, dueDate: dueDate || null,
+      counterpartyType: "VENDOR" as const, counterpartyId: vendorId, payableAccountId, particulars: "", paymentTerms: paymentTerms || null, dueDate: dueDate || null,
       lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, taxSource: l.taxSource, referenceNo: l.referenceNo || null, lineDescription: l.lineDescription || null, counterpartyType: l.showParty ? l.counterpartyType : null, counterpartyId: l.showParty ? l.counterpartyId : null })),
       attachments,
     };
@@ -156,7 +155,6 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, e
           <label className={label}>Payable account<select required value={payableAccountId} onChange={(e) => setPayableAccountId(e.target.value)} className={field}>{payableAccounts.length === 0 && <option value="">No A/P accounts yet</option>}{payableAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
           <label className={label}>Payment terms<input value={paymentTerms} onChange={(e) => onTermsChange(e.target.value)} placeholder="e.g. Net 30, COD" className={field} /></label>
           <label className={label}>Due date<input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} /></label>
-          <label className="block text-xs text-neutral-500 sm:col-span-3">Particulars<input value={particulars} onChange={(e) => setParticulars(e.target.value)} className={field} /></label>
 
           {/* Attachments */}
           <div className="sm:col-span-3">

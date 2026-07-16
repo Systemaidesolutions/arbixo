@@ -6,9 +6,27 @@ import { QuickCreateModal, NewPartyForm } from "@/components/QuickCreate";
 
 type AnyParty = Customer | Vendor | Employee | Contact;
 
-function displayName(party: { tradeName?: string | null; firstName?: string | null; lastName?: string | null }) {
-  return party.tradeName || `${party.firstName ?? ""} ${party.lastName ?? ""}`.trim();
+// A native <select> can only render plain text per option, so the columns are
+// aligned with padding + a monospace font, and the header is an <optgroup>
+// label (non-selectable) above the rows.
+type PartyRow = {
+  code?: string | null; registeredName?: string | null; tradeName?: string | null;
+  lastName?: string | null; firstName?: string | null;
+};
+const COL_CODE = 8;
+const COL_REG = 30;
+const COL_TRADE = 26;
+const pad = (s: string, w: number) => (s.length > w ? `${s.slice(0, w - 1)}…` : s.padEnd(w, " "));
+
+function registeredOf(p: PartyRow): string {
+  const person = [p.lastName, p.firstName].filter(Boolean).join(", ");
+  return (p.registeredName || person || "").trim();
 }
+function optionRow(party: AnyParty): string {
+  const p = party as unknown as PartyRow;
+  return `${pad(p.code ?? "", COL_CODE)} ${pad(registeredOf(p), COL_REG)} ${pad(p.tradeName ?? "", COL_TRADE)}`.trimEnd();
+}
+const OPTION_HEADER = `${pad("CODE", COL_CODE)} ${pad("REGISTERED NAME", COL_REG)} ${pad("TRADE NAME", COL_TRADE)}`;
 
 function partyDetails(party: AnyParty): { tin: string; address: string } {
   const p = party as unknown as {
@@ -110,15 +128,17 @@ export function CounterpartyPicker({
       value={counterpartyId ?? ""}
       onChange={(e) => handleSelect(e.target.value)}
       disabled={disabled}
-      className={`${field} disabled:bg-neutral-100`}
+      className={`${field} font-mono text-xs disabled:bg-neutral-100`}
     >
       <option value="">Select…</option>
       {canCreate && <option value={NEW}>＋ New {TYPE_LABELS[counterpartyType!].toLowerCase()}…</option>}
-      {options.map((o) => (
-        <option key={o.id} value={o.id}>
-          {o.code} — {displayName(o)}
-        </option>
-      ))}
+      <optgroup label={OPTION_HEADER}>
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {optionRow(o)}
+          </option>
+        ))}
+      </optgroup>
     </select>
   );
 

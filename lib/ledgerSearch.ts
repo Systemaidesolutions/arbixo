@@ -60,11 +60,14 @@ export async function searchLedgerDocuments(
   const byDocument = new Map<string, DocumentSummary>();
   for (const entry of entries) {
     const existing = byDocument.get(entry.documentNo);
+    // Reports show the party's REGISTERED name; trade name is only a fallback.
+    const reg = (p: { registeredName?: string | null; tradeName?: string | null } | null | undefined) =>
+      p ? p.registeredName || p.tradeName || null : null;
     const counterpartyName =
-      entry.customer?.tradeName ??
-      entry.vendor?.tradeName ??
+      reg(entry.customer) ??
+      reg(entry.vendor) ??
       (entry.employee ? `${entry.employee.firstName} ${entry.employee.lastName}` : null) ??
-      entry.contact?.tradeName ??
+      reg(entry.contact) ??
       null;
 
     const net = Number(entry.netAmount ?? 0);

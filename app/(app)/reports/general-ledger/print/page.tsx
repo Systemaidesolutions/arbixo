@@ -36,7 +36,6 @@ export default async function GeneralLedgerPrintPage({
             <th className="px-1 py-1">Date</th>
             <th className="px-1 py-1">Journal</th>
             <th className="px-1 py-1">Doc no.</th>
-            <th className="px-1 py-1">Particulars</th>
             <th className="px-1 py-1 text-right">Debit</th>
             <th className="px-1 py-1 text-right">Credit</th>
             <th className="px-1 py-1 text-right">Balance</th>
@@ -44,18 +43,17 @@ export default async function GeneralLedgerPrintPage({
         </thead>
         <tbody>
           <tr className="font-semibold">
-            <td colSpan={6} className="px-1 py-1">Beginning balance</td>
+            <td colSpan={5} className="px-1 py-1">Beginning balance</td>
             <td className={num}>{bal(g.beginningBalance)}</td>
           </tr>
           {g.rows.length === 0 ? (
-            <tr><td colSpan={7} className="py-4 text-center text-neutral-400">No entries for this period</td></tr>
+            <tr><td colSpan={6} className="py-4 text-center text-neutral-400">No entries for this period</td></tr>
           ) : (
             g.rows.map((r, i) => (
               <tr key={r.id} className={i % 2 === 1 ? "bg-neutral-50" : "bg-white"}>
                 <td className="whitespace-nowrap px-1 py-1">{new Date(r.postingDate).toISOString().slice(0, 10)}</td>
                 <td className="px-1 py-1 text-neutral-500">{r.journalType.replaceAll("_", " ")}</td>
                 <td className="px-1 py-1 font-mono">{r.documentNo}</td>
-                <td className="px-1 py-1 text-neutral-600">{r.description ?? "—"}</td>
                 <td className={num}>{r.debit > 0 ? formatPeso(r.debit) : ""}</td>
                 <td className={num}>{r.credit > 0 ? formatPeso(r.credit) : ""}</td>
                 <td className={num}>{bal(r.runningBalance)}</td>
@@ -63,7 +61,7 @@ export default async function GeneralLedgerPrintPage({
             ))
           )}
           <tr className="border-t-2 border-neutral-800 font-bold">
-            <td colSpan={6} className="px-1 py-1">Ending balance</td>
+            <td colSpan={5} className="px-1 py-1">Ending balance</td>
             <td className={num}>{bal(g.endingBalance)}</td>
           </tr>
         </tbody>

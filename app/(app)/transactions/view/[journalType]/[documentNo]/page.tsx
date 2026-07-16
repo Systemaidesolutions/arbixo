@@ -53,7 +53,6 @@ export default async function TransactionViewPage({ params }: { params: { journa
   const checkNo = entries.find((e) => e.checkNo)?.checkNo ?? "";
   const paymentTerms = entries.find((e) => e.paymentTerms)?.paymentTerms ?? "";
   const dueDate = entries.find((e) => e.dueDate)?.dueDate ?? null;
-  const particulars = entries.find((e) => e.description)?.description ?? "";
 
   const capability = await getCurrentCapability();
   const cancellationReason = entries.find((e) => e.cancellationReason)?.cancellationReason ?? "";
@@ -114,12 +113,6 @@ export default async function TransactionViewPage({ params }: { params: { journa
             <div className="text-neutral-900">{v}</div>
           </div>
         ))}
-        {particulars && journalType !== "CASH_DISBURSEMENT" && (
-          <div className="col-span-2 sm:col-span-3">
-            <div className="text-xs text-neutral-400">Particulars</div>
-            <div className="text-neutral-900">{particulars}</div>
-          </div>
-        )}
       </div>
 
       {/* Lines */}
@@ -142,7 +135,7 @@ export default async function TransactionViewPage({ params }: { params: { journa
               <tr key={e.id}>
                 <td className={cell}>{e.account.code} — {e.account.title}</td>
                 <td className={`${cell} font-mono`}>{e.referenceNo || "—"}</td>
-                <td className={cell}>{e.description || "—"}</td>
+                <td className={cell}>{e.lineDescription || "—"}</td>
                 <td className={`${cell} text-right font-mono`}>{num(Number(e.netAmount ?? 0))}</td>
                 <td className={`${cell} text-right font-mono`}>{num(Number(e.vatAmount ?? 0))}</td>
                 <td className={`${cell} text-right font-mono`}>{num(Number(e.withholdingAmt ?? 0))}</td>

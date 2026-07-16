@@ -116,7 +116,7 @@ export function PostedTransactionsBrowser({
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Doc no., party, particulars, ref"
+            placeholder="Doc no., party, ref"
             className={`mt-1 block w-64 ${field}`}
           />
         </label>
@@ -148,7 +148,6 @@ export function PostedTransactionsBrowser({
               <th className="px-3 py-2">Doc no.</th>
               <th className="px-3 py-2">Date</th>
               <th className="px-3 py-2">Party</th>
-              <th className="px-3 py-2">Particulars</th>
               <th className="px-3 py-2 text-right">Net</th>
               <th className="px-3 py-2 text-right">VAT</th>
               <th className="px-3 py-2 text-right">W/tax</th>
@@ -159,14 +158,13 @@ export function PostedTransactionsBrowser({
           </thead>
           <tbody className="divide-y divide-neutral-100">
             {!loading && rows.length === 0 ? (
-              <tr><td colSpan={10} className="px-3 py-10 text-center text-sm text-neutral-400">No transactions found.</td></tr>
+              <tr><td colSpan={9} className="px-3 py-10 text-center text-sm text-neutral-400">No transactions found.</td></tr>
             ) : (
               rows.map((d) => (
                 <tr key={d.documentNo} onClick={() => openDoc(d.documentNo)} className="cursor-pointer hover:bg-blue-50">
                   <td className="px-3 py-1.5 font-mono text-xs">{d.documentNo}</td>
                   <td className="whitespace-nowrap px-3 py-1.5 text-xs">{fmtDate(d.postingDate)}</td>
                   <td className="px-3 py-1.5 text-xs text-neutral-600">{d.counterpartyName ?? "—"}</td>
-                  <td className="max-w-[200px] truncate px-3 py-1.5 text-xs text-neutral-500" title={d.particulars ?? ""}>{d.particulars ?? "—"}</td>
                   <td className="px-3 py-1.5 text-right font-mono">{formatPeso(d.totalNet)}</td>
                   <td className="px-3 py-1.5 text-right font-mono">{formatPeso(d.totalVat)}</td>
                   <td className="px-3 py-1.5 text-right font-mono">{formatPeso(d.totalWithholding)}</td>
