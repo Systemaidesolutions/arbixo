@@ -50,11 +50,6 @@ export type NavSection = {
 // own company via lib/currentUser.ts.
 export const NAV_SECTIONS: NavSection[] = [
   {
-    title: "Ask ARbi",
-    icon: "reports",
-    links: [{ href: "/ask-arbi", label: "Ask ARbi", icon: "assistant" }],
-  },
-  {
     title: "Transactions",
     icon: "transactions",
     links: [
@@ -124,6 +119,7 @@ export const NAV_SECTIONS: NavSection[] = [
     title: "Setup",
     icon: "settings",
     links: [
+      { href: "/ask-arbi", label: "Ask ARbi", icon: "assistant" },
       { href: "/company/setup", label: "Company details", icon: "company" },
       { href: "/company/branches", label: "Branches", icon: "companies" },
       { href: "/company/tax-posting-setup", label: "Tax posting setup", icon: "tax" },
