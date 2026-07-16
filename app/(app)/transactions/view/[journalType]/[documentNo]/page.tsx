@@ -114,7 +114,7 @@ export default async function TransactionViewPage({ params }: { params: { journa
             <div className="text-neutral-900">{v}</div>
           </div>
         ))}
-        {particulars && (
+        {particulars && journalType !== "CASH_DISBURSEMENT" && (
           <div className="col-span-2 sm:col-span-3">
             <div className="text-xs text-neutral-400">Particulars</div>
             <div className="text-neutral-900">{particulars}</div>
