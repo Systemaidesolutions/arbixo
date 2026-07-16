@@ -29,7 +29,6 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
   const [counterpartyType, setCounterpartyType] = useState<CounterpartyType | null>("VENDOR");
   const [counterpartyId, setCounterpartyId] = useState<string | null>(null);
   const [cashAccountId, setCashAccountId] = useState(cashAccounts[0]?.id ?? "");
-  const [particulars, setParticulars] = useState("");
   const [lines, setLines] = useState<LineState[]>([newLine()]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
@@ -95,7 +94,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
     const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=CASH_DISBURSEMENT`);
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
-    setCheckNo(""); setCounterpartyId(null); setParticulars(""); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setCheckNo(""); setCounterpartyId(null); setLines([newLine()]); setAttachments([]); setAttachError(null);
     setPosted(false); setError(null); setSuccess(null);
   }
 
@@ -103,7 +102,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
       companyId, locationId: locationId || null, documentNo, checkNo: checkNo || null, postingDate,
-      counterpartyType, counterpartyId, cashAccountId, particulars,
+      counterpartyType, counterpartyId, cashAccountId, particulars: "",
       lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, taxSource: l.taxSource, referenceNo: l.referenceNo || null, lineDescription: l.lineDescription || null, counterpartyType: l.showParty ? l.counterpartyType : null, counterpartyId: l.showParty ? l.counterpartyId : null })),
       attachments,
     };
@@ -144,7 +143,6 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
             <CounterpartyPicker counterpartyType={counterpartyType} counterpartyId={counterpartyId} onTypeChange={setCounterpartyType} onIdChange={setCounterpartyId} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} label="Payee" companyId={companyId} onCreated={onPartyCreated} showDetails />
           </div>
           <label className={label}>Cash account<select required value={cashAccountId} onChange={(e) => setCashAccountId(e.target.value)} className={field}>{cashAccounts.length === 0 && <option value="">No Cash accounts yet</option>}{cashAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
-          <label className="block text-xs text-neutral-500 sm:col-span-4">Particulars<input value={particulars} onChange={(e) => setParticulars(e.target.value)} className={field} /></label>
 
           <div className="sm:col-span-4">
             <div className="flex flex-wrap items-center gap-3">
