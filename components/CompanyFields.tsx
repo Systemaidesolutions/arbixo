@@ -65,7 +65,7 @@ export function CompanyFields({
       {/* Registered Name / Taxpayer Name — conditional on classification */}
       {form.taxClassification === "NON_INDIVIDUAL" ? (
         <label className={label}>
-          Registered name
+          Registered Name
           <input
             required
             disabled={readOnly}
@@ -109,7 +109,7 @@ export function CompanyFields({
       )}
 
       <label className={label}>
-        Trade name
+        Trade Name
         <input
           required
           disabled={readOnly}

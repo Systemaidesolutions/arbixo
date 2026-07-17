@@ -26,7 +26,7 @@ function optionRow(party: AnyParty): string {
   const p = party as unknown as PartyRow;
   return `${pad(p.code ?? "", COL_CODE)} ${pad(registeredOf(p), COL_REG)} ${pad(p.tradeName ?? "", COL_TRADE)}`.trimEnd();
 }
-const OPTION_HEADER = `${pad("CODE", COL_CODE)} ${pad("REGISTERED NAME", COL_REG)} ${pad("TRADE NAME", COL_TRADE)}`;
+const OPTION_HEADER = `${pad("Code", COL_CODE)} ${pad("Registered Name", COL_REG)} ${pad("Trade Name", COL_TRADE)}`;
 
 function partyDetails(party: AnyParty): { tin: string; address: string } {
   const p = party as unknown as {

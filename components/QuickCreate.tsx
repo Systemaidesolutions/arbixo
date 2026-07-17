@@ -241,7 +241,7 @@ export function NewPartyForm({
 
           {form.taxClassification === "NON_INDIVIDUAL" ? (
             <label className={labelCls}>
-              Registered name
+              Registered Name
               <input required value={form.registeredName} onChange={(e) => set("registeredName", e.target.value)} className={field} />
             </label>
           ) : (
@@ -258,7 +258,7 @@ export function NewPartyForm({
           )}
 
           <label className={labelCls}>
-            Trade name
+            Trade Name
             <input required value={form.tradeName} onChange={(e) => set("tradeName", e.target.value)} className={field} />
           </label>
 

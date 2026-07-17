@@ -441,7 +441,7 @@ export function PartyManager({
 
                 {form.taxClassification === "NON_INDIVIDUAL" ? (
                   <label className={label}>
-                    Registered name
+                    Registered Name
                     <input
                       required
                       value={form.registeredName}
@@ -473,7 +473,7 @@ export function PartyManager({
                 )}
 
                 <label className={label}>
-                  Trade name
+                  Trade Name
                   <input
                     required
                     value={form.tradeName}

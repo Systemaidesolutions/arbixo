@@ -17,9 +17,9 @@ export type NamePayload = {
 // Vendor, and Contact — Employee doesn't use taxClassification at all
 // (an employee is always an individual).
 export function validateNameFields(payload: NamePayload): string | null {
-  if (!payload.tradeName?.trim()) return "Trade name is required";
+  if (!payload.tradeName?.trim()) return "Trade Name is required";
   if (payload.taxClassification === "NON_INDIVIDUAL" && !payload.registeredName?.trim()) {
-    return "Registered name is required for Non-Individual";
+    return "Registered Name is required for Non-Individual";
   }
   if (payload.taxClassification === "INDIVIDUAL") {
     if (!payload.lastName?.trim() || !payload.firstName?.trim()) {
@@ -27,8 +27,8 @@ export function validateNameFields(payload: NamePayload): string | null {
     }
   }
   return firstSpecialCharError({
-    "Trade name": payload.tradeName,
-    "Registered name": payload.registeredName,
+    "Trade Name": payload.tradeName,
+    "Registered Name": payload.registeredName,
     "Last name": payload.lastName,
     "First name": payload.firstName,
     "Middle name": payload.middleName,

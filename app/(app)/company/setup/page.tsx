@@ -34,11 +34,11 @@ export default async function CompanyDetailsPage() {
     .join(", ");
 
   const rows: Array<[string, string | null | undefined]> = [
-    ["Trade name", company.tradeName],
+    ["Trade Name", company.tradeName],
     ["TIN", company.tin],
     ["Taxpayer classification", TAX_CLASSIFICATION_LABELS[company.taxClassification]],
     company.taxClassification === "NON_INDIVIDUAL"
-      ? ["Registered name", company.registeredName]
+      ? ["Registered Name", company.registeredName]
       : ["Taxpayer name", taxpayerName],
     [
       "Business address",

@@ -121,7 +121,7 @@ export function SliClient({ tin, registeredName }: { tin: string; registeredName
 
       <div className="mt-4 rounded-lg border border-neutral-200 p-4 text-sm text-neutral-600">
         <div>TIN: <span className="font-mono">{tin}</span></div>
-        <div>Registered name: {registeredName}</div>
+        <div>Registered Name: {registeredName}</div>
       </div>
 
       <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">

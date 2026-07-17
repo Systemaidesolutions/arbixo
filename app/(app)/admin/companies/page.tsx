@@ -38,7 +38,7 @@ export default async function AdminCompaniesPage() {
         <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
-              <th className="px-3 py-2 text-left">Trade name</th>
+              <th className="px-3 py-2 text-left">Trade Name</th>
               <th className="px-3 py-2 text-left">TIN</th>
               <th className="px-3 py-2 text-left">Registration</th>
               <th className="px-3 py-2 text-left">Users</th>

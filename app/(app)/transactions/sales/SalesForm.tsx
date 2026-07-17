@@ -33,7 +33,6 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
   const [isReturn, setIsReturn] = useState(false);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [receivableAccountId, setReceivableAccountId] = useState(receivableAccounts[0]?.id ?? "");
-  const [particulars, setParticulars] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [dueDate, setDueDate] = useState(todayLocal());
   const [lines, setLines] = useState<LineState[]>([newLine()]);
@@ -88,7 +87,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
     const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=SALES_ON_ACCOUNT`);
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
-    setCustomerId(null); setParticulars(""); setPaymentTerms(""); setDueDate(todayLocal()); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setCustomerId(null); setPaymentTerms(""); setDueDate(todayLocal()); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
     setPosted(false); setError(null); setSuccess(null);
   }
 
@@ -98,7 +97,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
       companyId, locationId: locationId || null, documentNo, postingDate, isReturn,
-      counterpartyType: "CUSTOMER" as const, counterpartyId: customerId, receivableAccountId, particulars, paymentTerms: paymentTerms || null, dueDate: dueDate || null,
+      counterpartyType: "CUSTOMER" as const, counterpartyId: customerId, receivableAccountId, particulars: "", paymentTerms: paymentTerms || null, dueDate: dueDate || null,
       lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, referenceNo: l.referenceNo || null, lineDescription: l.lineDescription || null })),
       attachments,
     };
@@ -143,7 +142,6 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
           <label className={label}>Receivable account<select required value={receivableAccountId} onChange={(e) => setReceivableAccountId(e.target.value)} className={field}>{receivableAccounts.length === 0 && <option value="">No A/R accounts yet</option>}{receivableAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
           <label className={label}>Payment terms<input value={paymentTerms} onChange={(e) => onTermsChange(e.target.value)} placeholder="e.g. Net 30, COD" className={field} /></label>
           <label className={label}>Due date<input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} /></label>
-          <label className="block text-xs text-neutral-500 sm:col-span-3">Income description<input value={particulars} onChange={(e) => setParticulars(e.target.value)} className={field} /></label>
 
           {/* Attachments */}
           <div className="sm:col-span-3">

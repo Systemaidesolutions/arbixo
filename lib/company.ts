@@ -74,11 +74,11 @@ export function validateCompanyPayload(payload: CompanyFormPayload): string | nu
     }
   }
   return firstSpecialCharError({
-    "Registered name": payload.registeredName,
+    "Registered Name": payload.registeredName,
     "Taxpayer last name": payload.taxpayerLastName,
     "Taxpayer first name": payload.taxpayerFirstName,
     "Taxpayer middle name": payload.taxpayerMiddleName,
-    "Trade name": payload.tradeName,
+    "Trade Name": payload.tradeName,
     "Business address": payload.businessAddress,
     Barangay: payload.barangay,
     "Authorized representative": payload.authorizedRep,
