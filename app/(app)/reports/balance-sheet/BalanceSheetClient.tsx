@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
+import { downloadXlsx } from "@/lib/exportXlsx";
 import type { BalanceSheet } from "@/lib/reports";
 
 function fiscalYearStartFor(asOfDate: string, fiscalMonthEnd: number): string {
@@ -67,10 +68,6 @@ export function BalanceSheetClient({
 
   function exportCsv() {
     if (!sheet) return;
-    const esc = (v: string | number) => {
-      const s = String(v);
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
     const rows: (string | number)[][] = [
       ["Balance Sheet", `As of ${asOfDate}`],
       [],
@@ -86,13 +83,7 @@ export function BalanceSheetClient({
     rows.push(["Equity", "", "Total equity & earnings", sheet.totalEquityAndEarnings.toFixed(2)]);
     rows.push(["", "", "Total liabilities & equity", sheet.totalLiabilitiesAndEquity.toFixed(2)]);
 
-    const blob = new Blob(["﻿" + rows.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `balance-sheet_${asOfDate}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadXlsx(`balance-sheet_${asOfDate}`, "Balance Sheet", rows);
   }
 
   return (

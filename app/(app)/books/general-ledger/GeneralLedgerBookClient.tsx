@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
+import { downloadXlsx } from "@/lib/exportXlsx";
 import type { JournalType } from "@prisma/client";
 
 const JOURNAL_LABELS: Record<JournalType, string> = {
@@ -64,18 +65,13 @@ export function GeneralLedgerBookClient({ registeredName }: { registeredName: st
 
   function exportCsv() {
     if (!data) return;
-    const esc = (v: string | number) => { const s = String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
     const out: (string | number)[][] = [["General Ledger", registeredName, `${from} to ${to}`], [], ["Account", "Date", "Doc No.", "Journal", "Party", "Debit", "Credit", "Balance"]];
     for (const acc of data.accounts) {
       out.push([`${acc.code} — ${acc.title}`, "", "", "", `Beginning ${bal(acc.beginningBalance)}`, "", "", ""]);
       for (const e of acc.entries) out.push(["", e.postingDate.slice(0, 10), e.documentNo, JOURNAL_LABELS[e.journalType], e.counterparty ?? "", e.debit ? e.debit.toFixed(2) : "", e.credit ? e.credit.toFixed(2) : "", bal(e.balance)]);
       out.push(["", "", "", "", `Ending ${bal(acc.endingBalance)}`, acc.totalDebit.toFixed(2), acc.totalCredit.toFixed(2), ""]);
     }
-    const blob = new Blob(["﻿" + out.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `general-ledger-book_${from}_to_${to}.csv`; a.click();
-    URL.revokeObjectURL(url);
+    downloadXlsx(`general-ledger-book_${from}_to_${to}`, "General Ledger Book", out);
   }
 
   return (

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatPeso } from "@/lib/format";
+import { downloadXlsx } from "@/lib/exportXlsx";
 import type { Customer, Vendor } from "@prisma/client";
 
 type SubsidiaryLedgerRow = {
@@ -80,7 +81,6 @@ export function SubsidiaryLedgerClient({
   const partyLabel = (() => { const p = parties.find((x) => x.id === partyId); return p ? `${p.code} — ${partyName(p)}` : ""; })();
 
   function exportCsv() {
-    const esc = (v: string | number) => { const s = String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
     const out: (string | number)[][] = [
       [partyType === "CUSTOMER" ? "Debtors' Ledger" : "Creditors' Ledger", partyLabel, `${dateFrom} to ${dateTo}`],
       [],
@@ -89,11 +89,7 @@ export function SubsidiaryLedgerClient({
       ...rows.map((r) => [r.postingDate.slice(0, 10), r.journalType.replaceAll("_", " "), r.documentNo, `${r.accountCode} — ${r.accountTitle}`, r.debit ? r.debit.toFixed(2) : "", r.credit ? r.credit.toFixed(2) : "", r.runningBalance.toFixed(2)]),
       ["", "", "", "Ending balance", "", "", endingBalance.toFixed(2)],
     ];
-    const blob = new Blob(["﻿" + out.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `subsidiary-ledger_${dateFrom}_to_${dateTo}.csv`; a.click();
-    URL.revokeObjectURL(url);
+    downloadXlsx(`subsidiary-ledger_${dateFrom}_to_${dateTo}`, "Subsidiary Ledger", out);
   }
 
   return (

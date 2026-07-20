@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { formatPeso } from "@/lib/format";
+import { downloadXlsx } from "@/lib/exportXlsx";
 import type { CashFlowStatement, CashFlowLine } from "@/lib/reports";
 
 const MONTHS = [
@@ -61,10 +62,6 @@ export function CashFlowStatementClient({ companyId }: { companyId: string }) {
 
   function exportCsv() {
     if (!data) return;
-    const esc = (v: string | number) => {
-      const s = String(v);
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
     const rows: (string | number)[][] = [["Statement of Cash Flows", range.label], [], ["Account Name", "Total"]];
     rows.push(["Cash flows from operating activities", ""]);
     rows.push(["Profit for the year", data.netIncome.toFixed(2)]);
@@ -84,13 +81,7 @@ export function CashFlowStatementClient({ companyId }: { companyId: string }) {
     rows.push(["NET INCREASE (DECREASE) IN CASH AND CASH EQUIVALENTS", data.netChange.toFixed(2)]);
     rows.push(["Cash and cash equivalents at beginning of year", data.beginningCash.toFixed(2)]);
     rows.push(["CASH AND CASH EQUIVALENTS AT END OF YEAR", data.endingCash.toFixed(2)]);
-    const blob = new Blob(["﻿" + rows.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `cash-flow-statement_${range.from}_to_${range.to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadXlsx(`cash-flow-statement_${range.from}_to_${range.to}`, "Cash Flows", rows);
   }
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";

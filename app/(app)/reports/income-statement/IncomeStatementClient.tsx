@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
+import { downloadXlsx } from "@/lib/exportXlsx";
 import type { IncomeStatement } from "@/lib/reports";
 
 const MONTHS = [
@@ -54,10 +55,6 @@ export function IncomeStatementClient({ companyId }: { companyId: string }) {
 
   function exportCsv() {
     if (!statement) return;
-    const esc = (v: string | number) => {
-      const s = String(v);
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
     const rows: (string | number)[][] = [
       ["Income Statement", range.label],
       [],
@@ -69,13 +66,7 @@ export function IncomeStatementClient({ companyId }: { companyId: string }) {
     rows.push(["Expenses", "", "Total expenses", statement.totalExpense.toFixed(2)]);
     rows.push(["", "", statement.netIncome >= 0 ? "Net income" : "Net loss", Math.abs(statement.netIncome).toFixed(2)]);
 
-    const blob = new Blob(["﻿" + rows.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `income-statement_${range.from}_to_${range.to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadXlsx(`income-statement_${range.from}_to_${range.to}`, "Income Statement", rows);
   }
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";

@@ -44,7 +44,7 @@ export default async function BalanceSheetPrintPage({
 
   return (
     <main className="mx-auto max-w-2xl bg-white p-6 text-neutral-900 print:p-0">
-      <style>{`@media print { html, body { height: auto !important; overflow: visible !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}</style>
+      <style>{`@media print { @page { size: A4; margin: 0.4in } html, body { height: auto !important; overflow: visible !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}</style>
       <PrintControls auto={false} />
 
       <ReportHeader company={company} title="Balance Sheet" coverage={`As of ${fmtDate(asOfDate)}`} />

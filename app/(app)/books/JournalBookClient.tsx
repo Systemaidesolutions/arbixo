@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
+import { downloadXlsx } from "@/lib/exportXlsx";
 
 type Line = {
   id: string;
@@ -56,23 +57,14 @@ export function JournalBookClient({
 
   function exportCsv() {
     if (!data) return;
-    const headers = ["Date", "Doc No.", "Account code", "Account", partyLabel, "Debit", "Credit"];
-    const esc = (v: string | number) => {
-      const s = String(v);
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const lines = [headers.join(",")];
+    const out: (string | number)[][] = [
+      ["Date", "Doc No.", "Account code", "Account", partyLabel, "Debit", "Credit"],
+    ];
     for (const l of data.lines) {
-      lines.push([l.postingDate.slice(0, 10), l.documentNo, l.accountCode, l.accountTitle, l.counterparty ?? "", l.debit.toFixed(2), l.credit.toFixed(2)].map(esc).join(","));
+      out.push([l.postingDate.slice(0, 10), l.documentNo, l.accountCode, l.accountTitle, l.counterparty ?? "", l.debit.toFixed(2), l.credit.toFixed(2)]);
     }
-    lines.push(["", "", "", "", "", "TOTAL", data.totalDebit.toFixed(2), data.totalCredit.toFixed(2)].map(esc).join(","));
-    const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${book}_${from}_to_${to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    out.push(["", "", "", "", "TOTAL", data.totalDebit.toFixed(2), data.totalCredit.toFixed(2)]);
+    downloadXlsx(`${book}_${from}_to_${to}`, book, out);
   }
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";

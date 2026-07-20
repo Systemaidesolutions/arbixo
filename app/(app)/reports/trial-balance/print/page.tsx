@@ -51,6 +51,7 @@ export default async function TrialBalancePrintPage({
 
   return (
     <main className="mx-auto max-w-3xl bg-white p-6 text-neutral-900 print:p-0">
+      <style>{`@media print { @page { size: A4; margin: 0.4in } }`}</style>
       <PrintControls auto={false} />
 
       <ReportHeader company={company} title={reportTitle} coverage={coverage} />

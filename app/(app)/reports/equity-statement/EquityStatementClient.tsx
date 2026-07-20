@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatPeso } from "@/lib/format";
+import { downloadXlsx } from "@/lib/exportXlsx";
 import type { EquityStatement } from "@/lib/reports";
 
 export function EquityStatementClient({ companyId }: { companyId: string }) {
@@ -23,10 +24,6 @@ export function EquityStatementClient({ companyId }: { companyId: string }) {
 
   function exportCsv() {
     if (!data) return;
-    const esc = (v: string | number) => {
-      const s = String(v);
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
     const rows: (string | number)[][] = [
       ["Statement of Changes in Equity", `${dateFrom} to ${dateTo}`],
       [],
@@ -36,13 +33,7 @@ export function EquityStatementClient({ companyId }: { companyId: string }) {
       [data.netContributions >= 0 ? "Add: Additional contributions" : "Less: Owner's drawings", data.netContributions.toFixed(2)],
       ["Equity, end of period", data.endingEquity.toFixed(2)],
     ];
-    const blob = new Blob(["﻿" + rows.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `equity-statement_${dateFrom}_to_${dateTo}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadXlsx(`equity-statement_${dateFrom}_to_${dateTo}`, "Changes in Equity", rows);
   }
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";

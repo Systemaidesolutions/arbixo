@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
+import { downloadXlsx } from "@/lib/exportXlsx";
 
 type Row = {
   id: string;
@@ -75,38 +76,26 @@ export function SliClient({ tin, registeredName }: { tin: string; registeredName
 
   function exportCsv() {
     if (!data) return;
-    const headers = [
-      "Assessment/Release Date", "Name of Seller", "Date of Importation", "Country of Origin",
-      "Dutiable Value", "All Charges Before Release", "Exempt", "Taxable Goods", "VAT",
-      "OR No.", "Date of Payment",
+    const out: (string | number)[][] = [
+      [
+        "Assessment/Release Date", "Name of Seller", "Date of Importation", "Country of Origin",
+        "Dutiable Value", "All Charges Before Release", "Exempt", "Taxable Goods", "VAT",
+        "OR No.", "Date of Payment",
+      ],
     ];
-    const esc = (v: string | number) => {
-      const s = String(v);
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const lines = [headers.join(",")];
     for (const r of data.rows) {
-      lines.push(
-        [
-          fmtDate(r.assessReleaseDate), r.sellerName, fmtDate(r.importDate), r.countryOrigin,
-          r.dutiableValue.toFixed(2), r.charges.toFixed(2), r.exempt.toFixed(2),
-          r.taxableGoods.toFixed(2), r.vat.toFixed(2), r.orNo, fmtDate(r.paymentDate),
-        ].map(esc).join(",")
-      );
+      out.push([
+        fmtDate(r.assessReleaseDate), r.sellerName, fmtDate(r.importDate), r.countryOrigin,
+        r.dutiableValue.toFixed(2), r.charges.toFixed(2), r.exempt.toFixed(2),
+        r.taxableGoods.toFixed(2), r.vat.toFixed(2), r.orNo, fmtDate(r.paymentDate),
+      ]);
     }
-    lines.push(
-      ["", "", "", "TOTAL",
-        data.totals.dutiableValue.toFixed(2), data.totals.charges.toFixed(2), data.totals.exempt.toFixed(2),
-        data.totals.taxableGoods.toFixed(2), data.totals.vat.toFixed(2), "", "",
-      ].map(esc).join(",")
-    );
-    const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `SLI_${range.from}_to_${range.to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    out.push([
+      "", "", "", "TOTAL",
+      data.totals.dutiableValue.toFixed(2), data.totals.charges.toFixed(2), data.totals.exempt.toFixed(2),
+      data.totals.taxableGoods.toFixed(2), data.totals.vat.toFixed(2), "", "",
+    ]);
+    downloadXlsx(`SLI_${range.from}_to_${range.to}`, "SLI", out);
   }
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
@@ -182,7 +171,7 @@ export function SliClient({ tin, registeredName }: { tin: string; registeredName
             Export BIR .DAT
           </a>
           <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
-            Export CSV
+            Export to Excel
           </button>
           <button onClick={() => window.print()} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
             Print

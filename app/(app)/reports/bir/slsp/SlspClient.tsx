@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
+import { downloadXlsx } from "@/lib/exportXlsx";
 import { BranchFilter, type Branch } from "@/components/BranchFilter";
 
 type Row = Record<string, string | number> & { id: string; tin: string; name: string; address: string };
@@ -91,23 +92,14 @@ export function SlspClient({
 
   function exportCsv() {
     if (!data) return;
-    const headers = ["TIN", `${partyLabel} name`, "Address", ...cols.map((c) => c.label)];
-    const esc = (v: string | number) => {
-      const s = String(v);
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const lines = [headers.join(",")];
+    const out: (string | number)[][] = [
+      ["TIN", `${partyLabel} name`, "Address", ...cols.map((c) => c.label)],
+    ];
     for (const r of data.rows) {
-      lines.push([r.tin, r.name, r.address, ...cols.map((c) => Number(r[c.key]).toFixed(2))].map(esc).join(","));
+      out.push([r.tin, r.name, r.address, ...cols.map((c) => Number(r[c.key]).toFixed(2))]);
     }
-    lines.push(["", "TOTAL", "", ...cols.map((c) => Number(data.totals[c.key]).toFixed(2))].map(esc).join(","));
-    const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${kind.toUpperCase()}_${range.from}_to_${range.to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    out.push(["", "TOTAL", "", ...cols.map((c) => Number(data.totals[c.key]).toFixed(2))]);
+    downloadXlsx(`${kind.toUpperCase()}_${range.from}_to_${range.to}`, kind.toUpperCase(), out);
   }
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
@@ -185,7 +177,7 @@ export function SlspClient({
             Export BIR .DAT
           </a>
           <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
-            Export CSV
+            Export to Excel
           </button>
           <button onClick={() => window.print()} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
             Print

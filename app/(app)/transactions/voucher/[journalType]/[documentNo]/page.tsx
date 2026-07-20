@@ -70,6 +70,7 @@ export default async function VoucherPage({ params }: { params: { journalType: s
 
   return (
     <div className="mx-auto max-w-[760px] bg-white p-6 text-neutral-900 print:p-0">
+      <style>{`@media print { @page { size: A4; margin: 0.4in } }`}</style>
       <PrintControls />
 
       {/* Letterhead */}

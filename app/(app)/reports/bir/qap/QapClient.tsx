@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
+import { downloadXlsx } from "@/lib/exportXlsx";
 import { BranchFilter, type Branch } from "@/components/BranchFilter";
 
 type Row = {
@@ -66,23 +67,14 @@ export function QapClient({ tin, registeredName, locations }: { tin: string; reg
 
   function exportCsv() {
     if (!data) return;
-    const headers = ["TIN", "Payee", "ATC", "Description", "Rate %", "Income payment", "Tax withheld"];
-    const esc = (v: string | number) => {
-      const s = String(v);
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const lines = [headers.join(",")];
+    const out: (string | number)[][] = [
+      ["TIN", "Payee", "ATC", "Description", "Rate %", "Income payment", "Tax withheld"],
+    ];
     for (const r of data.rows) {
-      lines.push([r.tin, r.name, r.atcCode, r.atcDescription, r.ratePercent.toFixed(2), r.income.toFixed(2), r.tax.toFixed(2)].map(esc).join(","));
+      out.push([r.tin, r.name, r.atcCode, r.atcDescription, r.ratePercent.toFixed(2), r.income.toFixed(2), r.tax.toFixed(2)]);
     }
-    lines.push(["", "TOTAL", "", "", "", data.totals.income.toFixed(2), data.totals.tax.toFixed(2)].map(esc).join(","));
-    const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `QAP_${range.from}_to_${range.to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    out.push(["", "TOTAL", "", "", "", data.totals.income.toFixed(2), data.totals.tax.toFixed(2)]);
+    downloadXlsx(`QAP_${range.from}_to_${range.to}`, "QAP", out);
   }
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
@@ -150,7 +142,7 @@ export function QapClient({ tin, registeredName, locations }: { tin: string; reg
           <a href={`/api/reports/bir/qap/dat?from=${range.from}&to=${range.to}&locationId=${locationId}`} download className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
             Export BIR .DAT
           </a>
-          <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Export CSV</button>
+          <button onClick={exportCsv} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Export to Excel</button>
           <button onClick={() => window.print()} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Print</button>
         </div>
       </div>

@@ -29,13 +29,13 @@ export default async function SalesSubsidiaryJournalPrintPage({
   const tdNum = `${td} text-right font-mono whitespace-nowrap`;
 
   return (
-    <main className="mx-auto max-w-[13in] bg-white p-6 text-neutral-900 print:p-0">
-      <style>{`@media print { @page { size: 13in 8.5in; margin: 0.3in } html, body { height: auto !important; overflow: visible !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}</style>
+    <main className="mx-auto max-w-[10.6in] bg-white p-6 text-neutral-900 print:p-0">
+      <style>{`@media print { @page { size: A4 landscape; margin: 0.3in } html, body { height: auto !important; overflow: visible !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}</style>
       <PrintControls auto={false} />
 
       <ReportHeader company={company} title="Sales Subsidiary Journal" coverage={coverage} />
 
-      <table className="mt-4 w-full border-collapse text-[10px]" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
+      <table className="mt-4 w-full border-collapse text-[8px]" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
         <thead>
           <tr>
             <th className={th} rowSpan={2}>Date</th>

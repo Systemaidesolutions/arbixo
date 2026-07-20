@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatPeso } from "@/lib/format";
+import { downloadXlsx } from "@/lib/exportXlsx";
 import type { Account } from "@prisma/client";
 
 type GeneralLedgerRow = {
@@ -58,7 +59,6 @@ export function GeneralLedgerClient({ companyId, accounts }: { companyId: string
   const accountLabel = (() => { const a = accounts.find((x) => x.id === accountId); return a ? `${a.code} — ${a.title}` : ""; })();
 
   function exportCsv() {
-    const esc = (v: string | number) => { const s = String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
     const out: (string | number)[][] = [
       ["General Ledger", accountLabel, `${dateFrom} to ${dateTo}`],
       [],
@@ -67,11 +67,7 @@ export function GeneralLedgerClient({ companyId, accounts }: { companyId: string
       ...rows.map((r) => [r.postingDate.slice(0, 10), r.journalType.replaceAll("_", " "), r.documentNo, r.debit ? r.debit.toFixed(2) : "", r.credit ? r.credit.toFixed(2) : "", r.runningBalance.toFixed(2)]),
       ["", "", "", "Ending balance", "", "", endingBalance.toFixed(2)],
     ];
-    const blob = new Blob(["﻿" + out.map((r) => r.map(esc).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `general-ledger_${dateFrom}_to_${dateTo}.csv`; a.click();
-    URL.revokeObjectURL(url);
+    downloadXlsx(`general-ledger_${dateFrom}_to_${dateTo}`, "General Ledger", out);
   }
 
   return (
