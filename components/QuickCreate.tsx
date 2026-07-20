@@ -88,6 +88,7 @@ type PartyForm = {
   position: string;
   address: string;
   barangay: string;
+  district: string;
   city: string;
   province: string;
   zipCode: string;
@@ -102,7 +103,7 @@ function emptyPartyForm(): PartyForm {
   return {
     code: "", tin: "", taxClassification: "NON_INDIVIDUAL", registeredName: "",
     lastName: "", firstName: "", middleName: "", tradeName: "", customerType: "PRIVATE",
-    vendorType: "SUPPLIER", registrationType: "VAT", position: "", address: "", barangay: "",
+    vendorType: "SUPPLIER", registrationType: "VAT", position: "", address: "", barangay: "", district: "",
     city: "", province: "", zipCode: "", telNo: "", cellNo: "", email: "", faxNo: "", website: "",
   };
 }
@@ -144,6 +145,7 @@ export function NewPartyForm({
       tin: form.tin.trim() || null,
       address: form.address.trim() || null,
       barangay: form.barangay.trim() || null,
+      district: form.district.trim() || null,
       city: form.city.trim() || null,
       province: form.province.trim() || null,
       zipCode: form.zipCode.trim() || null,
@@ -300,6 +302,7 @@ export function NewPartyForm({
         value={{
           street: form.address,
           barangay: form.barangay,
+          district: form.district,
           province: form.province,
           city: form.city,
           zip: form.zipCode,
@@ -307,6 +310,7 @@ export function NewPartyForm({
         onChange={(patch) => {
           if (patch.street !== undefined) set("address", patch.street);
           if (patch.barangay !== undefined) set("barangay", patch.barangay);
+          if (patch.district !== undefined) set("district", patch.district);
           if (patch.province !== undefined) set("province", patch.province);
           if (patch.city !== undefined) set("city", patch.city);
           if (patch.zip !== undefined) set("zipCode", patch.zip);

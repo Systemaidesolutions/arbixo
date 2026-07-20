@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
       authorizedRep: body.authorizedRep ?? null,
       address: body.address ?? null,
       barangay: body.barangay ?? null,
+      district: body.district ?? null,
       city: body.city ?? null,
       province: body.province ?? null,
       zipCode: body.zipCode ?? null,

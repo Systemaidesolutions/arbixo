@@ -66,7 +66,7 @@ export async function searchLedgerDocuments(
     const counterpartyName =
       reg(entry.customer) ??
       reg(entry.vendor) ??
-      (entry.employee ? `${entry.employee.firstName} ${entry.employee.lastName}` : null) ??
+      (entry.employee ? [entry.employee.firstName, entry.employee.middleName, entry.employee.lastName].filter(Boolean).join(" ") : null) ??
       reg(entry.contact) ??
       null;
 

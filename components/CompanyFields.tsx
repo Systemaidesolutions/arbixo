@@ -128,6 +128,7 @@ export function CompanyFields({
         value={{
           street: form.businessAddress,
           barangay: form.barangay ?? "",
+          district: form.district ?? "",
           province: form.province ?? "",
           city: form.city ?? "",
           zip: form.zipCode,
@@ -135,6 +136,7 @@ export function CompanyFields({
         onChange={(patch) => {
           if (patch.street !== undefined) onChange("businessAddress", patch.street);
           if (patch.barangay !== undefined) onChange("barangay", patch.barangay);
+          if (patch.district !== undefined) onChange("district", patch.district);
           if (patch.province !== undefined) onChange("province", patch.province);
           if (patch.city !== undefined) onChange("city", patch.city);
           if (patch.zip !== undefined) onChange("zipCode", patch.zip);
@@ -308,6 +310,7 @@ export function toCompanyFormState(
     tradeName: company?.tradeName ?? "",
     businessAddress: company?.businessAddress ?? "",
     barangay: company?.barangay ?? "",
+    district: company?.district ?? "",
     city: company?.city ?? "",
     province: company?.province ?? "",
     zipCode: company?.zipCode ?? "",

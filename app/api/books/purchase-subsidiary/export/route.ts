@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   const data = await getPurchaseSubsidiaryJournal(companyId, new Date(`${from}T00:00:00`), new Date(`${to}T23:59:59.999`));
   const company = await prisma.company.findUnique({ where: { id: companyId } });
   const companyName = company?.registeredName || company?.tradeName || "";
-  const addr = [company?.businessAddress, company?.barangay, company?.city, company?.province, company?.zipCode].filter(Boolean).join(", ");
+  const addr = [company?.businessAddress, company?.barangay, company?.district, company?.city, company?.province, company?.zipCode].filter(Boolean).join(", ");
   const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
   const coverage = `For the period ${fmt(from)} to ${fmt(to)}`;
   const rowDate = (d: string) => new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });

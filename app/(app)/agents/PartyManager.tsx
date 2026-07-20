@@ -31,6 +31,7 @@ type PartyRecord = {
   position?: string | null;
   address?: string | null;
   barangay?: string | null;
+  district?: string | null;
   city?: string | null;
   province?: string | null;
   zipCode?: string | null;
@@ -60,6 +61,7 @@ type FormState = {
   position: string;
   address: string;
   barangay: string;
+  district: string;
   city: string;
   province: string;
   zipCode: string;
@@ -89,6 +91,7 @@ function emptyForm(): FormState {
     position: "",
     address: "",
     barangay: "",
+    district: "",
     city: "",
     province: "",
     zipCode: "",
@@ -120,6 +123,7 @@ function toForm(record: PartyRecord): FormState {
     position: record.position ?? "",
     address: record.address ?? "",
     barangay: record.barangay ?? "",
+    district: record.district ?? "",
     city: record.city ?? "",
     province: record.province ?? "",
     zipCode: record.zipCode ?? "",
@@ -183,6 +187,25 @@ export function PartyManager({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form) return;
+
+    // Warn if another record of this type already carries the same TIN, so the
+    // user can catch accidental duplicates before saving.
+    const tinTrim = form.tin.trim();
+    if (tinTrim) {
+      const dup = items.find((i) => i.id !== form.id && (i.tin ?? "").trim() === tinTrim);
+      if (dup) {
+        const who =
+          dup.tradeName ||
+          dup.registeredName ||
+          `${dup.firstName ?? ""} ${dup.lastName ?? ""}`.trim() ||
+          dup.code;
+        const proceed = window.confirm(
+          `Another ${PARTY_LABELS[entityType].singular.toLowerCase()} already has TIN ${tinTrim}:\n${who} (${dup.code}).\n\nSave anyway?`,
+        );
+        if (!proceed) return;
+      }
+    }
+
     setSaving(true);
     setError(null);
 
@@ -212,6 +235,7 @@ export function PartyManager({
       tin: form.tin.trim() || null,
       address: form.address.trim() || null,
       barangay: form.barangay.trim() || null,
+      district: form.district.trim() || null,
       city: form.city.trim() || null,
       province: form.province.trim() || null,
       zipCode: form.zipCode.trim() || null,
@@ -450,26 +474,36 @@ export function PartyManager({
                     />
                   </label>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <label className={label}>
+                        Last name
+                        <input
+                          required
+                          value={form.lastName}
+                          onChange={(e) => set("lastName", e.target.value)}
+                          className={field}
+                        />
+                      </label>
+                      <label className={label}>
+                        First name
+                        <input
+                          required
+                          value={form.firstName}
+                          onChange={(e) => set("firstName", e.target.value)}
+                          className={field}
+                        />
+                      </label>
+                    </div>
                     <label className={label}>
-                      Last name
+                      Middle name
                       <input
-                        required
-                        value={form.lastName}
-                        onChange={(e) => set("lastName", e.target.value)}
+                        value={form.middleName}
+                        onChange={(e) => set("middleName", e.target.value)}
                         className={field}
                       />
                     </label>
-                    <label className={label}>
-                      First name
-                      <input
-                        required
-                        value={form.firstName}
-                        onChange={(e) => set("firstName", e.target.value)}
-                        className={field}
-                      />
-                    </label>
-                  </div>
+                  </>
                 )}
 
                 <label className={label}>
@@ -574,6 +608,7 @@ export function PartyManager({
               value={{
                 street: form.address,
                 barangay: form.barangay,
+                district: form.district,
                 province: form.province,
                 city: form.city,
                 zip: form.zipCode,
@@ -581,6 +616,7 @@ export function PartyManager({
               onChange={(patch) => {
                 if (patch.street !== undefined) set("address", patch.street);
                 if (patch.barangay !== undefined) set("barangay", patch.barangay);
+                if (patch.district !== undefined) set("district", patch.district);
                 if (patch.province !== undefined) set("province", patch.province);
                 if (patch.city !== undefined) set("city", patch.city);
                 if (patch.zip !== undefined) set("zipCode", patch.zip);

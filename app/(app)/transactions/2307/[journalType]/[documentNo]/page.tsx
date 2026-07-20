@@ -25,7 +25,7 @@ export default async function Form2307Page({ params }: { params: { journalType: 
   const cp = withParty?.vendor || withParty?.customer || withParty?.contact;
   const payeeName =
     cp?.registeredName || cp?.tradeName ||
-    (withParty?.employee ? `${withParty.employee.firstName} ${withParty.employee.lastName}` : null) ||
+    (withParty?.employee ? [withParty.employee.firstName, withParty.employee.middleName, withParty.employee.lastName].filter(Boolean).join(" ") : null) ||
     [cp?.lastName, cp?.firstName].filter(Boolean).join(", ") || "";
   const payeeTin = withParty?.vendor?.tin ?? withParty?.customer?.tin ?? withParty?.contact?.tin ?? "";
 

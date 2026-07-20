@@ -10,6 +10,7 @@ export function ReportHeader({
     tradeName: string;
     businessAddress: string | null;
     barangay: string | null;
+    district: string | null;
     city: string | null;
     province: string | null;
     zipCode: string | null;
@@ -20,7 +21,7 @@ export function ReportHeader({
   coverage: string;
 }) {
   const companyName = company.registeredName || company.tradeName;
-  const addr = [company.businessAddress, company.barangay, company.city, company.province, company.zipCode].filter(Boolean).join(", ");
+  const addr = [company.businessAddress, company.barangay, company.district, company.city, company.province, company.zipCode].filter(Boolean).join(", ");
   return (
     <header className="border-b-2 border-neutral-800 pb-3 text-center">
       <div className="flex flex-col items-center">

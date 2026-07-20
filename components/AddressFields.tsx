@@ -6,6 +6,7 @@ import { sanitizeText } from "@/lib/textValidation";
 export type AddressValue = {
   street: string;
   barangay: string;
+  district: string;
   province: string;
   city: string;
   zip: string;
@@ -106,6 +107,19 @@ export function AddressFields({
           />
         </label>
 
+        <label className={label}>
+          District
+          <input
+            disabled={disabled}
+            value={value.district}
+            onChange={(e) => onChange({ district: sanitizeText(e.target.value) })}
+            placeholder="District"
+            className={field}
+          />
+        </label>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className={label}>
           Zip code
           <input

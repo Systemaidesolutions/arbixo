@@ -31,11 +31,11 @@ const OPTION_HEADER = `${pad("Code", COL_CODE)} ${pad("Registered Name", COL_REG
 function partyDetails(party: AnyParty): { tin: string; address: string } {
   const p = party as unknown as {
     tin?: string | null; address?: string | null; barangay?: string | null;
-    city?: string | null; province?: string | null; zipCode?: string | null;
+    district?: string | null; city?: string | null; province?: string | null; zipCode?: string | null;
   };
   return {
     tin: p.tin ?? "",
-    address: [p.address, p.barangay, p.city, p.province, p.zipCode].filter(Boolean).join(", "),
+    address: [p.address, p.barangay, p.district, p.city, p.province, p.zipCode].filter(Boolean).join(", "),
   };
 }
 

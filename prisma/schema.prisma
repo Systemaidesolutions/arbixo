@@ -200,6 +200,7 @@ model Company {
   // Structured PH address (added alongside the free-text businessAddress,
   // which now holds the street/building line).
   barangay             String?
+  district             String?
   city                 String?
   province             String?
   zipCode              String
@@ -488,6 +489,7 @@ model Customer {
   authorizedRep     String?
   address           String?
   barangay          String?
+  district          String?
   city              String?
   province          String?
   zipCode           String?
@@ -523,6 +525,7 @@ model Vendor {
   authorizedRep     String?
   address           String?
   barangay          String?
+  district          String?
   city              String?
   province          String?
   zipCode           String?
@@ -552,6 +555,7 @@ model Employee {
   position   String?
   address    String?
   barangay   String?
+  district   String?
   city       String?
   province   String?
   zipCode    String?
@@ -585,6 +589,7 @@ model Contact {
   registrationType  RegistrationType
   address           String?
   barangay          String?
+  district          String?
   city              String?
   province          String?
   zipCode           String?

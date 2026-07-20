@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     const counterpartyName =
       entry.customer?.tradeName ??
       entry.vendor?.tradeName ??
-      (entry.employee ? `${entry.employee.firstName} ${entry.employee.lastName}` : null) ??
+      (entry.employee ? [entry.employee.firstName, entry.employee.middleName, entry.employee.lastName].filter(Boolean).join(" ") : null) ??
       entry.contact?.tradeName ??
       null;
 

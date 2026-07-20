@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 
   const company = await prisma.company.findUnique({ where: { id: companyId } });
   const companyName = company?.registeredName || company?.tradeName || "";
-  const addr = [company?.businessAddress, company?.barangay, company?.city, company?.province, company?.zipCode].filter(Boolean).join(", ");
+  const addr = [company?.businessAddress, company?.barangay, company?.district, company?.city, company?.province, company?.zipCode].filter(Boolean).join(", ");
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Trial Balance", {

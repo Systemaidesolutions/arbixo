@@ -42,6 +42,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       registrationType: (body.registrationType as RegistrationType) ?? undefined,
       address: body.address ?? undefined,
       barangay: body.barangay ?? undefined,
+      district: body.district ?? undefined,
       city: body.city ?? undefined,
       province: body.province ?? undefined,
       zipCode: body.zipCode ?? undefined,

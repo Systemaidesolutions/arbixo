@@ -48,7 +48,7 @@ export default async function TransactionViewPage({ params }: { params: { journa
   const p = withParty?.customer || withParty?.vendor || withParty?.contact;
   const partyName =
     p?.registeredName || p?.tradeName ||
-    (withParty?.employee ? `${withParty.employee.firstName} ${withParty.employee.lastName}` : null) ||
+    (withParty?.employee ? [withParty.employee.firstName, withParty.employee.middleName, withParty.employee.lastName].filter(Boolean).join(" ") : null) ||
     [p?.lastName, p?.firstName].filter(Boolean).join(", ") || "—";
   const checkNo = entries.find((e) => e.checkNo)?.checkNo ?? "";
   const paymentTerms = entries.find((e) => e.paymentTerms)?.paymentTerms ?? "";

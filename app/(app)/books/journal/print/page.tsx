@@ -44,8 +44,8 @@ export default async function JournalBookPrintPage({
           <tr className="border-b border-neutral-400 text-left uppercase tracking-wide text-neutral-600">
             <th className="px-1 py-1">Date</th>
             <th className="px-1 py-1">Doc No.</th>
-            <th className="px-1 py-1">Account</th>
             <th className="px-1 py-1">{meta.partyLabel}</th>
+            <th className="px-1 py-1">Account</th>
             <th className="px-1 py-1 text-right">Debit</th>
             <th className="px-1 py-1 text-right">Credit</th>
           </tr>
@@ -54,16 +54,29 @@ export default async function JournalBookPrintPage({
           {data.lines.length === 0 ? (
             <tr><td colSpan={6} className="py-4 text-center text-neutral-400">No entries in this period</td></tr>
           ) : (
-            data.lines.map((l, i) => (
-              <tr key={l.id} className={i % 2 === 1 ? "bg-neutral-50" : "bg-white"}>
-                <td className="whitespace-nowrap px-1 py-1">{new Date(l.postingDate).toISOString().slice(0, 10)}</td>
-                <td className="px-1 py-1 font-mono">{l.documentNo}</td>
-                <td className="px-1 py-1"><span className="font-mono text-neutral-400">{l.accountCode}</span> {l.accountTitle}</td>
-                <td className="px-1 py-1 text-neutral-600">{l.counterparty ?? "—"}</td>
-                <td className={num}>{l.debit ? formatPeso(l.debit) : ""}</td>
-                <td className={num}>{l.credit ? formatPeso(l.credit) : ""}</td>
-              </tr>
-            ))
+            (() => {
+              // Shade and rule by transaction (document): all lines of one doc
+              // share a background, adjacent docs alternate, and each new doc
+              // starts with a heavier separator rule.
+              let docIdx = -1;
+              return data.lines.map((l, i) => {
+                const newTxn = i === 0 || l.documentNo !== data.lines[i - 1].documentNo;
+                if (newTxn) docIdx++;
+                return (
+                  <tr
+                    key={l.id}
+                    className={`${docIdx % 2 === 1 ? "bg-neutral-50" : "bg-white"} ${newTxn && i > 0 ? "border-t-2 border-neutral-300" : ""}`}
+                  >
+                    <td className="whitespace-nowrap px-1 py-1">{new Date(l.postingDate).toISOString().slice(0, 10)}</td>
+                    <td className="px-1 py-1 font-mono">{l.documentNo}</td>
+                    <td className="px-1 py-1 text-neutral-600">{l.counterparty ?? "—"}</td>
+                    <td className="px-1 py-1"><span className="font-mono text-neutral-400">{l.accountCode}</span> {l.accountTitle}</td>
+                    <td className={num}>{l.debit ? formatPeso(l.debit) : ""}</td>
+                    <td className={num}>{l.credit ? formatPeso(l.credit) : ""}</td>
+                  </tr>
+                );
+              });
+            })()
           )}
           <tr className="border-t-2 border-neutral-800 font-bold">
             <td colSpan={4} className="px-1 py-1">TOTAL</td>

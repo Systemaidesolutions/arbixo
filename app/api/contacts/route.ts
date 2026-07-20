@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
       registrationType: registrationType as RegistrationType,
       address: body.address ?? null,
       barangay: body.barangay ?? null,
+      district: body.district ?? null,
       city: body.city ?? null,
       province: body.province ?? null,
       zipCode: body.zipCode ?? null,

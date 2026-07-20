@@ -32,6 +32,7 @@ export type CompanyFormPayload = {
   tradeName: string;
   businessAddress: string;
   barangay?: string | null;
+  district?: string | null;
   city?: string | null;
   province?: string | null;
   zipCode: string;

@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
   const company = await prisma.company.findUnique({ where: { id: companyId } });
   const companyName = company?.registeredName || company?.tradeName || "";
-  const addr = [company?.businessAddress, company?.barangay, company?.city, company?.province, company?.zipCode].filter(Boolean).join(", ");
+  const addr = [company?.businessAddress, company?.barangay, company?.district, company?.city, company?.province, company?.zipCode].filter(Boolean).join(", ");
   const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
   const coverage = params.get("label") ? `For ${params.get("label")}` : `For the period ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
 

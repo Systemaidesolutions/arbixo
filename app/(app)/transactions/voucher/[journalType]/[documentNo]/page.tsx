@@ -36,7 +36,7 @@ export default async function VoucherPage({ params }: { params: { journalType: s
   const p = withParty?.customer || withParty?.vendor || withParty?.contact;
   const partyName =
     p?.registeredName || p?.tradeName ||
-    (withParty?.employee ? `${withParty.employee.firstName} ${withParty.employee.lastName}` : null) ||
+    (withParty?.employee ? [withParty.employee.firstName, withParty.employee.middleName, withParty.employee.lastName].filter(Boolean).join(" ") : null) ||
     [p?.lastName, p?.firstName].filter(Boolean).join(", ") || "";
   const partyAddress = p?.address ?? "";
   const partyTin = withParty?.customer?.tin ?? withParty?.vendor?.tin ?? withParty?.contact?.tin ?? "";
@@ -62,7 +62,7 @@ export default async function VoucherPage({ params }: { params: { journalType: s
 
   const companyName = company.registeredName || company.tradeName;
   const addrLine1 = company.businessAddress ?? "";
-  const addrLine2 = [company.barangay, company.city, company.province, company.zipCode].filter(Boolean).join(", ");
+  const addrLine2 = [company.barangay, company.district, company.city, company.province, company.zipCode].filter(Boolean).join(", ");
 
   const b = "border border-neutral-800";
   const padRows = Math.max(0, 4 - particulars.length);
