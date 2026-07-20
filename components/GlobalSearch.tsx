@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Search, X } from "lucide-react";
 
 type SearchResult = { type: string; label: string; sub?: string; href: string };
@@ -10,7 +11,14 @@ export function GlobalSearch() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  // Fixed-position rect of the input box, so the results panel (rendered via a
+  // portal on document.body) can sit right under it.
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     const query = q.trim();
@@ -31,13 +39,64 @@ export function GlobalSearch() {
     return () => clearTimeout(t);
   }, [q]);
 
+  // Keep the portal panel anchored to the input as the layout shifts.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const el = boxRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [open, q, results.length]);
+
   useEffect(() => {
     function onDoc(e: MouseEvent) {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (boxRef.current?.contains(t) || panelRef.current?.contains(t)) return;
+      setOpen(false);
     }
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
+
+  const showPanel = open && q.trim().length >= 2;
+
+  const panel = showPanel && pos && (
+    <div
+      ref={panelRef}
+      style={{ position: "fixed", top: pos.top, right: pos.right, zIndex: 9999 }}
+      className="max-h-96 w-80 overflow-y-auto rounded-lg border border-neutral-200 bg-white py-1 text-neutral-800 shadow-xl"
+    >
+      {loading ? (
+        <div className="px-3 py-2 text-sm text-neutral-400">Searching…</div>
+      ) : results.length === 0 ? (
+        <div className="px-3 py-2 text-sm text-neutral-400">No matches.</div>
+      ) : (
+        results.map((r, i) => (
+          <a
+            key={i}
+            href={r.href}
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-50"
+          >
+            <span className="shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-500">
+              {r.type}
+            </span>
+            <span className="min-w-0 flex-1 truncate">{r.label}</span>
+            {r.sub && <span className="shrink-0 text-xs text-neutral-400">{r.sub}</span>}
+          </a>
+        ))
+      )}
+    </div>
+  );
 
   return (
     <div ref={boxRef} className="relative hidden sm:block">
@@ -68,29 +127,7 @@ export function GlobalSearch() {
         )}
       </div>
 
-      {open && q.trim().length >= 2 && (
-        <div className="absolute right-0 z-50 mt-1 max-h-96 w-80 overflow-y-auto rounded-lg border border-neutral-200 bg-white py-1 text-neutral-800 shadow-xl">
-          {loading ? (
-            <div className="px-3 py-2 text-sm text-neutral-400">Searching…</div>
-          ) : results.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-neutral-400">No matches.</div>
-          ) : (
-            results.map((r, i) => (
-              <a
-                key={i}
-                href={r.href}
-                className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-50"
-              >
-                <span className="shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-500">
-                  {r.type}
-                </span>
-                <span className="min-w-0 flex-1 truncate">{r.label}</span>
-                {r.sub && <span className="shrink-0 text-xs text-neutral-400">{r.sub}</span>}
-              </a>
-            ))
-          )}
-        </div>
-      )}
+      {mounted && panel ? createPortal(panel, document.body) : null}
     </div>
   );
 }

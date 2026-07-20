@@ -1,8 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord } from "@/lib/currentUser";
+import {
+  NAV_SECTIONS,
+  HISTORY_SECTION,
+  ADMIN_NAV_SECTIONS,
+  isNavGroup,
+  type NavSection,
+} from "@/lib/navigation";
 
 export type SearchResult = { type: string; label: string; sub?: string; href: string };
+
+// Flatten nav sections (including nested groups) into searchable page entries,
+// so a query like "VAT Return" surfaces the report page as a clickable link.
+function matchPages(sections: NavSection[], q: string): SearchResult[] {
+  const ql = q.toLowerCase();
+  const out: SearchResult[] = [];
+  for (const section of sections) {
+    for (const item of section.links) {
+      const links = isNavGroup(item) ? item.links : [item];
+      for (const l of links) {
+        if (l.label.toLowerCase().includes(ql)) {
+          out.push({ type: "Page", label: l.label, sub: section.title, href: l.href });
+        }
+      }
+    }
+  }
+  return out.slice(0, 8);
+}
 
 type Party = {
   code: string;
@@ -30,6 +55,7 @@ export async function GET(request: NextRequest) {
   const results: SearchResult[] = [];
 
   if (user.role === "ADMIN") {
+    results.push(...matchPages(ADMIN_NAV_SECTIONS, q));
     const [companies, users] = await Promise.all([
       prisma.company.findMany({
         where: { OR: [{ tradeName: like }, { tin: like }, { registeredName: like }] },
@@ -52,6 +78,7 @@ export async function GET(request: NextRequest) {
         href: `/admin/users/${u.id}/edit`,
       });
   } else if (user.companyId) {
+    results.push(...matchPages([...NAV_SECTIONS, HISTORY_SECTION], q));
     const companyId = user.companyId;
     const partySelect = {
       id: true,
