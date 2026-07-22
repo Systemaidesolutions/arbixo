@@ -1,4 +1,5 @@
 import { getCurrentCompany } from "@/lib/currentUser";
+import { prisma } from "@/lib/prisma";
 import { TrialBalanceClient } from "./TrialBalanceClient";
 
 export default async function TrialBalancePage() {
@@ -13,5 +14,11 @@ export default async function TrialBalancePage() {
     );
   }
 
-  return <TrialBalanceClient companyId={company.id} />;
+  const locations = await prisma.location.findMany({
+    where: { companyId: company.id },
+    select: { id: true, name: true, branchCode: true },
+    orderBy: { name: "asc" },
+  });
+
+  return <TrialBalanceClient companyId={company.id} locations={locations} />;
 }

@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { getTrialBalance } from "@/lib/reports";
+import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
 import { CLASSIFICATION_LABELS } from "@/lib/accounts";
 import type { AccountClassification } from "@prisma/client";
 
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
   }
 
   const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  const branch = await resolveBranchScope(companyId, params.get("locationId"));
 
   let result;
   let coverage: string;
@@ -30,18 +32,19 @@ export async function GET(request: NextRequest) {
     if (mode === "YEAR_TO_DATE") {
       const asOfDate = params.get("asOfDate");
       if (!asOfDate) return NextResponse.json({ error: "asOfDate is required" }, { status: 400 });
-      result = await getTrialBalance(companyId, { mode, asOfDate: new Date(asOfDate) });
+      result = await getTrialBalance(companyId, { mode, asOfDate: new Date(asOfDate), branch });
       coverage = `As of ${fmtDate(asOfDate)}`;
     } else {
       const dateFrom = params.get("dateFrom");
       const dateTo = params.get("dateTo");
       if (!dateFrom || !dateTo) return NextResponse.json({ error: "dateFrom and dateTo are required" }, { status: 400 });
-      result = await getTrialBalance(companyId, { mode, dateFrom: new Date(dateFrom), dateTo: new Date(dateTo) });
+      result = await getTrialBalance(companyId, { mode, dateFrom: new Date(dateFrom), dateTo: new Date(dateTo), branch });
       coverage = `For the period ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
     }
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });
   }
+  if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
 
   const reportTitle = (params.get("title") ?? "Trial Balance").toUpperCase();
   const classifications = params.get("classifications")?.split(",").filter(Boolean) ?? null;

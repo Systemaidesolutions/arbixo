@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { CLASSIFICATION_LABELS } from "@/lib/accounts";
+import { BranchFilter, type Branch } from "@/components/BranchFilter";
 import type { TrialBalanceRow } from "@/lib/reports";
 import type { AccountClassification } from "@prisma/client";
 
@@ -17,15 +18,18 @@ const DEFAULT_DESCRIPTION =
 // Cash Flow statements by passing a title and a classification filter.
 export function TrialBalanceClient({
   companyId,
+  locations = [],
   title = "Trial balance",
   description = DEFAULT_DESCRIPTION,
   classifications,
 }: {
   companyId: string;
+  locations?: Branch[];
   title?: string;
   description?: string;
   classifications?: string[];
 }) {
+  const [locationId, setLocationId] = useState("");
   const [mode, setMode] = useState<"YEAR_TO_DATE" | "NET_CHANGE">("YEAR_TO_DATE");
   const [asOfDate, setAsOfDate] = useState(todayStr());
   const [dateFrom, setDateFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
@@ -44,6 +48,7 @@ export function TrialBalanceClient({
       params.set("dateFrom", dateFrom);
       params.set("dateTo", dateTo);
     }
+    if (locationId) params.set("locationId", locationId);
     const res = await fetch(`/api/reports/trial-balance?${params}`);
     const data = await res.json();
     setLoading(false);
@@ -57,7 +62,7 @@ export function TrialBalanceClient({
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, asOfDate, dateFrom, dateTo]);
+  }, [mode, asOfDate, dateFrom, dateTo, locationId]);
 
   function reportParams() {
     const params = new URLSearchParams({ mode });
@@ -65,6 +70,7 @@ export function TrialBalanceClient({
     else { params.set("dateFrom", dateFrom); params.set("dateTo", dateTo); }
     if (title !== "Trial balance") params.set("title", title);
     if (classifications?.length) params.set("classifications", classifications.join(","));
+    if (locationId) params.set("locationId", locationId);
     return params;
   }
 
@@ -109,6 +115,8 @@ export function TrialBalanceClient({
       <p className="mt-1 text-sm text-neutral-500">{description}</p>
 
       <div className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">
+        <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
+
         <label className="text-xs text-neutral-500">
           Mode
           <select

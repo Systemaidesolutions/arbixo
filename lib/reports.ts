@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { branchWhere, type BranchScope } from "@/lib/branchScope";
 import type { Account, AccountClassification } from "@prisma/client";
 
 function round2(n: number): number {
@@ -26,14 +27,25 @@ function openingBalanceSigned(account: Pick<Account, "openingBalance" | "normalB
 // opening balance folded in (callers decide whether that applies).
 async function getAccountNetMovements(
   companyId: string,
-  dateFilter: { lte: Date } | { gte: Date; lte: Date }
+  dateFilter: { lte: Date } | { gte: Date; lte: Date },
+  branch?: BranchScope
 ): Promise<Map<string, number>> {
   const grouped = await prisma.ledgerEntry.groupBy({
     by: ["accountId"],
-    where: { companyId, isCancelled: false, postingDate: dateFilter },
+    where: { companyId, isCancelled: false, postingDate: dateFilter, ...branchWhere(branch ?? null) },
     _sum: { debitAmount: true, creditAmount: true },
   });
   return new Map(grouped.map((g) => [g.accountId, num(g._sum.debitAmount) - num(g._sum.creditAmount)]));
+}
+
+/**
+ * Account opening balances are company-level, so they belong to the head
+ * office: consolidated and head-office reports fold them in, other branches
+ * don't (otherwise every branch would restate the same opening figure and the
+ * branches would no longer sum to the consolidated total).
+ */
+function includeOpeningBalances(branch?: BranchScope): boolean {
+  return !branch || branch.includeUntagged;
 }
 
 async function getEarliestPostingDate(companyId: string): Promise<Date> {
@@ -69,12 +81,13 @@ export type TrialBalanceMode = "YEAR_TO_DATE" | "NET_CHANGE";
  */
 export async function getTrialBalance(
   companyId: string,
-  opts: { mode: TrialBalanceMode; asOfDate?: Date; dateFrom?: Date; dateTo?: Date }
+  opts: { mode: TrialBalanceMode; asOfDate?: Date; dateFrom?: Date; dateTo?: Date; branch?: BranchScope }
 ): Promise<{ rows: TrialBalanceRow[]; totalDebit: number; totalCredit: number }> {
   const accounts = await prisma.account.findMany({ where: { companyId }, orderBy: { code: "asc" } });
   const dateFilter =
     opts.mode === "YEAR_TO_DATE" ? { lte: opts.asOfDate! } : { gte: opts.dateFrom!, lte: opts.dateTo! };
-  const movements = await getAccountNetMovements(companyId, dateFilter);
+  const movements = await getAccountNetMovements(companyId, dateFilter, opts.branch);
+  const withOpening = includeOpeningBalances(opts.branch);
 
   const rows: TrialBalanceRow[] = [];
   let totalDebit = 0;
@@ -82,7 +95,10 @@ export async function getTrialBalance(
 
   for (const account of accounts) {
     const netMovement = movements.get(account.id) ?? 0;
-    const raw = opts.mode === "YEAR_TO_DATE" ? netMovement + openingBalanceSigned(account) : netMovement;
+    const raw =
+      opts.mode === "YEAR_TO_DATE" && withOpening
+        ? netMovement + openingBalanceSigned(account)
+        : netMovement;
 
     // Skip accounts with nothing to show — no movement in the period and
     // no (YTD) balance — to keep the report from listing every unused
@@ -122,13 +138,14 @@ export type IncomeStatement = {
 export async function getIncomeStatement(
   companyId: string,
   dateFrom: Date,
-  dateTo: Date
+  dateTo: Date,
+  branch?: BranchScope
 ): Promise<IncomeStatement> {
   const accounts = await prisma.account.findMany({
     where: { companyId, classification: { in: ["REVENUE", "EXPENSE"] } },
     orderBy: { code: "asc" },
   });
-  const movements = await getAccountNetMovements(companyId, { gte: dateFrom, lte: dateTo });
+  const movements = await getAccountNetMovements(companyId, { gte: dateFrom, lte: dateTo }, branch);
 
   const revenue: IncomeStatementLine[] = [];
   const expense: IncomeStatementLine[] = [];
@@ -161,14 +178,14 @@ export type EquityStatement = {
 
 // Statement of Changes in Equity: opening equity balance + net income for the
 // period + net owner contributions/(drawings) posted during the period.
-export async function getEquityStatement(companyId: string, dateFrom: Date, dateTo: Date): Promise<EquityStatement> {
+export async function getEquityStatement(companyId: string, dateFrom: Date, dateTo: Date, branch?: BranchScope): Promise<EquityStatement> {
   const dayBefore = new Date(dateFrom);
   dayBefore.setDate(dayBefore.getDate() - 1);
 
   const [beginTB, endTB, is] = await Promise.all([
-    getTrialBalance(companyId, { mode: "YEAR_TO_DATE", asOfDate: dayBefore }),
-    getTrialBalance(companyId, { mode: "YEAR_TO_DATE", asOfDate: dateTo }),
-    getIncomeStatement(companyId, dateFrom, dateTo),
+    getTrialBalance(companyId, { mode: "YEAR_TO_DATE", asOfDate: dayBefore, branch }),
+    getTrialBalance(companyId, { mode: "YEAR_TO_DATE", asOfDate: dateTo, branch }),
+    getIncomeStatement(companyId, dateFrom, dateTo, branch),
   ]);
 
   const equityBalance = (rows: TrialBalanceRow[]) =>
@@ -209,16 +226,17 @@ export type CashFlowStatement = {
 export async function getCashFlowStatement(
   companyId: string,
   dateFrom: Date,
-  dateTo: Date
+  dateTo: Date,
+  branch?: BranchScope
 ): Promise<CashFlowStatement> {
   const dayBefore = new Date(dateFrom);
   dayBefore.setDate(dayBefore.getDate() - 1);
 
   const [netChange, beginTB, endTB, is] = await Promise.all([
-    getTrialBalance(companyId, { mode: "NET_CHANGE", dateFrom, dateTo }),
-    getTrialBalance(companyId, { mode: "YEAR_TO_DATE", asOfDate: dayBefore }),
-    getTrialBalance(companyId, { mode: "YEAR_TO_DATE", asOfDate: dateTo }),
-    getIncomeStatement(companyId, dateFrom, dateTo),
+    getTrialBalance(companyId, { mode: "NET_CHANGE", dateFrom, dateTo, branch }),
+    getTrialBalance(companyId, { mode: "YEAR_TO_DATE", asOfDate: dayBefore, branch }),
+    getTrialBalance(companyId, { mode: "YEAR_TO_DATE", asOfDate: dateTo, branch }),
+    getIncomeStatement(companyId, dateFrom, dateTo, branch),
   ]);
 
   const CASH: AccountClassification[] = ["CASH_IN_BANK", "CASH_ON_HAND"];
@@ -312,7 +330,8 @@ export type BalanceSheet = {
 export async function getBalanceSheet(
   companyId: string,
   asOfDate: Date,
-  fiscalYearStart: Date
+  fiscalYearStart: Date,
+  branch?: BranchScope
 ): Promise<BalanceSheet> {
   const accounts = await prisma.account.findMany({
     where: {
@@ -321,7 +340,8 @@ export async function getBalanceSheet(
     },
     orderBy: { code: "asc" },
   });
-  const movements = await getAccountNetMovements(companyId, { lte: asOfDate });
+  const movements = await getAccountNetMovements(companyId, { lte: asOfDate }, branch);
+  const withOpening = includeOpeningBalances(branch);
 
   const assets: BalanceSheetLine[] = [];
   const liabilities: BalanceSheetLine[] = [];
@@ -332,7 +352,7 @@ export async function getBalanceSheet(
 
   for (const account of accounts) {
     const netMovement = movements.get(account.id) ?? 0;
-    const raw = netMovement + openingBalanceSigned(account);
+    const raw = withOpening ? netMovement + openingBalanceSigned(account) : netMovement;
     if (Math.abs(raw) < 0.005) continue;
 
     const line = { accountId: account.id, code: account.code, title: account.title };
@@ -350,8 +370,8 @@ export async function getBalanceSheet(
 
   const earliestDate = await getEarliestPostingDate(companyId);
   const [allTime, currentPeriod] = await Promise.all([
-    getIncomeStatement(companyId, earliestDate, asOfDate),
-    getIncomeStatement(companyId, fiscalYearStart, asOfDate),
+    getIncomeStatement(companyId, earliestDate, asOfDate, branch),
+    getIncomeStatement(companyId, fiscalYearStart, asOfDate, branch),
   ]);
   const currentPeriodEarnings = currentPeriod.netIncome;
   const priorUnclosedEarnings = round2(allTime.netIncome - currentPeriod.netIncome);
@@ -533,10 +553,12 @@ export async function getSubsidiaryLedger(
   partyType: "CUSTOMER" | "VENDOR",
   partyId: string,
   dateFrom: Date,
-  dateTo: Date
+  dateTo: Date,
+  branch?: BranchScope
 ): Promise<{ beginningBalance: number; rows: SubsidiaryLedgerRow[]; endingBalance: number }> {
   const classification = partyType === "CUSTOMER" ? "ACCOUNTS_RECEIVABLE" : "ACCOUNTS_PAYABLE";
   const partyFilter = partyType === "CUSTOMER" ? { customerId: partyId } : { vendorId: partyId };
+  const branchFilter = branchWhere(branch ?? null);
 
   const [priorAgg, entries] = await Promise.all([
     prisma.ledgerEntry.aggregate({
@@ -544,6 +566,7 @@ export async function getSubsidiaryLedger(
         companyId,
         isCancelled: false,
         ...partyFilter,
+        ...branchFilter,
         account: { classification },
         postingDate: { lt: dateFrom },
       },
@@ -554,6 +577,7 @@ export async function getSubsidiaryLedger(
         companyId,
         isCancelled: false,
         ...partyFilter,
+        ...branchFilter,
         account: { classification },
         postingDate: { gte: dateFrom, lte: dateTo },
       },
@@ -603,26 +627,30 @@ export async function getGeneralLedger(
   companyId: string,
   accountId: string,
   dateFrom: Date,
-  dateTo: Date
+  dateTo: Date,
+  branch?: BranchScope
 ): Promise<{ account: Account; beginningBalance: number; rows: GeneralLedgerRow[]; endingBalance: number }> {
   const account = await prisma.account.findUnique({ where: { id: accountId } });
   if (!account || account.companyId !== companyId) {
     throw new Error("Account not found");
   }
+  const branchFilter = branchWhere(branch ?? null);
 
   const [priorAgg, entries] = await Promise.all([
     prisma.ledgerEntry.aggregate({
-      where: { companyId, accountId, isCancelled: false, postingDate: { lt: dateFrom } },
+      where: { companyId, accountId, isCancelled: false, ...branchFilter, postingDate: { lt: dateFrom } },
       _sum: { debitAmount: true, creditAmount: true },
     }),
     prisma.ledgerEntry.findMany({
-      where: { companyId, accountId, isCancelled: false, postingDate: { gte: dateFrom, lte: dateTo } },
+      where: { companyId, accountId, isCancelled: false, ...branchFilter, postingDate: { gte: dateFrom, lte: dateTo } },
       orderBy: [{ postingDate: "asc" }, { entryNo: "asc" }],
     }),
   ]);
 
   let runningBalance =
-    openingBalanceSigned(account) + num(priorAgg._sum.debitAmount) - num(priorAgg._sum.creditAmount);
+    (includeOpeningBalances(branch) ? openingBalanceSigned(account) : 0) +
+    num(priorAgg._sum.debitAmount) -
+    num(priorAgg._sum.creditAmount);
   const beginningBalance = round2(runningBalance);
 
   const rows: GeneralLedgerRow[] = entries.map((e) => {

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Fragment } from "react";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { getTrialBalance, type TrialBalanceRow } from "@/lib/reports";
+import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
 import { CLASSIFICATION_LABELS } from "@/lib/accounts";
 import { formatPeso } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
@@ -14,26 +15,28 @@ import type { AccountClassification } from "@prisma/client";
 export default async function TrialBalancePrintPage({
   searchParams,
 }: {
-  searchParams: { mode?: string; asOfDate?: string; dateFrom?: string; dateTo?: string; title?: string; classifications?: string };
+  searchParams: { mode?: string; asOfDate?: string; dateFrom?: string; dateTo?: string; title?: string; classifications?: string; locationId?: string };
 }) {
   const company = await requirePostingCompany();
   if (!company) notFound();
 
   const mode = searchParams.mode === "NET_CHANGE" ? "NET_CHANGE" : "YEAR_TO_DATE";
   const fmtDate = (d?: string) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" }) : "");
+  const branch = await resolveBranchScope(company.id, searchParams.locationId);
 
   let result: { rows: TrialBalanceRow[]; totalDebit: number; totalCredit: number };
   let coverage: string;
   if (mode === "YEAR_TO_DATE") {
     const asOfDate = searchParams.asOfDate ?? new Date().toISOString().slice(0, 10);
-    result = await getTrialBalance(company.id, { mode, asOfDate: new Date(asOfDate) });
+    result = await getTrialBalance(company.id, { mode, asOfDate: new Date(asOfDate), branch });
     coverage = `As of ${fmtDate(asOfDate)}`;
   } else {
     const dateFrom = searchParams.dateFrom ?? "";
     const dateTo = searchParams.dateTo ?? "";
-    result = await getTrialBalance(company.id, { mode, dateFrom: new Date(dateFrom), dateTo: new Date(dateTo) });
+    result = await getTrialBalance(company.id, { mode, dateFrom: new Date(dateFrom), dateTo: new Date(dateTo), branch });
     coverage = `For the period ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
   }
+  if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
 
   const reportTitle = searchParams.title ?? "Trial Balance";
   const classifications = searchParams.classifications?.split(",").filter(Boolean) ?? null;
