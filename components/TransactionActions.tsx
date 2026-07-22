@@ -39,6 +39,17 @@ export function TransactionActions({
     window.open(`/transactions/2307/${journalType}/${encodeURIComponent(documentNo)}?_embed=1`, "_blank");
   }
 
+  // Opened as a stacked page (iframe) in normal use — ask the parent to close
+  // that panel. Standalone (own tab) falls back to going back / closing.
+  function closePage() {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: "stack:close" }, window.location.origin);
+      return;
+    }
+    if (window.history.length > 1) router.back();
+    else window.close();
+  }
+
   async function confirmCancel() {
     if (!reason.trim()) {
       setError("Please enter a cancellation reason.");
@@ -83,6 +94,13 @@ export function TransactionActions({
             Print 2307
           </button>
         )}
+        <button
+          type="button"
+          onClick={closePage}
+          className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+        >
+          Close
+        </button>
       </div>
     );
   }

@@ -10,9 +10,9 @@ import type { JournalType } from "@prisma/client";
 const fileSize = (n: number | null) =>
   n == null ? "" : n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`;
 
-// The Check-Voucher / Purchase-Voucher print format only applies to money-out
-// documents, so the detail view offers "Print voucher" for just these two.
-const PRINTABLE: JournalType[] = ["CASH_DISBURSEMENT", "PURCHASE_ON_ACCOUNT"];
+// Journals with a printable voucher format (see transactions/voucher):
+// the money-out Check/Purchase vouchers plus the Cash Receipt voucher.
+const PRINTABLE: JournalType[] = ["CASH_RECEIPT", "CASH_DISBURSEMENT", "PURCHASE_ON_ACCOUNT"];
 // Money-out journals where the company withholds and issues a BIR 2307.
 const PRINTABLE_2307: JournalType[] = ["CASH_DISBURSEMENT", "PURCHASE_ON_ACCOUNT"];
 
