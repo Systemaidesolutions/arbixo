@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
+import { BranchFilter, type Branch } from "@/components/BranchFilter";
 import type { IncomeStatement } from "@/lib/reports";
 
 const MONTHS = [
@@ -22,8 +23,15 @@ function quarterRange(y: number, q: number) {
   return { from: `${y}-${p2(sm)}-01`, to: `${y}-${p2(em)}-${p2(last)}`, label: `Q${q} ${y}` };
 }
 
-export function IncomeStatementClient({ companyId }: { companyId: string }) {
+export function IncomeStatementClient({
+  companyId,
+  locations = [],
+}: {
+  companyId: string;
+  locations?: Branch[];
+}) {
   const now = new Date();
+  const [locationId, setLocationId] = useState("");
   const [mode, setMode] = useState<"month" | "quarter" | "year" | "custom">("year");
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -44,6 +52,7 @@ export function IncomeStatementClient({ companyId }: { companyId: string }) {
     let active = true;
     setLoading(true);
     const params = new URLSearchParams({ companyId, dateFrom: range.from, dateTo: range.to });
+    if (locationId) params.set("locationId", locationId);
     fetch(`/api/reports/income-statement?${params}`)
       .then((r) => r.json())
       .then((d) => active && setStatement(d))
@@ -51,7 +60,7 @@ export function IncomeStatementClient({ companyId }: { companyId: string }) {
     return () => {
       active = false;
     };
-  }, [companyId, range.from, range.to]);
+  }, [companyId, range.from, range.to, locationId]);
 
   function exportCsv() {
     if (!statement) return;
@@ -76,13 +85,15 @@ export function IncomeStatementClient({ companyId }: { companyId: string }) {
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-medium text-neutral-900">Income statement</h1>
         <div className="flex shrink-0 gap-2 print:hidden">
-          <button onClick={() => window.open(`/reports/income-statement/print?dateFrom=${range.from}&dateTo=${range.to}&_embed=1`, "_blank")} disabled={!statement} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
+          <button onClick={() => window.open(`/reports/income-statement/print?dateFrom=${range.from}&dateTo=${range.to}${locationId ? `&locationId=${locationId}` : ""}&_embed=1`, "_blank")} disabled={!statement} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
           <button onClick={exportCsv} disabled={!statement} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
         </div>
       </div>
       <p className="mt-1 text-sm text-neutral-500">For {range.label}.</p>
 
       <div className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">
+        <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
+
         <label className="text-xs text-neutral-500">
           Period
           <select value={mode} onChange={(e) => setMode(e.target.value as typeof mode)} className={`mt-1 block ${field}`}>

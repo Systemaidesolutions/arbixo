@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSubsidiaryLedger } from "@/lib/reports";
+import { resolveBranchScope } from "@/lib/branchScope";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -16,8 +17,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const branch = await resolveBranchScope(companyId, params.get("locationId"));
+
   try {
-    const result = await getSubsidiaryLedger(companyId, partyType, partyId, new Date(dateFrom), new Date(dateTo));
+    const result = await getSubsidiaryLedger(companyId, partyType, partyId, new Date(dateFrom), new Date(dateTo), branch);
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });

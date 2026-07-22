@@ -1,4 +1,5 @@
 import { getCurrentCompany } from "@/lib/currentUser";
+import { prisma } from "@/lib/prisma";
 import { GeneralLedgerBookClient } from "./GeneralLedgerBookClient";
 
 export default async function GeneralLedgerBookPage() {
@@ -11,5 +12,10 @@ export default async function GeneralLedgerBookPage() {
       </main>
     );
   }
-  return <GeneralLedgerBookClient registeredName={company.registeredName ?? company.tradeName} />;
+  const locations = await prisma.location.findMany({
+    where: { companyId: company.id },
+    select: { id: true, name: true, branchCode: true },
+    orderBy: { name: "asc" },
+  });
+  return <GeneralLedgerBookClient registeredName={company.registeredName ?? company.tradeName} locations={locations} />;
 }

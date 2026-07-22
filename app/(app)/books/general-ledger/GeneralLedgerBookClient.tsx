@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
+import { BranchFilter, type Branch } from "@/components/BranchFilter";
 import type { JournalType } from "@prisma/client";
 
 const JOURNAL_LABELS: Record<JournalType, string> = {
@@ -41,27 +42,42 @@ function monthDefaults() {
   return { from: `${now.getFullYear()}-${p(now.getMonth() + 1)}-01`, to: now.toISOString().slice(0, 10) };
 }
 
-export function GeneralLedgerBookClient({ registeredName }: { registeredName: string }) {
+export function GeneralLedgerBookClient({
+  registeredName,
+  locations = [],
+}: {
+  registeredName: string;
+  locations?: Branch[];
+}) {
   const def = useMemo(monthDefaults, []);
   const [from, setFrom] = useState(def.from);
   const [to, setTo] = useState(def.to);
+  const [locationId, setLocationId] = useState("");
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetch(`/api/books/general-ledger?from=${from}&to=${to}`)
+    const params = new URLSearchParams({ from, to });
+    if (locationId) params.set("locationId", locationId);
+    fetch(`/api/books/general-ledger?${params}`)
       .then((r) => r.json())
       .then((j) => active && setData(j))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [from, to]);
+  }, [from, to, locationId]);
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const bal = (n: number) => `${formatPeso(Math.abs(n))} ${n < 0 ? "Cr" : "Dr"}`;
+
+  function printReport() {
+    const params = new URLSearchParams({ from, to, _embed: "1" });
+    if (locationId) params.set("locationId", locationId);
+    window.open(`/books/general-ledger/print?${params}`, "_blank");
+  }
 
   function exportCsv() {
     if (!data) return;
@@ -79,13 +95,15 @@ export function GeneralLedgerBookClient({ registeredName }: { registeredName: st
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-medium text-neutral-900">General Ledger</h1>
         <div className="flex shrink-0 gap-2 print:hidden">
-          <button onClick={() => window.open(`/books/general-ledger/print?from=${from}&to=${to}&_embed=1`, "_blank")} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
+          <button onClick={printReport} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
           <button onClick={exportCsv} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
         </div>
       </div>
       <p className="mt-1 text-sm text-neutral-500">{registeredName}</p>
 
       <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">
+        <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
+
         <label className="text-xs text-neutral-500">
           From
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={`mt-1 block ${field}`} />

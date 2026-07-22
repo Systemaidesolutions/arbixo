@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentCompany } from "@/lib/currentUser";
 import { getSummaryListOfPurchases } from "@/lib/slsp";
+import { resolveBranchScope } from "@/lib/branchScope";
 
 export async function GET(request: NextRequest) {
   const company = await getCurrentCompany();
@@ -12,12 +13,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "from and to (YYYY-MM-DD) are required" }, { status: 400 });
   }
 
-  const locationId = request.nextUrl.searchParams.get("locationId") || undefined;
+  const branch = await resolveBranchScope(company.id, request.nextUrl.searchParams.get("locationId"));
   const result = await getSummaryListOfPurchases(
     company.id,
     new Date(`${from}T00:00:00`),
     new Date(`${to}T23:59:59.999`),
-    locationId
+    branch
   );
   return NextResponse.json(result);
 }

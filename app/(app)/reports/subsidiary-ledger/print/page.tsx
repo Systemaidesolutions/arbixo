@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { getSubsidiaryLedger } from "@/lib/reports";
+import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
 import { formatPeso } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
@@ -11,7 +12,7 @@ const bal = (n: number) => `${formatPeso(Math.abs(n))} ${n >= 0 ? "Dr" : "Cr"}`;
 export default async function SubsidiaryLedgerPrintPage({
   searchParams,
 }: {
-  searchParams: { partyType?: string; partyId?: string; dateFrom?: string; dateTo?: string };
+  searchParams: { partyType?: string; partyId?: string; dateFrom?: string; dateTo?: string; locationId?: string };
 }) {
   const company = await requirePostingCompany();
   const partyType = searchParams.partyType === "VENDOR" ? "VENDOR" : "CUSTOMER";
@@ -20,8 +21,10 @@ export default async function SubsidiaryLedgerPrintPage({
   const dateFrom = searchParams.dateFrom ?? `${new Date().getFullYear()}-01-01`;
   const dateTo = searchParams.dateTo ?? new Date().toISOString().slice(0, 10);
 
+  const branch = await resolveBranchScope(company.id, searchParams.locationId);
+
   const [ledger, party] = await Promise.all([
-    getSubsidiaryLedger(company.id, partyType, searchParams.partyId, new Date(dateFrom), new Date(dateTo)),
+    getSubsidiaryLedger(company.id, partyType, searchParams.partyId, new Date(dateFrom), new Date(dateTo), branch),
     partyType === "CUSTOMER"
       ? prisma.customer.findUnique({ where: { id: searchParams.partyId } })
       : prisma.vendor.findUnique({ where: { id: searchParams.partyId } }),
@@ -30,7 +33,8 @@ export default async function SubsidiaryLedgerPrintPage({
   const partyName = party ? party.tradeName || `${party.firstName ?? ""} ${party.lastName ?? ""}`.trim() : "";
   const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
   const title = partyType === "CUSTOMER" ? "Debtors' Ledger" : "Creditors' Ledger";
-  const coverage = `${party ? `${party.code} — ${partyName}  ·  ` : ""}${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
+  let coverage = `${party ? `${party.code} — ${partyName}  ·  ` : ""}${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
+  if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
   const num = "px-1 py-1 text-right font-mono";
 
   return (

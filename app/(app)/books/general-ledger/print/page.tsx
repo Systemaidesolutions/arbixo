@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { getGeneralLedgerBook } from "@/lib/booksOfAccounts";
+import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
 import { formatPeso } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
@@ -12,17 +13,19 @@ const bal = (n: number) => `${formatPeso(Math.abs(n))} ${n < 0 ? "Cr" : "Dr"}`;
 export default async function GeneralLedgerBookPrintPage({
   searchParams,
 }: {
-  searchParams: { from?: string; to?: string };
+  searchParams: { from?: string; to?: string; locationId?: string };
 }) {
   const company = await requirePostingCompany();
   if (!company) notFound();
 
   const from = searchParams.from ?? `${new Date().getFullYear()}-01-01`;
   const to = searchParams.to ?? new Date().toISOString().slice(0, 10);
-  const data = await getGeneralLedgerBook(company.id, new Date(`${from}T00:00:00`), new Date(`${to}T23:59:59.999`));
+  const branch = await resolveBranchScope(company.id, searchParams.locationId);
+  const data = await getGeneralLedgerBook(company.id, new Date(`${from}T00:00:00`), new Date(`${to}T23:59:59.999`), branch);
 
   const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
-  const coverage = `For the period ${fmtDate(from)} to ${fmtDate(to)}`;
+  let coverage = `For the period ${fmtDate(from)} to ${fmtDate(to)}`;
+  if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
   const num = "px-1 py-[3px] text-right font-mono";
 
   return (

@@ -3,10 +3,18 @@
 import { useEffect, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
+import { BranchFilter, type Branch } from "@/components/BranchFilter";
 import type { EquityStatement } from "@/lib/reports";
 
-export function EquityStatementClient({ companyId }: { companyId: string }) {
+export function EquityStatementClient({
+  companyId,
+  locations = [],
+}: {
+  companyId: string;
+  locations?: Branch[];
+}) {
   const now = new Date();
+  const [locationId, setLocationId] = useState("");
   const [dateFrom, setDateFrom] = useState(`${now.getFullYear()}-01-01`);
   const [dateTo, setDateTo] = useState(now.toISOString().slice(0, 10));
   const [data, setData] = useState<EquityStatement | null>(null);
@@ -15,12 +23,14 @@ export function EquityStatementClient({ companyId }: { companyId: string }) {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetch(`/api/reports/equity-statement?companyId=${companyId}&dateFrom=${dateFrom}&dateTo=${dateTo}`)
+    const params = new URLSearchParams({ companyId, dateFrom, dateTo });
+    if (locationId) params.set("locationId", locationId);
+    fetch(`/api/reports/equity-statement?${params}`)
       .then((r) => r.json())
       .then((d) => active && setData(d))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, [companyId, dateFrom, dateTo]);
+  }, [companyId, dateFrom, dateTo, locationId]);
 
   function exportCsv() {
     if (!data) return;
@@ -56,7 +66,7 @@ export function EquityStatementClient({ companyId }: { companyId: string }) {
         <h1 className="text-xl font-medium text-neutral-900">Equity statement</h1>
         <div className="flex shrink-0 gap-2 print:hidden">
           <button
-            onClick={() => window.open(`/reports/equity-statement/print?dateFrom=${dateFrom}&dateTo=${dateTo}&_embed=1`, "_blank")}
+            onClick={() => window.open(`/reports/equity-statement/print?dateFrom=${dateFrom}&dateTo=${dateTo}${locationId ? `&locationId=${locationId}` : ""}&_embed=1`, "_blank")}
             disabled={loading || !data}
             className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40"
           >
@@ -74,6 +84,8 @@ export function EquityStatementClient({ companyId }: { companyId: string }) {
       <p className="mt-1 text-sm text-neutral-500">Statement of Changes in Equity for the selected period.</p>
 
       <div className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">
+        <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
+
         <label className="text-xs text-neutral-500">
           From
           <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={`mt-1 block ${field}`} />

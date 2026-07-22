@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCashFlowStatement } from "@/lib/reports";
+import { resolveBranchScope } from "@/lib/branchScope";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -14,6 +15,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const result = await getCashFlowStatement(companyId, new Date(dateFrom), new Date(dateTo));
+  const branch = await resolveBranchScope(companyId, params.get("locationId"));
+
+  const result = await getCashFlowStatement(companyId, new Date(dateFrom), new Date(dateTo), branch);
   return NextResponse.json(result);
 }

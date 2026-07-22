@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/currentUser";
 import { ExpandedWithholdingClient } from "./ExpandedWithholdingClient";
 
@@ -13,11 +14,18 @@ export default async function ExpandedWithholdingPage() {
     );
   }
 
+  const locations = await prisma.location.findMany({
+    where: { companyId: company.id },
+    select: { id: true, name: true, branchCode: true },
+    orderBy: { name: "asc" },
+  });
+
   return (
     <ExpandedWithholdingClient
       companyId={company.id}
       tin={company.tin}
       registeredName={company.registeredName ?? company.tradeName}
+      locations={locations}
     />
   );
 }

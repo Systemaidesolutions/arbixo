@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { formatPeso } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
+import { BranchFilter, type Branch } from "@/components/BranchFilter";
 import type { CashFlowStatement, CashFlowLine } from "@/lib/reports";
 
 const MONTHS = [
@@ -28,8 +29,15 @@ function php(n: number) {
   return `${n < 0 ? "-" : ""}PHP ${formatPeso(Math.abs(n))}`;
 }
 
-export function CashFlowStatementClient({ companyId }: { companyId: string }) {
+export function CashFlowStatementClient({
+  companyId,
+  locations = [],
+}: {
+  companyId: string;
+  locations?: Branch[];
+}) {
   const now = new Date();
+  const [locationId, setLocationId] = useState("");
   const [mode, setMode] = useState<"month" | "quarter" | "year" | "custom">("year");
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -51,6 +59,7 @@ export function CashFlowStatementClient({ companyId }: { companyId: string }) {
     let active = true;
     setLoading(true);
     const params = new URLSearchParams({ companyId, dateFrom: range.from, dateTo: range.to });
+    if (locationId) params.set("locationId", locationId);
     fetch(`/api/reports/cash-flow-statement?${params}`)
       .then((r) => r.json())
       .then((d) => active && setData(d))
@@ -58,7 +67,7 @@ export function CashFlowStatementClient({ companyId }: { companyId: string }) {
     return () => {
       active = false;
     };
-  }, [companyId, range.from, range.to]);
+  }, [companyId, range.from, range.to, locationId]);
 
   function exportCsv() {
     if (!data) return;
@@ -100,13 +109,15 @@ export function CashFlowStatementClient({ companyId }: { companyId: string }) {
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-medium text-neutral-900">Cash flow statement</h1>
         <div className="flex shrink-0 gap-2 print:hidden">
-          <button onClick={() => window.open(`/reports/cash-flow-statement/print?dateFrom=${range.from}&dateTo=${range.to}&_embed=1`, "_blank")} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
+          <button onClick={() => window.open(`/reports/cash-flow-statement/print?dateFrom=${range.from}&dateTo=${range.to}${locationId ? `&locationId=${locationId}` : ""}&_embed=1`, "_blank")} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
           <button onClick={exportCsv} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
         </div>
       </div>
       <p className="mt-1 text-sm text-neutral-500">Statement of Cash Flows — {range.label} (indirect method).</p>
 
       <div className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">
+        <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
+
         <label className="text-xs text-neutral-500">
           Period
           <select value={mode} onChange={(e) => setMode(e.target.value as typeof mode)} className={`mt-1 block ${field}`}>

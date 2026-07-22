@@ -1,4 +1,5 @@
 import { getCurrentCompany } from "@/lib/currentUser";
+import { prisma } from "@/lib/prisma";
 import { EquityStatementClient } from "./EquityStatementClient";
 
 export default async function EquityStatementPage() {
@@ -13,5 +14,11 @@ export default async function EquityStatementPage() {
     );
   }
 
-  return <EquityStatementClient companyId={company.id} />;
+  const locations = await prisma.location.findMany({
+    where: { companyId: company.id },
+    select: { id: true, name: true, branchCode: true },
+    orderBy: { name: "asc" },
+  });
+
+  return <EquityStatementClient companyId={company.id} locations={locations} />;
 }

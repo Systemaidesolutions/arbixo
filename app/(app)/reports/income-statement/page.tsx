@@ -1,4 +1,5 @@
 import { getCurrentCompany } from "@/lib/currentUser";
+import { prisma } from "@/lib/prisma";
 import { IncomeStatementClient } from "./IncomeStatementClient";
 
 export default async function IncomeStatementPage() {
@@ -13,5 +14,11 @@ export default async function IncomeStatementPage() {
     );
   }
 
-  return <IncomeStatementClient companyId={company.id} />;
+  const locations = await prisma.location.findMany({
+    where: { companyId: company.id },
+    select: { id: true, name: true, branchCode: true },
+    orderBy: { name: "asc" },
+  });
+
+  return <IncomeStatementClient companyId={company.id} locations={locations} />;
 }

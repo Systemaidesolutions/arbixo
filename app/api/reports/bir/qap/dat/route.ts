@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/currentUser";
 import { getAlphalistOfPayees, buildQapDat, qapDatFilename, tinBranchCode } from "@/lib/qap";
+import { resolveBranchScope } from "@/lib/branchScope";
 
 // Downloads the BIR Alphalist QAP file (H + D records) for the caller's company.
 export async function GET(request: NextRequest) {
@@ -13,8 +14,9 @@ export async function GET(request: NextRequest) {
   if (!from || !to) return NextResponse.json({ error: "from and to (YYYY-MM-DD) are required" }, { status: 400 });
 
   const locationId = request.nextUrl.searchParams.get("locationId") || undefined;
+  const branch = await resolveBranchScope(company.id, locationId);
   const toDate = new Date(`${to}T23:59:59.999`);
-  const qap = await getAlphalistOfPayees(company.id, new Date(`${from}T00:00:00`), toDate, locationId);
+  const qap = await getAlphalistOfPayees(company.id, new Date(`${from}T00:00:00`), toDate, branch);
   const text = buildQapDat(company, qap, toDate);
 
   // Branch code for the filename. For a single selected branch: its explicit

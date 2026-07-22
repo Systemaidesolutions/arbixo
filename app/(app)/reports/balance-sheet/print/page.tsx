@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { getBalanceSheet } from "@/lib/reports";
+import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
 import { formatPeso } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
@@ -8,16 +9,19 @@ import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
 export default async function BalanceSheetPrintPage({
   searchParams,
 }: {
-  searchParams: { asOfDate?: string; fiscalYearStart?: string };
+  searchParams: { asOfDate?: string; fiscalYearStart?: string; locationId?: string };
 }) {
   const company = await requirePostingCompany();
   if (!company) notFound();
 
   const asOfDate = searchParams.asOfDate ?? new Date().toISOString().slice(0, 10);
   const fiscalYearStart = searchParams.fiscalYearStart ?? `${new Date().getFullYear()}-01-01`;
-  const s = await getBalanceSheet(company.id, new Date(asOfDate), new Date(fiscalYearStart));
+  const branch = await resolveBranchScope(company.id, searchParams.locationId);
+  const s = await getBalanceSheet(company.id, new Date(asOfDate), new Date(fiscalYearStart), branch);
 
   const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  let coverage = `As of ${fmtDate(asOfDate)}`;
+  if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
   const num = "py-1 pr-2 text-right font-mono";
 
   type Line = { accountId: string; code: string; title: string; amount: number };
@@ -47,7 +51,7 @@ export default async function BalanceSheetPrintPage({
       <style>{`@media print { @page { size: A4; margin: 0.4in } html, body { height: auto !important; overflow: visible !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}</style>
       <PrintControls auto={false} />
 
-      <ReportHeader company={company} title="Balance Sheet" coverage={`As of ${fmtDate(asOfDate)}`} />
+      <ReportHeader company={company} title="Balance Sheet" coverage={coverage} />
 
       <table className="mt-4 w-full text-sm" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
         <tbody>

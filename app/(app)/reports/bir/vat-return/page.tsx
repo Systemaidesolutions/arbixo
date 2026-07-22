@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/currentUser";
 import { VatReturnClient } from "./VatReturnClient";
 
@@ -13,11 +14,18 @@ export default async function VatReturnPage() {
     );
   }
 
+  const locations = await prisma.location.findMany({
+    where: { companyId: company.id },
+    select: { id: true, name: true, branchCode: true },
+    orderBy: { name: "asc" },
+  });
+
   return (
     <VatReturnClient
       companyId={company.id}
       tin={company.tin}
       registeredName={company.registeredName ?? company.tradeName}
+      locations={locations}
     />
   );
 }

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { branchWhere, type BranchScope } from "@/lib/branchScope";
 import type { VatReturn } from "@/lib/vat2550q";
 
 // Re-exported so existing server importers keep working. The VatReturn type and
@@ -39,10 +40,16 @@ function num(d: unknown): number {
  * the monthly/quarterly/annual/custom filters). See getMonthlyVatReturn for
  * the manual-behavior notes.
  */
-export async function getVatReturn(companyId: string, start: Date, end: Date): Promise<VatReturn> {
+export async function getVatReturn(
+  companyId: string,
+  start: Date,
+  end: Date,
+  branch?: BranchScope
+): Promise<VatReturn> {
   const salesLines = await prisma.ledgerEntry.findMany({
     where: {
       companyId,
+      ...branchWhere(branch ?? null),
       isCancelled: false,
       postingDate: { gte: start, lte: end },
       journalType: { in: ["CASH_RECEIPT", "SALES_ON_ACCOUNT"] },
@@ -78,6 +85,7 @@ export async function getVatReturn(companyId: string, start: Date, end: Date): P
   const purchaseLines = await prisma.ledgerEntry.findMany({
     where: {
       companyId,
+      ...branchWhere(branch ?? null),
       isCancelled: false,
       postingDate: { gte: start, lte: end },
       journalType: { in: ["CASH_DISBURSEMENT", "PURCHASE_ON_ACCOUNT"] },

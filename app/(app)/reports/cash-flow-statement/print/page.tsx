@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { getCashFlowStatement } from "@/lib/reports";
+import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
 import { formatPeso } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
@@ -11,17 +12,19 @@ const php = (n: number) => `${n < 0 ? "-" : ""}PHP ${formatPeso(Math.abs(n))}`;
 export default async function CashFlowStatementPrintPage({
   searchParams,
 }: {
-  searchParams: { dateFrom?: string; dateTo?: string };
+  searchParams: { dateFrom?: string; dateTo?: string; locationId?: string };
 }) {
   const company = await requirePostingCompany();
   if (!company) notFound();
 
   const dateFrom = searchParams.dateFrom ?? `${new Date().getFullYear()}-01-01`;
   const dateTo = searchParams.dateTo ?? new Date().toISOString().slice(0, 10);
-  const data = await getCashFlowStatement(company.id, new Date(dateFrom), new Date(dateTo));
+  const branch = await resolveBranchScope(company.id, searchParams.locationId);
+  const data = await getCashFlowStatement(company.id, new Date(dateFrom), new Date(dateTo), branch);
 
   const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
-  const coverage = `For the period ${fmt(dateFrom)} to ${fmt(dateTo)}`;
+  let coverage = `For the period ${fmt(dateFrom)} to ${fmt(dateTo)}`;
+  if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
 
   const num = "py-1 pr-2 text-right font-mono whitespace-nowrap";
   const money = (v: number) => php(v);

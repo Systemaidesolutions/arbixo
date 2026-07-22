@@ -1,4 +1,5 @@
 import { getCurrentCompany } from "@/lib/currentUser";
+import { prisma } from "@/lib/prisma";
 import { JournalBookClient } from "../JournalBookClient";
 
 export default async function CashReceiptsBookPage() {
@@ -11,12 +12,18 @@ export default async function CashReceiptsBookPage() {
       </main>
     );
   }
+  const locations = await prisma.location.findMany({
+    where: { companyId: company.id },
+    select: { id: true, name: true, branchCode: true },
+    orderBy: { name: "asc" },
+  });
   return (
     <JournalBookClient
       book="cash-receipts"
       title="Cash Receipts Journal"
       registeredName={company.registeredName ?? company.tradeName}
       partyLabel="Received from"
+      locations={locations}
     />
   );
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentCompany } from "@/lib/currentUser";
 import { getSummaryAlphalistOfWithholdingTaxes, buildSawtDat } from "@/lib/sawt";
+import { resolveBranchScope } from "@/lib/branchScope";
 
 // Downloads the BIR Alphalist SAWT file (H + D + C records).
 export async function GET(request: NextRequest) {
@@ -11,9 +12,9 @@ export async function GET(request: NextRequest) {
   const to = request.nextUrl.searchParams.get("to");
   if (!from || !to) return NextResponse.json({ error: "from and to (YYYY-MM-DD) are required" }, { status: 400 });
 
-  const locationId = request.nextUrl.searchParams.get("locationId") || undefined;
+  const branch = await resolveBranchScope(company.id, request.nextUrl.searchParams.get("locationId"));
   const toDate = new Date(`${to}T23:59:59.999`);
-  const sawt = await getSummaryAlphalistOfWithholdingTaxes(company.id, new Date(`${from}T00:00:00`), toDate, locationId);
+  const sawt = await getSummaryAlphalistOfWithholdingTaxes(company.id, new Date(`${from}T00:00:00`), toDate, branch);
   const text = buildSawtDat(company, sawt, toDate);
 
   return new NextResponse(text, {

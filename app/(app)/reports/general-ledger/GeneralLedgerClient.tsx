@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
+import { BranchFilter, type Branch } from "@/components/BranchFilter";
 import type { Account } from "@prisma/client";
 
 type GeneralLedgerRow = {
@@ -21,7 +22,16 @@ function formatBalance(n: number) {
   return `${formatPeso(Math.abs(n))} ${n >= 0 ? "Dr" : "Cr"}`;
 }
 
-export function GeneralLedgerClient({ companyId, accounts }: { companyId: string; accounts: Account[] }) {
+export function GeneralLedgerClient({
+  companyId,
+  accounts,
+  locations = [],
+}: {
+  companyId: string;
+  accounts: Account[];
+  locations?: Branch[];
+}) {
+  const [locationId, setLocationId] = useState("");
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [dateFrom, setDateFrom] = useState(
     new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10)
@@ -38,6 +48,7 @@ export function GeneralLedgerClient({ companyId, accounts }: { companyId: string
     setLoading(true);
     setError(null);
     const params = new URLSearchParams({ companyId, accountId, dateFrom, dateTo });
+    if (locationId) params.set("locationId", locationId);
     const res = await fetch(`/api/reports/general-ledger?${params}`);
     const data = await res.json();
     setLoading(false);
@@ -53,7 +64,7 @@ export function GeneralLedgerClient({ companyId, accounts }: { companyId: string
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accountId, dateFrom, dateTo]);
+  }, [accountId, dateFrom, dateTo, locationId]);
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const accountLabel = (() => { const a = accounts.find((x) => x.id === accountId); return a ? `${a.code} — ${a.title}` : ""; })();
@@ -75,7 +86,7 @@ export function GeneralLedgerClient({ companyId, accounts }: { companyId: string
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-medium text-neutral-900">General ledger</h1>
         <div className="flex shrink-0 gap-2 print:hidden">
-          <button onClick={() => window.open(`/reports/general-ledger/print?accountId=${accountId}&dateFrom=${dateFrom}&dateTo=${dateTo}&_embed=1`, "_blank")} disabled={!accountId || loading} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
+          <button onClick={() => window.open(`/reports/general-ledger/print?accountId=${accountId}&dateFrom=${dateFrom}&dateTo=${dateTo}${locationId ? `&locationId=${locationId}` : ""}&_embed=1`, "_blank")} disabled={!accountId || loading} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
           <button onClick={exportCsv} disabled={!accountId || loading} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
         </div>
       </div>
@@ -84,6 +95,8 @@ export function GeneralLedgerClient({ companyId, accounts }: { companyId: string
       </p>
 
       <div className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4">
+        <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
+
         <label className="text-xs text-neutral-500">
           Account
           <select

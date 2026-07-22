@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { getPurchaseSubsidiaryJournal } from "@/lib/purchaseSubsidiaryJournal";
+import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -18,12 +19,15 @@ export async function GET(request: NextRequest) {
   }
   const companyId = user.companyId;
 
-  const data = await getPurchaseSubsidiaryJournal(companyId, new Date(`${from}T00:00:00`), new Date(`${to}T23:59:59.999`));
+  const branch = await resolveBranchScope(companyId, params.get("locationId"));
+
+  const data = await getPurchaseSubsidiaryJournal(companyId, new Date(`${from}T00:00:00`), new Date(`${to}T23:59:59.999`), branch);
   const company = await prisma.company.findUnique({ where: { id: companyId } });
   const companyName = company?.registeredName || company?.tradeName || "";
   const addr = [company?.businessAddress, company?.barangay, company?.district, company?.city, company?.province, company?.zipCode].filter(Boolean).join(", ");
   const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
-  const coverage = `For the period ${fmt(from)} to ${fmt(to)}`;
+  let coverage = `For the period ${fmt(from)} to ${fmt(to)}`;
+  if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
   const rowDate = (d: string) => new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
 
   const wb = new ExcelJS.Workbook();

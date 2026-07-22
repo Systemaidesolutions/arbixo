@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
+import { BranchFilter, type Branch } from "@/components/BranchFilter";
 import type { BalanceSheet } from "@/lib/reports";
 
 function fiscalYearStartFor(asOfDate: string, fiscalMonthEnd: number): string {
@@ -32,10 +33,13 @@ function periodEnds() {
 export function BalanceSheetClient({
   companyId,
   fiscalMonthEnd,
+  locations = [],
 }: {
   companyId: string;
   fiscalMonthEnd: number;
+  locations?: Branch[];
 }) {
+  const [locationId, setLocationId] = useState("");
   const [asOfDate, setAsOfDate] = useState(new Date().toISOString().slice(0, 10));
   const defaultFiscalStart = useMemo(() => fiscalYearStartFor(asOfDate, fiscalMonthEnd), [asOfDate, fiscalMonthEnd]);
   const [fiscalYearStart, setFiscalYearStart] = useState(defaultFiscalStart);
@@ -52,6 +56,7 @@ export function BalanceSheetClient({
   async function load() {
     setLoading(true);
     const params = new URLSearchParams({ companyId, asOfDate, fiscalYearStart });
+    if (locationId) params.set("locationId", locationId);
     const res = await fetch(`/api/reports/balance-sheet?${params}`);
     const data = await res.json();
     setLoading(false);
@@ -61,7 +66,7 @@ export function BalanceSheetClient({
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [asOfDate, fiscalYearStart]);
+  }, [asOfDate, fiscalYearStart, locationId]);
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const isBalanced = sheet ? Math.round((sheet.totalAssets - sheet.totalLiabilitiesAndEquity) * 100) === 0 : true;
@@ -91,13 +96,15 @@ export function BalanceSheetClient({
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-medium text-neutral-900">Balance sheet</h1>
         <div className="flex shrink-0 gap-2 print:hidden">
-          <button onClick={() => window.open(`/reports/balance-sheet/print?asOfDate=${asOfDate}&fiscalYearStart=${fiscalYearStart}&_embed=1`, "_blank")} disabled={!sheet} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
+          <button onClick={() => window.open(`/reports/balance-sheet/print?asOfDate=${asOfDate}&fiscalYearStart=${fiscalYearStart}${locationId ? `&locationId=${locationId}` : ""}&_embed=1`, "_blank")} disabled={!sheet} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
           <button onClick={exportCsv} disabled={!sheet} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
         </div>
       </div>
       <p className="mt-1 text-sm text-neutral-500">As of the date below.</p>
 
       <div className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4">
+        <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
+
         <label className="text-xs text-neutral-500">
           As of
           <input

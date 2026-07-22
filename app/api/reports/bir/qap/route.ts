@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentCompany } from "@/lib/currentUser";
 import { getAlphalistOfPayees } from "@/lib/qap";
+import { resolveBranchScope } from "@/lib/branchScope";
 
 // Alphalist of Payees (EWT) for the caller's company over a date range.
 export async function GET(request: NextRequest) {
@@ -11,12 +12,12 @@ export async function GET(request: NextRequest) {
   const to = request.nextUrl.searchParams.get("to");
   if (!from || !to) return NextResponse.json({ error: "from and to (YYYY-MM-DD) are required" }, { status: 400 });
 
-  const locationId = request.nextUrl.searchParams.get("locationId") || undefined;
+  const branch = await resolveBranchScope(company.id, request.nextUrl.searchParams.get("locationId"));
   const qap = await getAlphalistOfPayees(
     company.id,
     new Date(`${from}T00:00:00`),
     new Date(`${to}T23:59:59.999`),
-    locationId
+    branch
   );
   return NextResponse.json(qap);
 }

@@ -20,5 +20,11 @@ export default async function GeneralLedgerPage() {
     orderBy: { code: "asc" },
   });
 
-  return <GeneralLedgerClient companyId={company.id} accounts={toPlain(accounts)} />;
+  const locations = await prisma.location.findMany({
+    where: { companyId: company.id },
+    select: { id: true, name: true, branchCode: true },
+    orderBy: { name: "asc" },
+  });
+
+  return <GeneralLedgerClient companyId={company.id} accounts={toPlain(accounts)} locations={locations} />;
 }

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { partyName } from "@/lib/slsp";
+import { branchWhere, type BranchScope } from "@/lib/branchScope";
 import type { Account, JournalType } from "@prisma/client";
 
 // BIR Books of Accounts — the registered journals and ledger, as chronological
@@ -36,7 +37,8 @@ export async function getJournalBook(
   companyId: string,
   journalTypes: JournalType[],
   from: Date,
-  to: Date
+  to: Date,
+  branch?: BranchScope
 ): Promise<{ lines: BookLine[]; totalDebit: number; totalCredit: number }> {
   const entries = await prisma.ledgerEntry.findMany({
     where: {
@@ -44,6 +46,7 @@ export async function getJournalBook(
       isCancelled: false,
       journalType: { in: journalTypes },
       postingDate: { gte: from, lte: to },
+      ...branchWhere(branch ?? null),
     },
     orderBy: [{ postingDate: "asc" }, { entryNo: "asc" }, { lineNo: "asc" }],
     include: { account: true, vendor: true, customer: true, employee: true, contact: true },
@@ -100,7 +103,8 @@ export type GLAccountBook = {
 export async function getGeneralLedgerBook(
   companyId: string,
   from: Date,
-  to: Date
+  to: Date,
+  branch?: BranchScope
 ): Promise<{ accounts: GLAccountBook[]; totalDebit: number; totalCredit: number }> {
   const [accounts, prior, entries] = await Promise.all([
     prisma.account.findMany({
@@ -110,11 +114,11 @@ export async function getGeneralLedgerBook(
     }),
     prisma.ledgerEntry.groupBy({
       by: ["accountId"],
-      where: { companyId, isCancelled: false, postingDate: { lt: from } },
+      where: { companyId, isCancelled: false, postingDate: { lt: from }, ...branchWhere(branch ?? null) },
       _sum: { debitAmount: true, creditAmount: true },
     }),
     prisma.ledgerEntry.findMany({
-      where: { companyId, isCancelled: false, postingDate: { gte: from, lte: to } },
+      where: { companyId, isCancelled: false, postingDate: { gte: from, lte: to }, ...branchWhere(branch ?? null) },
       orderBy: [{ postingDate: "asc" }, { entryNo: "asc" }, { lineNo: "asc" }],
       include: { vendor: true, customer: true, employee: true, contact: true },
     }),

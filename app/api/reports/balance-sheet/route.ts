@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBalanceSheet } from "@/lib/reports";
+import { resolveBranchScope } from "@/lib/branchScope";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -14,6 +15,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const result = await getBalanceSheet(companyId, new Date(asOfDate), new Date(fiscalYearStart));
+  const branch = await resolveBranchScope(companyId, params.get("locationId"));
+
+  const result = await getBalanceSheet(companyId, new Date(asOfDate), new Date(fiscalYearStart), branch);
   return NextResponse.json(result);
 }

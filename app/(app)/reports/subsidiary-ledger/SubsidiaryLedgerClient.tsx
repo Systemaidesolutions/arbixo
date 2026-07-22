@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
+import { BranchFilter, type Branch } from "@/components/BranchFilter";
 import type { Customer, Vendor } from "@prisma/client";
 
 type SubsidiaryLedgerRow = {
@@ -31,11 +32,14 @@ export function SubsidiaryLedgerClient({
   companyId,
   customers,
   vendors,
+  locations = [],
 }: {
   companyId: string;
   customers: Customer[];
   vendors: Vendor[];
+  locations?: Branch[];
 }) {
+  const [locationId, setLocationId] = useState("");
   const [partyType, setPartyType] = useState<"CUSTOMER" | "VENDOR">("CUSTOMER");
   const parties = partyType === "CUSTOMER" ? customers : vendors;
   const [partyId, setPartyId] = useState(parties[0]?.id ?? "");
@@ -60,6 +64,7 @@ export function SubsidiaryLedgerClient({
     setLoading(true);
     setError(null);
     const params = new URLSearchParams({ companyId, partyType, partyId, dateFrom, dateTo });
+    if (locationId) params.set("locationId", locationId);
     const res = await fetch(`/api/reports/subsidiary-ledger?${params}`);
     const data = await res.json();
     setLoading(false);
@@ -75,7 +80,7 @@ export function SubsidiaryLedgerClient({
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partyType, partyId, dateFrom, dateTo]);
+  }, [partyType, partyId, dateFrom, dateTo, locationId]);
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const partyLabel = (() => { const p = parties.find((x) => x.id === partyId); return p ? `${p.code} — ${partyName(p)}` : ""; })();
@@ -99,7 +104,7 @@ export function SubsidiaryLedgerClient({
           {partyType === "CUSTOMER" ? "Debtors' ledger" : "Creditors' ledger"}
         </h1>
         <div className="flex shrink-0 gap-2 print:hidden">
-          <button onClick={() => window.open(`/reports/subsidiary-ledger/print?partyType=${partyType}&partyId=${partyId}&dateFrom=${dateFrom}&dateTo=${dateTo}&_embed=1`, "_blank")} disabled={!partyId || loading} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
+          <button onClick={() => window.open(`/reports/subsidiary-ledger/print?partyType=${partyType}&partyId=${partyId}&dateFrom=${dateFrom}&dateTo=${dateTo}${locationId ? `&locationId=${locationId}` : ""}&_embed=1`, "_blank")} disabled={!partyId || loading} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
           <button onClick={exportCsv} disabled={!partyId || loading} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
         </div>
       </div>
@@ -110,6 +115,8 @@ export function SubsidiaryLedgerClient({
       </p>
 
       <div className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4">
+        <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
+
         <label className="text-xs text-neutral-500">
           Type
           <select

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { formatPeso } from "@/lib/format";
 import { computeVat2550Q, emptyVat2550QManual, VAT_2550Q_LABELS, VAT_2550Q_SECTIONS, type VatReturn, type Vat2550QManual } from "@/lib/vat2550q";
+import { BranchFilter, type Branch } from "@/components/BranchFilter";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -25,10 +26,12 @@ export function VatReturnClient({
   companyId,
   tin,
   registeredName,
+  locations,
 }: {
   companyId: string;
   tin: string;
   registeredName: string;
+  locations: Branch[];
 }) {
   const now = new Date();
   const [mode, setMode] = useState<"month" | "quarter" | "year" | "custom">("quarter");
@@ -37,6 +40,7 @@ export function VatReturnClient({
   const [quarter, setQuarter] = useState(Math.floor(now.getMonth() / 3) + 1);
   const [dateFrom, setDateFrom] = useState(`${now.getFullYear()}-01-01`);
   const [dateTo, setDateTo] = useState(now.toISOString().slice(0, 10));
+  const [locationId, setLocationId] = useState("");
   const [manual, setManual] = useState<Vat2550QManual>(emptyVat2550QManual);
   const [data, setData] = useState<VatReturn | null>(null);
   const [loading, setLoading] = useState(false);
@@ -52,6 +56,7 @@ export function VatReturnClient({
     let active = true;
     setLoading(true);
     const params = new URLSearchParams({ companyId, dateFrom: range.from, dateTo: range.to });
+    if (locationId) params.set("locationId", locationId);
     fetch(`/api/reports/bir/vat-return?${params}`)
       .then((r) => r.json())
       .then((d) => active && setData(d))
@@ -59,12 +64,13 @@ export function VatReturnClient({
     return () => {
       active = false;
     };
-  }, [companyId, range.from, range.to]);
+  }, [companyId, range.from, range.to, locationId]);
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const L = data ? computeVat2550Q(data, manual) : null;
 
-  const q = `label=${encodeURIComponent(range.label)}&adj=${encodeURIComponent(JSON.stringify(manual))}`;
+  const loc = locationId ? `&locationId=${encodeURIComponent(locationId)}` : "";
+  const q = `label=${encodeURIComponent(range.label)}&adj=${encodeURIComponent(JSON.stringify(manual))}${loc}`;
   const printHref = `/reports/bir/vat-return/print?dateFrom=${range.from}&dateTo=${range.to}&${q}&_embed=1`;
   const exportHref = `/api/reports/bir/vat-return/export?companyId=${companyId}&dateFrom=${range.from}&dateTo=${range.to}&${q}`;
 
@@ -155,6 +161,8 @@ export function VatReturnClient({
             </label>
           </>
         )}
+
+        <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
       </div>
       <p className="mt-2 text-xs text-neutral-400">For {range.label}.</p>
 

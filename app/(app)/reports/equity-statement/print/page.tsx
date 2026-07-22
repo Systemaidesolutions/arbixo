@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { getEquityStatement } from "@/lib/reports";
+import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
 import { formatPeso } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
@@ -9,17 +10,19 @@ import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
 export default async function EquityStatementPrintPage({
   searchParams,
 }: {
-  searchParams: { dateFrom?: string; dateTo?: string };
+  searchParams: { dateFrom?: string; dateTo?: string; locationId?: string };
 }) {
   const company = await requirePostingCompany();
   if (!company) notFound();
 
   const dateFrom = searchParams.dateFrom ?? `${new Date().getFullYear()}-01-01`;
   const dateTo = searchParams.dateTo ?? new Date().toISOString().slice(0, 10);
-  const s = await getEquityStatement(company.id, new Date(dateFrom), new Date(dateTo));
+  const branch = await resolveBranchScope(company.id, searchParams.locationId);
+  const s = await getEquityStatement(company.id, new Date(dateFrom), new Date(dateTo), branch);
 
   const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
-  const coverage = `For the period ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
+  let coverage = `For the period ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
+  if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
 
   const money = (v: number) => (v < 0 ? `(${formatPeso(Math.abs(v))})` : formatPeso(v));
   const num = "py-1 pr-2 text-right font-mono";

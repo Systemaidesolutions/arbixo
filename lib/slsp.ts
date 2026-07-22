@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { branchWhere, type BranchScope } from "@/lib/branchScope";
 
 // BIR Summary Lists of Sales (SLS) and Purchases (SLP) — one summarized line
 // per customer / supplier for a period, split by VAT treatment. Purchases
@@ -228,11 +229,16 @@ export function buildSlsDat(co: DatCompany, sls: Sls, periodEnd: Date): string {
   return [header, ...details].join("\r\n") + "\r\n";
 }
 
-export async function getSummaryListOfPurchases(companyId: string, from: Date, to: Date, locationId?: string): Promise<Slp> {
+export async function getSummaryListOfPurchases(
+  companyId: string,
+  from: Date,
+  to: Date,
+  branch?: BranchScope
+): Promise<Slp> {
   const lines = await prisma.ledgerEntry.findMany({
     where: {
       companyId,
-      ...(locationId ? { locationId } : {}),
+      ...branchWhere(branch ?? null),
       isCancelled: false,
       postingDate: { gte: from, lte: to },
       journalType: { in: ["PURCHASE_ON_ACCOUNT", "CASH_DISBURSEMENT"] },
@@ -307,11 +313,16 @@ export async function getSummaryListOfPurchases(companyId: string, from: Date, t
   return { rows, totals };
 }
 
-export async function getSummaryListOfSales(companyId: string, from: Date, to: Date, locationId?: string): Promise<Sls> {
+export async function getSummaryListOfSales(
+  companyId: string,
+  from: Date,
+  to: Date,
+  branch?: BranchScope
+): Promise<Sls> {
   const lines = await prisma.ledgerEntry.findMany({
     where: {
       companyId,
-      ...(locationId ? { locationId } : {}),
+      ...branchWhere(branch ?? null),
       isCancelled: false,
       postingDate: { gte: from, lte: to },
       journalType: { in: ["SALES_ON_ACCOUNT", "CASH_RECEIPT"] },

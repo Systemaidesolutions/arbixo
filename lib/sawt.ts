@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { partyName, datRdo, type DatCompany } from "@/lib/slsp";
+import { branchWhere, type BranchScope } from "@/lib/branchScope";
 
 // BIR SAWT (Summary Alphalist of Withholding Taxes) — the creditable withholding
 // tax the company had withheld FROM it by its customers/payors on income
@@ -40,13 +41,13 @@ export async function getSummaryAlphalistOfWithholdingTaxes(
   companyId: string,
   from: Date,
   to: Date,
-  locationId?: string
+  branch?: BranchScope
 ): Promise<Sawt> {
   const [entries, atcCodes] = await Promise.all([
     prisma.ledgerEntry.findMany({
       where: {
         companyId,
-        ...(locationId ? { locationId } : {}),
+        ...branchWhere(branch ?? null),
         isCancelled: false,
         postingDate: { gte: from, lte: to },
         // The company is the payee here; its customers withheld from its income.

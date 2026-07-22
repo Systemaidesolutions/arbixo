@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getVatReturn } from "@/lib/bir";
+import { resolveBranchScope } from "@/lib/branchScope";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -14,10 +15,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const branch = await resolveBranchScope(companyId, params.get("locationId"));
+
   const result = await getVatReturn(
     companyId,
     new Date(`${dateFrom}T00:00:00`),
-    new Date(`${dateTo}T23:59:59.999`)
+    new Date(`${dateTo}T23:59:59.999`),
+    branch
   );
   return NextResponse.json(result);
 }

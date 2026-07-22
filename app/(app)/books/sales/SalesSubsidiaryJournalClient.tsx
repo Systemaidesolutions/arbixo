@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
+import { BranchFilter, type Branch } from "@/components/BranchFilter";
 import type { SalesSubsidiaryJournal } from "@/lib/salesSubsidiaryJournal";
 
 function monthDefaults() {
@@ -10,8 +11,15 @@ function monthDefaults() {
   return { from: `${now.getFullYear()}-${p(now.getMonth() + 1)}-01`, to: now.toISOString().slice(0, 10) };
 }
 
-export function SalesSubsidiaryJournalClient({ registeredName }: { registeredName: string }) {
+export function SalesSubsidiaryJournalClient({
+  registeredName,
+  locations = [],
+}: {
+  registeredName: string;
+  locations?: Branch[];
+}) {
   const def = useMemo(monthDefaults, []);
+  const [locationId, setLocationId] = useState("");
   const [from, setFrom] = useState(def.from);
   const [to, setTo] = useState(def.to);
   const [data, setData] = useState<SalesSubsidiaryJournal | null>(null);
@@ -21,14 +29,18 @@ export function SalesSubsidiaryJournalClient({ registeredName }: { registeredNam
     if (!from || !to) return; // a date field is mid-edit / cleared — don't fetch
     let active = true;
     setLoading(true);
-    fetch(`/api/books/sales-subsidiary?from=${from}&to=${to}`)
+    const qs = `from=${from}&to=${to}${locationId ? `&locationId=${locationId}` : ""}`;
+    fetch(`/api/books/sales-subsidiary?${qs}`)
       .then((r) => r.json())
       .then((j) => active && j && Array.isArray(j.rows) && setData(j))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [from, to]);
+  }, [from, to, locationId]);
+
+  // Shared query string for the print preview and the Excel export.
+  const reportQs = `from=${from}&to=${to}${locationId ? `&locationId=${locationId}` : ""}`;
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const num = (v: number) => (v ? formatPeso(v) : "");
@@ -46,13 +58,15 @@ export function SalesSubsidiaryJournalClient({ registeredName }: { registeredNam
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-medium text-neutral-900">Sales Subsidiary Journal</h1>
         <div className="flex shrink-0 gap-2 print:hidden">
-          <button onClick={() => window.open(`/books/sales/print?from=${from}&to=${to}&_embed=1`, "_blank")} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
-          <button onClick={() => window.open(`/api/books/sales-subsidiary/export?from=${from}&to=${to}`, "_blank")} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
+          <button onClick={() => window.open(`/books/sales/print?${reportQs}&_embed=1`, "_blank")} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
+          <button onClick={() => window.open(`/api/books/sales-subsidiary/export?${reportQs}`, "_blank")} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
         </div>
       </div>
       <p className="mt-1 text-sm text-neutral-500">{registeredName}</p>
 
       <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">
+        <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
+
         <label className="text-xs text-neutral-500">
           From
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={`mt-1 block ${field}`} />

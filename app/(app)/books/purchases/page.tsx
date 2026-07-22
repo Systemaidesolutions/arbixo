@@ -1,4 +1,5 @@
 import { getCurrentCompany } from "@/lib/currentUser";
+import { prisma } from "@/lib/prisma";
 import { PurchaseSubsidiaryJournalClient } from "./PurchaseSubsidiaryJournalClient";
 
 export default async function PurchasesBookPage() {
@@ -11,5 +12,11 @@ export default async function PurchasesBookPage() {
       </main>
     );
   }
-  return <PurchaseSubsidiaryJournalClient registeredName={company.registeredName ?? company.tradeName} />;
+  const locations = await prisma.location.findMany({
+    where: { companyId: company.id },
+    select: { id: true, name: true, branchCode: true },
+    orderBy: { name: "asc" },
+  });
+
+  return <PurchaseSubsidiaryJournalClient registeredName={company.registeredName ?? company.tradeName} locations={locations} />;
 }

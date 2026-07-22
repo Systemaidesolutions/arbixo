@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
+import { BranchFilter, type Branch } from "@/components/BranchFilter";
 
 type Line = {
   id: string;
@@ -31,29 +32,34 @@ export function JournalBookClient({
   title,
   registeredName,
   partyLabel,
+  locations = [],
 }: {
   book: string;
   title: string;
   registeredName: string;
   partyLabel: string;
+  locations?: Branch[];
 }) {
   const def = useMemo(monthDefaults, []);
   const [from, setFrom] = useState(def.from);
   const [to, setTo] = useState(def.to);
+  const [locationId, setLocationId] = useState("");
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetch(`/api/books/journal?book=${book}&from=${from}&to=${to}`)
+    const params = new URLSearchParams({ book, from, to });
+    if (locationId) params.set("locationId", locationId);
+    fetch(`/api/books/journal?${params}`)
       .then((r) => r.json())
       .then((j) => active && setData(j))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [book, from, to]);
+  }, [book, from, to, locationId]);
 
   function exportCsv() {
     if (!data) return;
@@ -69,18 +75,26 @@ export function JournalBookClient({
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
 
+  function printReport() {
+    const params = new URLSearchParams({ book, from, to, _embed: "1" });
+    if (locationId) params.set("locationId", locationId);
+    window.open(`/books/journal/print?${params}`, "_blank");
+  }
+
   return (
     <main className="mx-auto max-w-6xl p-4 sm:p-8">
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-medium text-neutral-900">{title}</h1>
         <div className="flex shrink-0 gap-2 print:hidden">
-          <button onClick={() => window.open(`/books/journal/print?book=${book}&from=${from}&to=${to}&_embed=1`, "_blank")} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
+          <button onClick={printReport} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Print</button>
           <button onClick={exportCsv} disabled={!data} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-40">Export to Excel</button>
         </div>
       </div>
       <p className="mt-1 text-sm text-neutral-500">{registeredName}</p>
 
       <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-4 print:hidden">
+        <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
+
         <label className="text-xs text-neutral-500">
           From
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={`mt-1 block ${field}`} />

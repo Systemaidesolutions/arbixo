@@ -1,4 +1,5 @@
 import { getCurrentCompany } from "@/lib/currentUser";
+import { prisma } from "@/lib/prisma";
 import { BalanceSheetClient } from "./BalanceSheetClient";
 
 export default async function BalanceSheetPage() {
@@ -13,7 +14,13 @@ export default async function BalanceSheetPage() {
     );
   }
 
+  const locations = await prisma.location.findMany({
+    where: { companyId: company.id },
+    select: { id: true, name: true, branchCode: true },
+    orderBy: { name: "asc" },
+  });
+
   return (
-    <BalanceSheetClient companyId={company.id} fiscalMonthEnd={company.fiscalMonthEnd ?? 12} />
+    <BalanceSheetClient companyId={company.id} fiscalMonthEnd={company.fiscalMonthEnd ?? 12} locations={locations} />
   );
 }

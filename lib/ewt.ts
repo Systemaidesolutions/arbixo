@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { branchWhere, type BranchScope } from "@/lib/branchScope";
 import type { EwtAtcRow, ExpandedWithholding } from "@/lib/ewt1601eq";
 
 // BIR 1601-EQ (Expanded Withholding Tax) — the creditable withholding tax the
@@ -17,13 +18,13 @@ export async function getExpandedWithholding(
   companyId: string,
   from: Date,
   to: Date,
-  locationId?: string
+  branch?: BranchScope
 ): Promise<ExpandedWithholding> {
   const [entries, atcCodes] = await Promise.all([
     prisma.ledgerEntry.findMany({
       where: {
         companyId,
-        ...(locationId ? { locationId } : {}),
+        ...branchWhere(branch ?? null),
         isCancelled: false,
         postingDate: { gte: from, lte: to },
         // The company is the withholding agent on money it pays out.

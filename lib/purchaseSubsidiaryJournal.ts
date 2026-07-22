@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { partyName } from "@/lib/slsp";
+import { branchWhere, type BranchScope } from "@/lib/branchScope";
 
 // VAT Purchase Subsidiary Journal — one row per purchase invoice (purchases on
 // account and cash purchases that carry a VAT classification), with the BIR
@@ -71,7 +72,8 @@ export type PurchaseSubsidiaryJournal = {
 export async function getPurchaseSubsidiaryJournal(
   companyId: string,
   from: Date,
-  to: Date
+  to: Date,
+  branch?: BranchScope
 ): Promise<PurchaseSubsidiaryJournal> {
   const entries = await prisma.ledgerEntry.findMany({
     where: {
@@ -79,6 +81,7 @@ export async function getPurchaseSubsidiaryJournal(
       isCancelled: false,
       postingDate: { gte: from, lte: to },
       journalType: { in: ["PURCHASE_ON_ACCOUNT", "CASH_DISBURSEMENT"] },
+      ...branchWhere(branch ?? null),
     },
     include: { account: true, vendor: true, contact: true, employee: true },
     orderBy: [{ postingDate: "asc" }, { documentNo: "asc" }, { lineNo: "asc" }],

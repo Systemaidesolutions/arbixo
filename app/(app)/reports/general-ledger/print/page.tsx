@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { getGeneralLedger } from "@/lib/reports";
+import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
 import { formatPeso } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
@@ -10,17 +11,19 @@ const bal = (n: number) => `${formatPeso(Math.abs(n))} ${n >= 0 ? "Dr" : "Cr"}`;
 export default async function GeneralLedgerPrintPage({
   searchParams,
 }: {
-  searchParams: { accountId?: string; dateFrom?: string; dateTo?: string };
+  searchParams: { accountId?: string; dateFrom?: string; dateTo?: string; locationId?: string };
 }) {
   const company = await requirePostingCompany();
   if (!company || !searchParams.accountId) notFound();
 
   const dateFrom = searchParams.dateFrom ?? `${new Date().getFullYear()}-01-01`;
   const dateTo = searchParams.dateTo ?? new Date().toISOString().slice(0, 10);
-  const g = await getGeneralLedger(company.id, searchParams.accountId, new Date(dateFrom), new Date(dateTo));
+  const branch = await resolveBranchScope(company.id, searchParams.locationId);
+  const g = await getGeneralLedger(company.id, searchParams.accountId, new Date(dateFrom), new Date(dateTo), branch);
 
   const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
-  const coverage = `${g.account.code} — ${g.account.title}  ·  ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
+  let coverage = `${g.account.code} — ${g.account.title}  ·  ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
+  if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
   const num = "px-1 py-1 text-right font-mono";
 
   return (

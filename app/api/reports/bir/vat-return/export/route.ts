@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { getVatReturn } from "@/lib/bir";
+import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
 import { computeVat2550Q, emptyVat2550QManual, VAT_2550Q_LABELS, VAT_2550Q_SECTIONS, type Vat2550QManual } from "@/lib/vat2550q";
 
 function parseManual(raw: string | null): Vat2550QManual {
@@ -39,14 +40,16 @@ export async function GET(request: NextRequest) {
   }
 
   const manual = parseManual(params.get("adj"));
-  const base = await getVatReturn(companyId, new Date(`${dateFrom}T00:00:00`), new Date(`${dateTo}T23:59:59.999`));
+  const branch = await resolveBranchScope(companyId, params.get("locationId"));
+  const base = await getVatReturn(companyId, new Date(`${dateFrom}T00:00:00`), new Date(`${dateTo}T23:59:59.999`), branch);
   const L = computeVat2550Q(base, manual);
 
   const company = await prisma.company.findUnique({ where: { id: companyId } });
   const companyName = company?.registeredName || company?.tradeName || "";
   const addr = [company?.businessAddress, company?.barangay, company?.district, company?.city, company?.province, company?.zipCode].filter(Boolean).join(", ");
   const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
-  const coverage = params.get("label") ? `For ${params.get("label")}` : `For the period ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
+  let coverage = params.get("label") ? `For ${params.get("label")}` : `For the period ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
+  if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("VAT Return", {

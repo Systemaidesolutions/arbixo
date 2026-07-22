@@ -19,5 +19,18 @@ export default async function SubsidiaryLedgerPage() {
     prisma.vendor.findMany({ where: { companyId: company.id }, orderBy: { code: "asc" } }),
   ]);
 
-  return <SubsidiaryLedgerClient companyId={company.id} customers={customers} vendors={vendors} />;
+  const locations = await prisma.location.findMany({
+    where: { companyId: company.id },
+    select: { id: true, name: true, branchCode: true },
+    orderBy: { name: "asc" },
+  });
+
+  return (
+    <SubsidiaryLedgerClient
+      companyId={company.id}
+      customers={customers}
+      vendors={vendors}
+      locations={locations}
+    />
+  );
 }

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { partyName, datText, datTin, amt, digitsOnly, datRdo, mmddyyyy, H_TRAILER, type DatCompany } from "@/lib/slsp";
+import { branchWhere, type BranchScope } from "@/lib/branchScope";
 
 // BIR Quarterly Alphalist of Payees (QAP) — payees the company withheld
 // expanded withholding tax (EWT) from (the withholding-agent side of purchases /
@@ -79,12 +80,17 @@ function payeeIdentity(p: PayeeLike, keyPrefix: string) {
   };
 }
 
-export async function getAlphalistOfPayees(companyId: string, from: Date, to: Date, locationId?: string): Promise<Qap> {
+export async function getAlphalistOfPayees(
+  companyId: string,
+  from: Date,
+  to: Date,
+  branch?: BranchScope
+): Promise<Qap> {
   const [entries, atcCodes] = await Promise.all([
     prisma.ledgerEntry.findMany({
       where: {
         companyId,
-        ...(locationId ? { locationId } : {}),
+        ...branchWhere(branch ?? null),
         isCancelled: false,
         postingDate: { gte: from, lte: to },
         // The company is the withholding agent on money it pays out.

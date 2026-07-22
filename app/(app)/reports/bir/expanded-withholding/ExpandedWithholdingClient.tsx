@@ -9,6 +9,7 @@ import {
   type ExpandedWithholding,
   type Ewt1601Manual,
 } from "@/lib/ewt1601eq";
+import { BranchFilter, type Branch } from "@/components/BranchFilter";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -31,10 +32,12 @@ export function ExpandedWithholdingClient({
   companyId,
   tin,
   registeredName,
+  locations,
 }: {
   companyId: string;
   tin: string;
   registeredName: string;
+  locations: Branch[];
 }) {
   const now = new Date();
   const [mode, setMode] = useState<"month" | "quarter" | "year" | "custom">("quarter");
@@ -43,6 +46,7 @@ export function ExpandedWithholdingClient({
   const [quarter, setQuarter] = useState(Math.floor(now.getMonth() / 3) + 1);
   const [dateFrom, setDateFrom] = useState(`${now.getFullYear()}-01-01`);
   const [dateTo, setDateTo] = useState(now.toISOString().slice(0, 10));
+  const [locationId, setLocationId] = useState("");
   const [manual, setManual] = useState<Ewt1601Manual>(emptyEwt1601Manual);
   const [data, setData] = useState<ExpandedWithholding | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,6 +62,7 @@ export function ExpandedWithholdingClient({
     let active = true;
     setLoading(true);
     const params = new URLSearchParams({ companyId, dateFrom: range.from, dateTo: range.to });
+    if (locationId) params.set("locationId", locationId);
     fetch(`/api/reports/bir/expanded-withholding?${params}`)
       .then((r) => r.json())
       .then((d) => active && setData(d))
@@ -65,12 +70,13 @@ export function ExpandedWithholdingClient({
     return () => {
       active = false;
     };
-  }, [companyId, range.from, range.to]);
+  }, [companyId, range.from, range.to, locationId]);
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const T = data ? computeEwt1601(data.totalWithheld, manual) : null;
 
-  const q = `label=${encodeURIComponent(range.label)}&adj=${encodeURIComponent(JSON.stringify(manual))}`;
+  const loc = locationId ? `&locationId=${encodeURIComponent(locationId)}` : "";
+  const q = `label=${encodeURIComponent(range.label)}&adj=${encodeURIComponent(JSON.stringify(manual))}${loc}`;
   const printHref = `/reports/bir/expanded-withholding/print?dateFrom=${range.from}&dateTo=${range.to}&${q}&_embed=1`;
   const exportHref = `/api/reports/bir/expanded-withholding/export?companyId=${companyId}&dateFrom=${range.from}&dateTo=${range.to}&${q}`;
 
@@ -156,6 +162,8 @@ export function ExpandedWithholdingClient({
             </label>
           </>
         )}
+
+        <BranchFilter locations={locations} value={locationId} onChange={setLocationId} fieldClass={field} />
       </div>
       <p className="mt-2 text-xs text-neutral-400">For {range.label}.</p>
 
