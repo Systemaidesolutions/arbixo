@@ -112,7 +112,7 @@ export default async function PurchaseSubsidiaryJournalPrintPage({
         </tfoot>
       </table>
 
-      <ReportFooter />
+      <ReportFooter orientation="landscape" marginIn={0.3} />
     </main>
   );
 }

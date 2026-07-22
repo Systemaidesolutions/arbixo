@@ -40,6 +40,7 @@ export function ReportHeader({
 }
 
 // Report footer with the page number aligned to the right.
-export function ReportFooter() {
-  return <footer className="mt-6 text-right text-[10px] text-neutral-500">Page 1 of 1</footer>;
-}
+// Real per-page "Page X of Y" footers (measured client-side — browsers can't
+// compute page counts in CSS). Re-exported here so the print pages keep
+// importing ReportFooter from this module.
+export { ReportFooter } from "@/components/PrintPagination";
