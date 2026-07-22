@@ -150,7 +150,7 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, e
           </label>
 
           <div className="sm:col-span-2">
-            <CounterpartyPicker counterpartyType="VENDOR" counterpartyId={vendorId} onTypeChange={() => {}} onIdChange={onVendorChange} vendors={vendorList} employees={[]} contacts={[]} customers={[]} types={["VENDOR"]} label="Supplier" companyId={companyId} onCreated={(_t, record) => { setVendorList((l) => [...l, record as (typeof vendorList)[number]]); onVendorChange(record.id); }} />
+            <CounterpartyPicker counterpartyType="VENDOR" counterpartyId={vendorId} onTypeChange={() => {}} onIdChange={onVendorChange} vendors={vendorList} employees={[]} contacts={[]} customers={[]} types={["VENDOR"]} label="Supplier" companyId={companyId} onCreated={(_t, record) => { setVendorList((l) => [...l, record as (typeof vendorList)[number]]); onVendorChange(record.id); }} showDetails />
           </div>
           <label className={label}>Payable account<select required value={payableAccountId} onChange={(e) => setPayableAccountId(e.target.value)} className={field}>{payableAccounts.length === 0 && <option value="">No A/P accounts yet</option>}{payableAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
           <label className={label}>Payment terms<input value={paymentTerms} onChange={(e) => onTermsChange(e.target.value)} placeholder="e.g. Net 30, COD" className={field} /></label>

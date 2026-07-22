@@ -137,7 +137,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
           </label>
 
           <div className="sm:col-span-2">
-            <CounterpartyPicker counterpartyType="CUSTOMER" counterpartyId={customerId} onTypeChange={() => {}} onIdChange={onCustomerChange} vendors={[]} employees={[]} contacts={[]} customers={customerList} types={["CUSTOMER"]} label="Customer" companyId={companyId} onCreated={(_t, record) => { setCustomerList((l) => [...l, record as (typeof customerList)[number]]); onCustomerChange(record.id); }} />
+            <CounterpartyPicker counterpartyType="CUSTOMER" counterpartyId={customerId} onTypeChange={() => {}} onIdChange={onCustomerChange} vendors={[]} employees={[]} contacts={[]} customers={customerList} types={["CUSTOMER"]} label="Customer" companyId={companyId} onCreated={(_t, record) => { setCustomerList((l) => [...l, record as (typeof customerList)[number]]); onCustomerChange(record.id); }} showDetails />
           </div>
           <label className={label}>Receivable account<select required value={receivableAccountId} onChange={(e) => setReceivableAccountId(e.target.value)} className={field}>{receivableAccounts.length === 0 && <option value="">No A/R accounts yet</option>}{receivableAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
           <label className={label}>Payment terms<input value={paymentTerms} onChange={(e) => onTermsChange(e.target.value)} placeholder="e.g. Net 30, COD" className={field} /></label>
