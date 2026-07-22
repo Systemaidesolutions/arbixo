@@ -23,7 +23,14 @@ export function ReportHeader({
   const companyName = company.registeredName || company.tradeName;
   const addr = [company.businessAddress, company.barangay, company.district, company.city, company.province, company.zipCode].filter(Boolean).join(", ");
   return (
-    <header className="border-b-2 border-neutral-800 pb-3 text-center">
+    // The data-* attributes are what ReportFooter reads to caption each printed
+    // page, so the footer always matches this header without every print page
+    // having to pass the same two values twice.
+    <header
+      data-report-company={companyName}
+      data-report-title={title}
+      className="border-b-2 border-neutral-800 pb-3 text-center"
+    >
       <div className="flex flex-col items-center">
         {company.logoUrl && (
           // eslint-disable-next-line @next/next/no-img-element

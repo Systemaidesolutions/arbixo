@@ -34,7 +34,13 @@ const PRINT_ONLY_CSS = `
 @media print { tfoot { display: table-row-group !important; } }
 `;
 
-function paginate(root: HTMLElement, anchor: HTMLElement, orientation: Orientation, marginIn: number) {
+function paginate(
+  root: HTMLElement,
+  anchor: HTMLElement,
+  orientation: Orientation,
+  marginIn: number,
+  caps: { company?: string; title?: string },
+) {
   // Clear anything a previous run left behind so re-runs are idempotent.
   root.querySelectorAll(".pp-footer, .pp-spacer").forEach((n) => n.remove());
   root.style.minHeight = "";
@@ -144,12 +150,28 @@ function paginate(root: HTMLElement, anchor: HTMLElement, orientation: Orientati
       root.appendChild(tail);
     }
 
+    // Caption for the left of every footer: company name + report name, taken
+    // from the report header so the two always agree.
+    const hdr = root.querySelector<HTMLElement>("[data-report-company], [data-report-title]");
+    const caption = [caps.company ?? hdr?.dataset.reportCompany, caps.title ?? hdr?.dataset.reportTitle]
+      .map((s) => (s ?? "").trim())
+      .filter(Boolean)
+      .join(" — ");
+
     if (getComputedStyle(root).position === "static") root.style.position = "relative";
     for (let i = 0; i < totalPages; i++) {
       const f = document.createElement("div");
       f.className = "pp-footer";
-      f.style.cssText = `position:absolute;left:0;right:0;height:${FOOTER_H}px;line-height:${FOOTER_H}px;top:${footerTops[i]}px;text-align:right;font-size:10px;color:#666`;
-      f.textContent = `Page ${i + 1} of ${totalPages}`;
+      f.style.cssText = `position:absolute;left:0;right:0;height:${FOOTER_H}px;line-height:${FOOTER_H}px;top:${footerTops[i]}px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:10px;color:#666`;
+
+      const left = document.createElement("span");
+      left.style.cssText = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+      left.textContent = caption; // textContent, so a company name can't inject markup
+      const right = document.createElement("span");
+      right.style.whiteSpace = "nowrap";
+      right.textContent = `Page ${i + 1} of ${totalPages}`;
+
+      f.append(left, right);
       root.appendChild(f);
     }
   } finally {
@@ -168,9 +190,15 @@ function paginate(root: HTMLElement, anchor: HTMLElement, orientation: Orientati
 export function ReportFooter({
   orientation = "portrait",
   marginIn = 0.4,
+  companyName,
+  reportTitle,
 }: {
   orientation?: Orientation;
   marginIn?: number;
+  /** Defaults to the company name shown in <ReportHeader>. */
+  companyName?: string;
+  /** Defaults to the report title shown in <ReportHeader>. */
+  reportTitle?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -181,7 +209,7 @@ export function ReportFooter({
 
     let cancelled = false;
     const run = () => {
-      if (!cancelled) paginate(root, anchor, orientation, marginIn);
+      if (!cancelled) paginate(root, anchor, orientation, marginIn, { company: companyName, title: reportTitle });
     };
 
     // Fonts change line heights, so wait for them before measuring.
@@ -196,7 +224,7 @@ export function ReportFooter({
       cancelled = true;
       window.removeEventListener("beforeprint", run);
     };
-  }, [orientation, marginIn]);
+  }, [orientation, marginIn, companyName, reportTitle]);
 
   return (
     <div ref={ref} aria-hidden className="pp-anchor">
