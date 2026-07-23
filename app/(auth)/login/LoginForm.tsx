@@ -51,8 +51,7 @@ export function LoginForm() {
 
   return (
     <div>
-      <h1 className="text-lg font-medium text-white">Log in</h1>
-      <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-3">
         <label className={label}>
           Email
           <input
