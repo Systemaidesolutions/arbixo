@@ -124,24 +124,35 @@ export function JournalBookClient({
                 <th className="px-3 py-2 text-right">Credit</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100">
-              {data.lines.map((l, i) => {
-                // Visually separate one transaction (document) from the next
-                // with a heavier rule at the top of each new document's block.
-                const newTxn = i > 0 && l.documentNo !== data.lines[i - 1].documentNo;
-                return (
-                  <tr key={l.id} className={newTxn ? "border-t-2 border-neutral-300" : ""}>
-                    <td className="px-3 py-1.5 text-xs">{l.postingDate.slice(0, 10)}</td>
-                    <td className="px-3 py-1.5 font-mono text-xs">{l.documentNo}</td>
-                    <td className="px-3 py-1.5 text-xs text-neutral-600">{l.counterparty ?? "—"}</td>
-                    <td className="px-3 py-1.5 text-xs">
-                      <span className="font-mono text-neutral-400">{l.accountCode}</span> {l.accountTitle}
-                    </td>
-                    <td className="px-3 py-1.5 text-right font-mono">{l.debit ? formatPeso(l.debit) : ""}</td>
-                    <td className="px-3 py-1.5 text-right font-mono">{l.credit ? formatPeso(l.credit) : ""}</td>
-                  </tr>
-                );
-              })}
+            <tbody>
+              {(() => {
+                // Group by document: all lines of one document share a shaded
+                // background, adjacent documents alternate, and the date / doc
+                // no. / party show only on the document's first line (blank on
+                // the rest, so one transaction reads as one block).
+                let docIdx = -1;
+                return data.lines.map((l, i) => {
+                  const firstOfDoc = i === 0 || l.documentNo !== data.lines[i - 1].documentNo;
+                  if (firstOfDoc) docIdx++;
+                  return (
+                    <tr
+                      key={l.id}
+                      className={`${docIdx % 2 === 1 ? "bg-neutral-50" : "bg-white"} ${
+                        firstOfDoc && i > 0 ? "border-t border-neutral-300" : ""
+                      }`}
+                    >
+                      <td className="px-3 py-1.5 text-xs">{firstOfDoc ? l.postingDate.slice(0, 10) : ""}</td>
+                      <td className="px-3 py-1.5 font-mono text-xs">{firstOfDoc ? l.documentNo : ""}</td>
+                      <td className="px-3 py-1.5 text-xs text-neutral-600">{firstOfDoc ? l.counterparty ?? "—" : ""}</td>
+                      <td className="px-3 py-1.5 text-xs">
+                        <span className="font-mono text-neutral-400">{l.accountCode}</span> {l.accountTitle}
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-mono">{l.debit ? formatPeso(l.debit) : ""}</td>
+                      <td className="px-3 py-1.5 text-right font-mono">{l.credit ? formatPeso(l.credit) : ""}</td>
+                    </tr>
+                  );
+                });
+              })()}
             </tbody>
             <tfoot>
               <tr className="bg-neutral-50 font-medium">
