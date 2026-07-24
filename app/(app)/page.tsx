@@ -15,6 +15,7 @@ import { getDashboardSummary, getDashboardBreakdowns } from "@/lib/reports";
 import { getDisplayLinks } from "@/lib/relatedLinks";
 import { subscriptionStatus } from "@/lib/subscription";
 import { SnapshotTiles } from "@/components/SnapshotTiles";
+import { BirTaxReminders } from "@/components/BirTaxReminders";
 
 const QUICK_ACTIONS: Array<{ href: string; label: string; icon: LucideIcon; iconClass: string }> = [
   { href: "/transactions/sales", label: "New Sale", icon: ShoppingCart, iconClass: "text-brand-green" },
@@ -66,6 +67,7 @@ export default async function HomePage() {
   const relatedLinks = await getDisplayLinks();
 
   // Time-of-day greeting, Philippine time (UTC+8, no DST).
+  const phNow = new Date(Date.now() + 8 * 60 * 60 * 1000);
   const phHour = (new Date().getUTCHours() + 8) % 24;
   const greeting = phHour < 12 ? "Good morning" : phHour < 18 ? "Good afternoon" : "Good evening";
   const displayName = user.name?.trim() || user.email.split("@")[0];
@@ -187,6 +189,11 @@ export default async function HomePage() {
             </div>
           )}
         </section>
+      </div>
+
+      {/* Live BIR tax-filing deadlines for the current month */}
+      <div className="mt-6">
+        <BirTaxReminders initialYear={phNow.getUTCFullYear()} initialMonth={phNow.getUTCMonth() + 1} />
       </div>
     </main>
   );
