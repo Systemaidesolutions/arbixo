@@ -79,7 +79,7 @@ export async function getSalesSubsidiaryJournal(
         postingDate: e.postingDate.toISOString(),
         documentNo: e.documentNo,
         buyerName: c ? partyName(c) : "",
-        buyerAddress: c ? [c.address, c.barangay, c.city, c.province, c.zipCode].filter(Boolean).join(", ") : "",
+        buyerAddress: c ? [c.address, c.barangay, c.district, c.city, c.province, c.zipCode].filter(Boolean).join(", ") : "",
         vatRegNo: c?.tin ?? "",
         exempt: 0,
         vatable12: 0,

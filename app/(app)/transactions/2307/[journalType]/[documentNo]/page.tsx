@@ -29,8 +29,16 @@ export default async function Form2307Page({ params }: { params: { journalType: 
     [cp?.lastName, cp?.firstName].filter(Boolean).join(", ") || "";
   const payeeTin = withParty?.vendor?.tin ?? withParty?.customer?.tin ?? withParty?.contact?.tin ?? "";
 
+  // Payee address (zip goes in its own field on the form, so exclude it here).
+  const payeeParty = cp ?? withParty?.employee ?? null;
+  const payeeAddr = payeeParty
+    ? [payeeParty.address, payeeParty.barangay, payeeParty.district, payeeParty.city, payeeParty.province]
+        .filter(Boolean)
+        .join(", ")
+    : "";
+
   // Payor = the company (withholding agent).
-  const payorAddr = [company.businessAddress, company.barangay, company.city, company.province]
+  const payorAddr = [company.businessAddress, company.barangay, company.district, company.city, company.province]
     .filter(Boolean)
     .join(", ");
 
@@ -52,7 +60,7 @@ export default async function Form2307Page({ params }: { params: { journalType: 
   return (
     <Form2307
       data={{
-        payee: { name: payeeName, tin: payeeTin, address: cp?.address ?? "", zip: "" },
+        payee: { name: payeeName, tin: payeeTin, address: payeeAddr, zip: payeeParty?.zipCode ?? "" },
         payor: { name: company.registeredName || company.tradeName, tin: company.tin ?? "", address: payorAddr, zip: company.zipCode ?? "" },
         postingDate: new Date(entries[0].postingDate).toISOString().slice(0, 10),
         documentNo,

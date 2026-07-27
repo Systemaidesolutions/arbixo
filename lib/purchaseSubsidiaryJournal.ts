@@ -26,13 +26,14 @@ type PartyLike = {
   tin: string | null;
   address?: string | null;
   barangay?: string | null;
+  district?: string | null;
   city?: string | null;
   province?: string | null;
   zipCode?: string | null;
 } & Parameters<typeof partyName>[0];
 
 function partyAddress(p: PartyLike): string {
-  return [p.address, p.barangay, p.city, p.province, p.zipCode].filter(Boolean).join(", ");
+  return [p.address, p.barangay, p.district, p.city, p.province, p.zipCode].filter(Boolean).join(", ");
 }
 
 export type PurchaseSubsidiaryRow = {

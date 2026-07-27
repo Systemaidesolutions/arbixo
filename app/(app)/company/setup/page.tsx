@@ -42,7 +42,7 @@ export default async function CompanyDetailsPage() {
       : ["Taxpayer name", taxpayerName],
     [
       "Business address",
-      [company.businessAddress, company.barangay, company.city, company.province, company.zipCode]
+      [company.businessAddress, company.barangay, company.district, company.city, company.province, company.zipCode]
         .filter(Boolean)
         .join(", "),
     ],

@@ -38,7 +38,12 @@ export default async function VoucherPage({ params }: { params: { journalType: s
     p?.registeredName || p?.tradeName ||
     (withParty?.employee ? [withParty.employee.firstName, withParty.employee.middleName, withParty.employee.lastName].filter(Boolean).join(" ") : null) ||
     [p?.lastName, p?.firstName].filter(Boolean).join(", ") || "";
-  const partyAddress = p?.address ?? "";
+  const addrParty = p ?? withParty?.employee;
+  const partyAddress = addrParty
+    ? [addrParty.address, addrParty.barangay, addrParty.district, addrParty.city, addrParty.province, addrParty.zipCode]
+        .filter(Boolean)
+        .join(", ")
+    : "";
   const partyTin = withParty?.customer?.tin ?? withParty?.vendor?.tin ?? withParty?.contact?.tin ?? "";
   const checkNo = entries.find((e) => e.checkNo)?.checkNo ?? "";
 
