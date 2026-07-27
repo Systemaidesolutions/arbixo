@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   const ws = wb.addWorksheet("Purchase Subsidiary Journal", {
     headerFooter: { oddFooter: "&CPage &P of &N", evenFooter: "&CPage &P of &N" },
   });
-  [12, 32, 5, 14, 14, 12, 10, 12, 12, 12, 14, 24, 12, 12, 12, 12].forEach((w, i) => (ws.getColumn(i + 1).width = w));
+  [12, 32, 5, 14, 14, 12, 10, 12, 12, 12, 14, 24, 12, 12, 12].forEach((w, i) => (ws.getColumn(i + 1).width = w));
 
   const heading = (text: string, font: Partial<ExcelJS.Font>) => {
     const r = ws.addRow([text]);
@@ -50,8 +50,8 @@ export async function GET(request: NextRequest) {
   heading(coverage, { size: 9, color: { argb: "FF666666" } });
   ws.addRow([]);
 
-  const hr1 = ws.addRow(["Date", "Name and Address of Suppliers", "F", "Invoice Numbers", "VAT Reg. No.", "VAT Purchases (Goods)", "", "Non-VAT Purchases (Goods)", "", "Input VAT", "Total Invoice Amount", "Name of Account", "General Ledger", "", "Terms", ""]);
-  const hr2 = ws.addRow(["", "", "", "", "", "Local", "", "Local", "Zero Rated", "", "", "", "Debit", "Credit", "Cash", "Account"]);
+  const hr1 = ws.addRow(["Date", "Name and Address of Suppliers", "F", "Invoice Numbers", "VAT Reg. No.", "VAT Purchases (Goods)", "", "Non-VAT Purchases (Goods)", "", "Input VAT", "Total Invoice Amount", "Name of Account", "General Ledger", "Terms", ""]);
+  const hr2 = ws.addRow(["", "", "", "", "", "Local", "", "Local", "Zero Rated", "", "", "", "", "Cash", "Account"]);
   const r1 = hr1.number;
   const r2 = hr2.number;
   ws.mergeCells(r1, 1, r2, 1);
@@ -64,8 +64,8 @@ export async function GET(request: NextRequest) {
   ws.mergeCells(r1, 10, r2, 10);
   ws.mergeCells(r1, 11, r2, 11);
   ws.mergeCells(r1, 12, r2, 12);
-  ws.mergeCells(r1, 13, r1, 14); // General Ledger
-  ws.mergeCells(r1, 15, r1, 16); // Terms
+  ws.mergeCells(r1, 13, r2, 13); // General Ledger (single value)
+  ws.mergeCells(r1, 14, r1, 15); // Terms
   for (const r of [hr1, hr2]) {
     r.font = { bold: true, size: 10 };
     r.eachCell((c) => {
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 
   const NUM = "#,##0.00";
   const amt = (v: number) => (v ? v : null);
-  const numberCols = [6, 7, 8, 9, 10, 11, 13, 14, 15, 16];
+  const numberCols = [6, 7, 8, 9, 10, 11, 13, 14, 15];
   for (const r of data.rows) {
     const row = ws.addRow([
       rowDate(r.postingDate),
@@ -92,7 +92,6 @@ export async function GET(request: NextRequest) {
       amt(r.totalInvoice),
       r.accountName,
       amt(r.glDebit),
-      amt(r.glCredit),
       r.terms === "Cash" ? amt(r.totalInvoice) : null,
       r.terms === "Account" ? amt(r.totalInvoice) : null,
     ]);
@@ -104,7 +103,7 @@ export async function GET(request: NextRequest) {
   const cashTotal = data.rows.filter((r) => r.terms === "Cash").reduce((s, r) => s + r.totalInvoice, 0);
   const acctTotal = data.rows.filter((r) => r.terms === "Account").reduce((s, r) => s + r.totalInvoice, 0);
   const t = data.totals;
-  const totalRow = ws.addRow(["TOTAL", "", "", "", "", t.vatPurchLocal, null, t.nonVatLocal, t.nonVatZero, t.inputVat, t.totalInvoice, "", t.glDebit, t.glCredit, cashTotal, acctTotal]);
+  const totalRow = ws.addRow(["TOTAL", "", "", "", "", t.vatPurchLocal, null, t.nonVatLocal, t.nonVatZero, t.inputVat, t.totalInvoice, "", t.glDebit, cashTotal, acctTotal]);
   totalRow.font = { bold: true };
   ws.mergeCells(totalRow.number, 1, totalRow.number, 5);
   for (const c of numberCols) {

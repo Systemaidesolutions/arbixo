@@ -95,7 +95,7 @@ export function PurchaseSubsidiaryJournalClient({
                 <th className={th} rowSpan={2}>Input VAT</th>
                 <th className={th} rowSpan={2}>Total Invoice Amount</th>
                 <th className={th} rowSpan={2}>Name of Account</th>
-                <th className={th} colSpan={2}>General Ledger</th>
+                <th className={th} rowSpan={2}>General Ledger</th>
                 <th className={th} colSpan={2}>Terms</th>
               </tr>
               <tr>
@@ -103,15 +103,13 @@ export function PurchaseSubsidiaryJournalClient({
                 <th className={th}></th>
                 <th className={th}>Local</th>
                 <th className={th}>Zero Rated</th>
-                <th className={th}>Debit</th>
-                <th className={th}>Credit</th>
                 <th className={th}>Cash</th>
                 <th className={th}>Account</th>
               </tr>
             </thead>
             <tbody>
               {data.rows.length === 0 ? (
-                <tr><td className={`${td} text-center text-neutral-400`} colSpan={16}>No purchases in this period</td></tr>
+                <tr><td className={`${td} text-center text-neutral-400`} colSpan={15}>No purchases in this period</td></tr>
               ) : (
                 data.rows.map((r) => (
                   <tr key={r.key}>
@@ -131,7 +129,6 @@ export function PurchaseSubsidiaryJournalClient({
                     <td className={tdNum}>{num(r.totalInvoice)}</td>
                     <td className={td}>{r.accountName || "—"}</td>
                     <td className={tdNum}>{num(r.glDebit)}</td>
-                    <td className={tdNum}>{num(r.glCredit)}</td>
                     <td className={tdNum}>{r.terms === "Cash" ? num(r.totalInvoice) : ""}</td>
                     <td className={tdNum}>{r.terms === "Account" ? num(r.totalInvoice) : ""}</td>
                   </tr>
@@ -149,7 +146,6 @@ export function PurchaseSubsidiaryJournalClient({
                 <td className={tdNum}>{num(data.totals.totalInvoice)}</td>
                 <td className={td} />
                 <td className={tdNum}>{num(data.totals.glDebit)}</td>
-                <td className={tdNum}>{num(data.totals.glCredit)}</td>
                 <td className={tdNum}>{num(cashTotal)}</td>
                 <td className={tdNum}>{num(acctTotal)}</td>
               </tr>

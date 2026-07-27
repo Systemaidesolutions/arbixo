@@ -26,7 +26,7 @@ export function BranchFilter({
     <label className="text-xs text-neutral-500">
       Branch
       <select value={value} onChange={(e) => onChange(e.target.value)} className={`mt-1 block ${fieldClass}`}>
-        <option value="">All branches</option>
+        <option value="">Consolidated</option>
         {locations.map((l) => (
           <option key={l.id} value={l.id}>
             {branchOptionLabel(l)}

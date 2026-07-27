@@ -43,14 +43,14 @@ export function branchWhere(scope: BranchScope) {
     : { locationId: scope.locationId };
 }
 
-/** Human label for report headers, e.g. "All branches" or "00001 — Cebu". */
+/** Human label for report headers, e.g. "Consolidated" or "00001 — Cebu". */
 export async function branchScopeLabel(scope: BranchScope): Promise<string> {
-  if (!scope) return "All branches (consolidated)";
+  if (!scope) return "Consolidated";
   const loc = await prisma.location.findUnique({
     where: { id: scope.locationId },
     select: { name: true, branchCode: true },
   });
-  if (!loc) return "All branches (consolidated)";
+  if (!loc) return "Consolidated";
   const code = (loc.branchCode ?? "").trim();
   return code ? `${code} — ${loc.name}` : loc.name;
 }
