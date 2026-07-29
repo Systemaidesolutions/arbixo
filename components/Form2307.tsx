@@ -2,6 +2,7 @@
 
 import { formatPeso } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
+import { ATC_SCHEDULE_LEFT, ATC_SCHEDULE_RIGHT, type AtcScheduleRow } from "@/lib/atc2307Schedule";
 
 export type Row2307 = {
   atc: string;
@@ -93,6 +94,10 @@ function Barcode() {
 
 const HEADS = ["Income Payments Subject to Expanded Withholding Tax", "ATC", "1st Month of the Quarter", "2nd Month of the Quarter", "3rd Month of the Quarter", "Total", "Tax Withheld for the Quarter"];
 
+// The printed form has 10 blank lines in each of the two Part III schedules.
+const EWT_LINES = 10;
+const BUSINESS_TAX_LINES = 10;
+
 // BIR Form No. 2307 (January 2018 ENCS) — Certificate of Creditable Tax
 // Withheld at Source. Laid out to match the official form; prints on Legal.
 export function Form2307({ data, autoPrint = true }: { data: Form2307Data; autoPrint?: boolean }) {
@@ -106,9 +111,11 @@ export function Form2307({ data, autoPrint = true }: { data: Form2307Data; autoP
   const totalTax = rows.reduce((s, r) => s + r.tax, 0);
   const amt = (n: number) => (n ? formatPeso(n) : "");
 
-  // Part III detail rows (income sits in the quarter's month column), padded.
+  // Part III detail rows (income sits in the quarter's month column). The
+  // official form prints 10 EWT lines, so pad to that; a payee with more ATCs
+  // than that simply prints more lines.
   const ewtRows = [...rows];
-  while (ewtRows.length < 4) ewtRows.push({ atc: "", description: "", income: 0, tax: 0 });
+  while (ewtRows.length < EWT_LINES) ewtRows.push({ atc: "", description: "", income: 0, tax: 0 });
 
   const cellTd = "border border-black px-1 py-[3px] align-top";
   const numTd = "border border-black px-1 py-[3px] text-right font-mono align-top";
@@ -269,9 +276,9 @@ export function Form2307({ data, autoPrint = true }: { data: Form2307Data; autoP
               <td className={numTd}>{amt(totalTax)}</td>
             </tr>
             <tr className={`font-bold ${GREY}`}>
-              <td colSpan={7} className="border border-black px-1 py-[3px] text-center">Money Payments Subject to Withholding of Business Tax</td>
+              <td colSpan={7} className="border border-black px-1 py-[3px] text-center">Money Payments Subject to Withholding of Business Tax (Government &amp; Private)</td>
             </tr>
-            {[0, 1].map((i) => (
+            {Array.from({ length: BUSINESS_TAX_LINES }, (_, i) => i).map((i) => (
               <tr key={`b${i}`}>
                 <td className={cellTd}>&nbsp;</td>
                 <td className={`${cellTd} ${GREY}`} />
@@ -335,6 +342,59 @@ export function Form2307({ data, autoPrint = true }: { data: Form2307Data; autoP
       </div>
 
       <div className="mt-[2px] text-[8px]">*NOTE: The BIR Data Privacy is in the BIR website (www.bir.gov.ph)</div>
+
+      {/* Page 2 — the official form's ATC reference schedules. */}
+      <div style={{ breakBefore: "page", pageBreakBefore: "always" }} className="mt-6 print:mt-0">
+        <div className={B}>
+          <div className={`border-b border-black py-[2px] text-center text-[10px] font-bold ${GREY}`}>
+            SCHEDULES OF ALPHANUMERIC TAX CODES
+          </div>
+          <div className="flex">
+            <AtcScheduleTable rows={ATC_SCHEDULE_LEFT} />
+            <div className="w-px bg-black" />
+            <AtcScheduleTable rows={ATC_SCHEDULE_RIGHT} />
+          </div>
+        </div>
+      </div>
     </div>
+  );
+}
+
+/** One of the two side-by-side ATC columns on page 2. */
+function AtcScheduleTable({ rows }: { rows: AtcScheduleRow[] }) {
+  const cell = "border-b border-black px-[2px] py-0 align-top leading-[1.15]";
+  return (
+    <table className="w-1/2 border-collapse text-[6px]">
+      <thead>
+        <tr className={GREY}>
+          <th className="w-[10px] border border-black py-[1px] text-center font-bold">A</th>
+          <th className="border border-black py-[1px] text-center font-bold">
+            Income Payments subject to Expanded Withholding Tax
+          </th>
+          <th colSpan={2} className="w-[54px] border border-black py-[1px] text-center font-bold">
+            ATC
+          </th>
+        </tr>
+        <tr className={GREY}>
+          <th className="border border-black" />
+          <th className="border border-black" />
+          <th className="w-[27px] border border-black py-[1px] text-center font-bold">Individual</th>
+          <th className="w-[27px] border border-black py-[1px] text-center font-bold">Corporation</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i}>
+            <td className={`${cell} border-l border-r border-black`} />
+            <td className={`${cell} border-r border-black`}>
+              {/* A sub-line is an indented condition under the heading above it. */}
+              {r.s ? <span className="pl-2">{r.s}</span> : r.h}
+            </td>
+            <td className={`${cell} border-r border-black text-center font-mono`}>{r.i}</td>
+            <td className={`${cell} border-r border-black text-center font-mono`}>{r.c}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
