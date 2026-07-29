@@ -80,6 +80,7 @@ export const NAV_SECTIONS: NavSection[] = [
     links: [
       { href: "/reports/bir/vat-return", label: "VAT Return", icon: "vat" },
       { href: "/reports/bir/expanded-withholding", label: "Expanded Withholding Tax", icon: "withholding" },
+      { href: "/reports/bir/form-2307", label: "Certificate of Tax Withheld (2307)", icon: "withholding" },
       {
         group: "Relief Files",
         links: [

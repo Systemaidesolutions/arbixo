@@ -3,7 +3,18 @@
 import { formatPeso } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 
-export type Row2307 = { atc: string; description: string; income: number; tax: number };
+export type Row2307 = {
+  atc: string;
+  description: string;
+  income: number;
+  tax: number;
+  /**
+   * Income split across the quarter's three months. Supplied by the 2307
+   * REPORT (a payee's whole quarter). Omitted by the per-transaction
+   * certificate, where the single document's income sits in its own month.
+   */
+  months?: [number, number, number];
+};
 export type Party2307 = { name: string; tin: string; address: string; zip?: string };
 export type Form2307Data = {
   payee: Party2307; // income recipient (supplier / vendor)
@@ -11,6 +22,9 @@ export type Form2307Data = {
   postingDate: string; // yyyy-mm-dd — used to derive the quarter/period
   documentNo: string;
   rows: Row2307[];
+  /** Explicit period (yyyy-mm-dd). Defaults to the quarter of postingDate. */
+  periodFrom?: string;
+  periodTo?: string;
 };
 
 const B = "border border-black";
@@ -86,8 +100,8 @@ export function Form2307({ data, autoPrint = true }: { data: Form2307Data; autoP
   const d = new Date(data.postingDate);
   const q = Math.floor(d.getMonth() / 3);
   const monthCol = d.getMonth() % 3;
-  const periodFrom = new Date(d.getFullYear(), q * 3, 1);
-  const periodTo = new Date(d.getFullYear(), q * 3 + 3, 0);
+  const periodFrom = data.periodFrom ? new Date(data.periodFrom) : new Date(d.getFullYear(), q * 3, 1);
+  const periodTo = data.periodTo ? new Date(data.periodTo) : new Date(d.getFullYear(), q * 3 + 3, 0);
   const totalIncome = rows.reduce((s, r) => s + r.income, 0);
   const totalTax = rows.reduce((s, r) => s + r.tax, 0);
   const amt = (n: number) => (n ? formatPeso(n) : "");
@@ -235,7 +249,11 @@ export function Form2307({ data, autoPrint = true }: { data: Form2307Data; autoP
                 <td className={cellTd}>{r.description}</td>
                 <td className={`${cellTd} text-center font-mono`}>{r.atc}</td>
                 {[0, 1, 2].map((c) => (
-                  <td key={c} className={numTd}>{r.income && c === monthCol ? amt(r.income) : ""}</td>
+                  <td key={c} className={numTd}>
+                    {/* Report certificates carry a per-month split; a
+                        per-transaction one puts its income in its own month. */}
+                    {r.months ? amt(r.months[c]) : r.income && c === monthCol ? amt(r.income) : ""}
+                  </td>
                 ))}
                 <td className={numTd}>{amt(r.income)}</td>
                 <td className={numTd}>{amt(r.tax)}</td>
