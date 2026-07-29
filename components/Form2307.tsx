@@ -78,18 +78,12 @@ function DateCells({ d }: { d: Date | null }) {
 }
 
 // Approximated Code128-style barcode (the blank form's is a static graphic).
+// The BIR seal and the form's barcode are images on the official form —
+// these are the actual artwork lifted from BIR's own 2307 workbook, not
+// look-alikes.
 function Barcode() {
-  const widths = [2, 1, 3, 1, 2, 2, 1, 1, 3, 2, 1, 2, 1, 3, 1, 1, 2, 3, 1, 2, 2, 1, 3, 1, 1, 2, 1, 3, 2, 1, 1, 2, 3, 1, 2, 1, 2, 1, 3, 1, 2, 2, 1, 1, 3, 1, 2, 1];
-  let x = 0;
-  return (
-    <svg viewBox="0 0 130 44" className="h-[44px] w-[130px]">
-      {widths.map((w, i) => {
-        const rect = i % 2 === 0 ? <rect key={i} x={x} y={0} width={w} height={44} fill="black" /> : null;
-        x += w;
-        return rect;
-      })}
-    </svg>
-  );
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/bir-2307-barcode.png" alt="" className="h-[44px] w-[130px] object-contain" />;
 }
 
 const HEADS = ["Income Payments Subject to Expanded Withholding Tax", "ATC", "1st Month of the Quarter", "2nd Month of the Quarter", "3rd Month of the Quarter", "Total", "Tax Withheld for the Quarter"];
@@ -139,11 +133,8 @@ export function Form2307({ data, autoPrint = true }: { data: Form2307Data; autoP
             </div>
           </div>
           <div className="flex flex-1 items-center justify-center gap-2 py-1">
-            <svg viewBox="0 0 40 40" className="h-9 w-9">
-              <circle cx="20" cy="20" r="19" fill="none" stroke="black" strokeWidth="1" />
-              <circle cx="20" cy="20" r="14" fill="none" stroke="black" strokeWidth="0.7" />
-              <polygon points="20,9 22.4,16.4 30,16.4 23.8,21 26.2,28.4 20,24 13.8,28.4 16.2,21 10,16.4 17.6,16.4" fill="black" />
-            </svg>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/bir-seal.png" alt="" className="h-9 w-9 object-contain" />
             <div className="text-center leading-tight">
               <div className="text-[11px] font-bold">Republic of the Philippines</div>
               <div className="text-[11px]">Department of Finance</div>
