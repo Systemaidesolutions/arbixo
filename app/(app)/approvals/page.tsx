@@ -9,7 +9,7 @@ export default async function ApprovalsPage() {
   if (!user) redirect("/login");
   const capability = capabilitiesFor(user.role, user.subscriberSubtype);
   // Only a Manager can approve.
-  if (!capability.canApprove || !user.companyId) redirect("/");
+  if (!capability.canApprove || !user.companyId) redirect("/dashboard");
 
   const entries = await prisma.ledgerEntry.findMany({
     where: { companyId: user.companyId, isCancelled: false, isApproved: false },

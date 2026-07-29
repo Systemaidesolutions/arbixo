@@ -10,7 +10,7 @@ export default async function AuditTrailPage() {
   if (!user) redirect("/login");
   const isAdmin = user.role === "ADMIN";
   const isManager = capabilitiesFor(user.role, user.subscriberSubtype).canApprove;
-  if (!isAdmin && !isManager) redirect("/");
+  if (!isAdmin && !isManager) redirect("/dashboard");
 
   const companyId = isAdmin ? undefined : user.companyId ?? undefined;
   const [rows, companies] = await Promise.all([

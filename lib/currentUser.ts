@@ -49,7 +49,7 @@ export const getCurrentCompany = cache(async (): Promise<Company | null> => {
 export async function requireAdmin(): Promise<User> {
   const user = await getCurrentUserRecord();
   if (!user || user.role !== "ADMIN") {
-    redirect("/");
+    redirect("/dashboard");
   }
   return user;
 }
@@ -82,12 +82,12 @@ export async function requirePostingCompany(): Promise<Company | null> {
   const user = await getCurrentUserRecord();
   if (!user) redirect("/login");
   const capability = capabilitiesFor(user.role, user.subscriberSubtype);
-  if (!capability.canPost) redirect("/");
+  if (!capability.canPost) redirect("/dashboard");
   if (!user.companyId) return null;
   const company = await prisma.company.findUnique({ where: { id: user.companyId } });
   // No active subscription -> bounce to the dashboard (which explains why).
   if (company && !hasActiveSubscription(company.subscriptionEndsAt)) {
-    redirect("/");
+    redirect("/dashboard");
   }
   return company;
 }

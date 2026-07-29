@@ -10,7 +10,7 @@ export default async function BackupPage() {
   if (!user) redirect("/login");
   const isAdmin = user.role === "ADMIN";
   const isManager = capabilitiesFor(user.role, user.subscriberSubtype).canApprove;
-  if (!isAdmin && !isManager) redirect("/");
+  if (!isAdmin && !isManager) redirect("/dashboard");
 
   const companies = isAdmin
     ? await prisma.company.findMany({ select: { id: true, tradeName: true }, orderBy: { tradeName: "asc" } })

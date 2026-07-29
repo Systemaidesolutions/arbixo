@@ -32,7 +32,7 @@ export function VerifyForm() {
       return;
     }
 
-    router.push("/");
+    router.push("/dashboard");
     router.refresh();
   }
 

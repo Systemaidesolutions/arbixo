@@ -8,7 +8,7 @@ export default async function SubscriptionPaymentsPage() {
   if (!user) redirect("/login");
   const isAdmin = user.role === "ADMIN";
   const isManager = user.role === "USER" && capabilitiesFor(user.role, user.subscriberSubtype).canApprove;
-  if (!isAdmin && !isManager) redirect("/");
+  if (!isAdmin && !isManager) redirect("/dashboard");
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-12">

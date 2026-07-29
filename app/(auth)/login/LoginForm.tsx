@@ -42,7 +42,7 @@ export function LoginForm() {
     // This component unmounts on navigation, so we deliberately do NOT clear
     // `loading` here — otherwise the button re-enables during the (possibly
     // slow) page load and the user could submit again.
-    router.push(searchParams.get("next") ?? "/");
+    router.push(searchParams.get("next") ?? "/dashboard");
     router.refresh();
   }
 

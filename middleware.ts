@@ -7,6 +7,10 @@ const PUBLIC_PREFIXES = ["/login", "/register", "/verify", "/reset-password", "/
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // "/" is the public marketing landing page. Matched exactly — a prefix
+  // match on "/" would make the entire app public.
+  if (pathname === "/") return NextResponse.next();
+
   if (PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return NextResponse.next();
   }

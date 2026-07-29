@@ -38,7 +38,7 @@ export function AppHeader({
 
         {/* Header shows only the company's own logo — nothing when it has none. */}
         {hasCompanyLogo && (
-          <a href="/" className="flex items-center">
+          <a href="/dashboard" className="flex items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/api/company/logo"

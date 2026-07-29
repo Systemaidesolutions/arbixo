@@ -6,7 +6,7 @@ import { LedgerEntriesBrowser } from "../LedgerEntriesBrowser";
 export default async function PurchaseHistoryPage() {
   const user = await getCurrentUserRecord();
   if (!user) redirect("/login");
-  if (user.role !== "USER" || !capabilitiesFor(user.role, user.subscriberSubtype).canApprove) redirect("/");
+  if (user.role !== "USER" || !capabilitiesFor(user.role, user.subscriberSubtype).canApprove) redirect("/dashboard");
   return (
     <LedgerEntriesBrowser
       kind="purchase"
