@@ -182,6 +182,8 @@ model User {
   // never from a global "the only company" lookup.
   company   Company? @relation(fields: [companyId], references: [id])
   companyId String?
+
+  @@index([companyId])
 }
 
 // ------------------------------------------------------------
@@ -770,6 +772,7 @@ model LedgerEntry {
   @@index([vendorId])
   @@index([employeeId])
   @@index([contactId])
+  @@index([locationId])
 }
 
 // ------------------------------------------------------------
