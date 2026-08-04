@@ -1,4 +1,6 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import { getAuditActor } from "@/lib/auditContext";
 import { getCurrentUser } from "@/lib/session";
 import { companyAuditEnabled } from "@/lib/auditSettings";
@@ -36,8 +38,25 @@ async function resolveActor(): Promise<{ email: string; companyId: string | null
   return { email: "system", companyId: null };
 }
 
+// node-postgres (v3 pg-connection-string) now treats ?sslmode=require as an
+// alias for verify-full, which rejects Supabase's cert chain from this
+// environment ("self-signed certificate in certificate chain"). Prisma's
+// binary engine never verified the chain under sslmode=require — appending
+// uselibpqcompat=true restores that original libpq meaning (encrypt, don't
+// verify the CA); it doesn't turn off encryption, just chain verification.
+function withLibpqCompat(url: string): string {
+  if (url.includes("uselibpqcompat=")) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}uselibpqcompat=true`;
+}
+
 function makePrismaClient() {
-  const base = new PrismaClient();
+  // node-postgres driver adapter instead of Prisma's binary query engine —
+  // smaller function bundle, no engine-binary boot on cold start. Requires
+  // ?pgbouncer=true on DATABASE_URL (already set) so it doesn't try server-side
+  // prepared statements against Supabase's transaction-mode pooler.
+  const pool = new Pool({ connectionString: withLibpqCompat(process.env.DATABASE_URL!) });
+  const adapter = new PrismaPg(pool);
+  const base = new PrismaClient({ adapter });
 
   return base.$extends({
     query: {
