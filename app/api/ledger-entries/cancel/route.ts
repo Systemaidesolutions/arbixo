@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
       lines: reversalLines,
       createdById: auth.user.id,
       isApproved: auth.capability.canApprove,
+      skipSubscriptionCheck: true,
     });
   } catch (err) {
     if (err instanceof DuplicateDocumentError) {

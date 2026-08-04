@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany, resolvePoster } from "@/lib/currentUser";
 import { firstSpecialCharError } from "@/lib/textValidation";
+import { isPostingDateSubscriptionCovered } from "@/lib/subscriptionCoverage";
 
 function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -47,6 +48,19 @@ export async function POST(request: NextRequest) {
 
   const auth = await resolvePoster(companyId, "canPost");
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  const importDate = new Date(body.importDate);
+  if (Number.isNaN(importDate.getTime())) {
+    return NextResponse.json({ error: "Date of importation is invalid." }, { status: 400 });
+  }
+  if (!(await isPostingDateSubscriptionCovered(companyId, importDate))) {
+    return NextResponse.json(
+      {
+        error: `${importDate.toISOString().slice(0, 10)} isn't within a month your company has an active subscription for. Contact your administrator to check your subscription.`,
+      },
+      { status: 400 }
+    );
+  }
 
   const dutiableValue = round2(Number(body.dutiableValue) || 0);
   const charges = round2(Number(body.charges) || 0);

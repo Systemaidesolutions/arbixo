@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord, resolvePoster } from "@/lib/currentUser";
 import { logAudit, getClientIp } from "@/lib/audit";
 import { parseImportFile, pick, toAmount, toDateStr, type SheetRow } from "@/lib/transactionImportParse";
+import { getSubscriptionCoverage, isMonthCovered, type SubscriptionCoverage } from "@/lib/subscriptionCoverage";
 
 type Issue = { row: number | null; ref: string; message: string };
 type PreparedImport = {
@@ -22,7 +23,10 @@ type PreparedImport = {
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 const isYes = (s: string) => ["yes", "y", "true", "1", "exempt"].includes(s.trim().toLowerCase());
 
-async function buildDocs(rows: SheetRow[]): Promise<{ docs: PreparedImport[]; issues: Issue[] }> {
+async function buildDocs(
+  rows: SheetRow[],
+  coverage: SubscriptionCoverage
+): Promise<{ docs: PreparedImport[]; issues: Issue[] }> {
   const docs: PreparedImport[] = [];
   const issues: Issue[] = [];
   rows.forEach((row, i) => {
@@ -52,12 +56,18 @@ async function buildDocs(rows: SheetRow[]): Promise<{ docs: PreparedImport[]; is
 
     if (bad || dutiable == null || !importDate || !assessDate || !paymentDate) return;
 
+    const importDateObj = new Date(`${importDate}T00:00:00`);
+    if (!isMonthCovered(coverage, importDateObj)) {
+      issues.push({ row: rowNo, ref: orNo, message: `${importDate} isn't within a month your company has an active subscription for.` });
+      return;
+    }
+
     const isVatExempt = isYes(pick(row, ["VAT Exempt", "Is VAT Exempt", "Exempt"]));
     const dv = round2(dutiable);
     const ch = round2(charges);
     docs.push({
       rowNo, orNo, sellerName, countryOrigin,
-      importDate: new Date(`${importDate}T00:00:00`),
+      importDate: importDateObj,
       assessReleaseDate: new Date(`${assessDate}T00:00:00`),
       paymentDate: new Date(`${paymentDate}T00:00:00`),
       dutiableValue: dv, charges: ch, isVatExempt,
@@ -88,7 +98,8 @@ export async function handleImportationImport(request: NextRequest) {
   }
   if (rows.length === 0) return NextResponse.json({ error: "The file has no data rows." }, { status: 400 });
 
-  const { docs, issues } = await buildDocs(rows);
+  const coverage = await getSubscriptionCoverage(companyId);
+  const { docs, issues } = await buildDocs(rows, coverage);
 
   if (dryRun) {
     const preview = docs.map((d) => ({

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { isPostingDateSubscriptionCovered } from "@/lib/subscriptionCoverage";
 import type { CounterpartyType, DocumentType, JournalType, TaxSource, VatType } from "@prisma/client";
 
 export type LedgerLineInput = {
@@ -39,6 +40,11 @@ export type PostDocumentInput = {
   // are approved on the spot; a User's posts are pending a Manager review.
   createdById?: string | null;
   isApproved?: boolean;
+  // Cancellation reversals always post at today's date regardless of the
+  // original entry's period, and (like resolvePoster's canCancel) shouldn't
+  // require an active subscription just to undo something — this is the
+  // only caller that should ever set it.
+  skipSubscriptionCheck?: boolean;
 };
 
 export class UnbalancedEntryError extends Error {}
@@ -46,6 +52,7 @@ export class DuplicateDocumentError extends Error {}
 // Extends UnbalancedEntryError so the journal routes' existing catch returns
 // it as a 400 without each route needing to know about this case.
 export class PostingToHeadingError extends UnbalancedEntryError {}
+export class OutOfSubscriptionPeriodError extends UnbalancedEntryError {}
 
 // Compares to the nearest centavo rather than exact float equality —
 // individual lines are already rounded via lib/vat.ts's round2(), but
@@ -70,6 +77,15 @@ export async function postDocument(input: PostDocumentInput) {
     throw new UnbalancedEntryError(
       `Entry does not balance: total debit ${totalDebit.toFixed(2)} vs total credit ${totalCredit.toFixed(2)}`
     );
+  }
+
+  if (!input.skipSubscriptionCheck) {
+    const covered = await isPostingDateSubscriptionCovered(input.companyId, input.postingDate);
+    if (!covered) {
+      throw new OutOfSubscriptionPeriodError(
+        `${input.postingDate.toISOString().slice(0, 10)} isn't within a month your company has an active subscription for. Contact your administrator to check your subscription.`
+      );
+    }
   }
 
   const existing = await prisma.ledgerEntry.findFirst({
