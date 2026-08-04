@@ -4,9 +4,10 @@ import { get2307Payees } from "@/lib/form2307";
 import { resolveBranchScope } from "@/lib/branchScope";
 import { renderForm2307Pdf, type Form2307Data } from "@/lib/form2307Pdf";
 
-// One or every payee's BIR 2307 certificate for the period, stamped onto
-// BIR's own blank form and returned as a single PDF (one cert per payee,
-// 2 pages each — see lib/form2307Pdf.ts).
+// BIR 2307 certificates for the period, stamped onto BIR's own blank form
+// and returned as a single PDF. One certificate per ATC line, not per payee
+// — a payee with income under two ATC codes gets two separate certificates,
+// each 2 pages (see lib/form2307Pdf.ts).
 export async function GET(request: NextRequest) {
   const company = await getCurrentCompany();
   if (!company) return NextResponse.json({ error: "No company." }, { status: 403 });
@@ -41,15 +42,17 @@ export async function GET(request: NextRequest) {
     zip: company.zipCode ?? "",
   };
 
-  const certs: Form2307Data[] = selected.map((p) => ({
-    payee: { name: p.name, tin: p.tin, address: p.address, zip: p.zip },
-    payor,
-    postingDate: from,
-    periodFrom: from,
-    periodTo: to,
-    documentNo: "",
-    rows: p.rows.map((r) => ({ atc: r.atc, description: r.description, income: r.income, tax: r.tax, months: r.months })),
-  }));
+  const certs: Form2307Data[] = selected.flatMap((p) =>
+    p.rows.map((r) => ({
+      payee: { name: p.name, tin: p.tin, address: p.address, zip: p.zip },
+      payor,
+      postingDate: from,
+      periodFrom: from,
+      periodTo: to,
+      documentNo: "",
+      rows: [{ atc: r.atc, description: r.description, income: r.income, tax: r.tax, months: r.months }],
+    }))
+  );
 
   const pdf = await renderForm2307Pdf(certs);
   return new NextResponse(Buffer.from(pdf), {

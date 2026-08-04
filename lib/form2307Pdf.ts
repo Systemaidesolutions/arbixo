@@ -99,12 +99,19 @@ function rightText(page: PDFPage, font: PDFFont, size: number, text: string, rig
   page.drawText(t, { x: rightX - w, y, size, font });
 }
 
-// Left-aligned text that shrinks to fit maxWidth rather than overflow the cell.
+// Left-aligned text that shrinks to fit maxWidth, then truncates with an
+// ellipsis if it still doesn't fit at the smallest readable size — long ATC
+// descriptions would otherwise spill into the next column.
 function fitText(page: PDFPage, font: PDFFont, text: string, x: number, y: number, maxWidth: number, size = 8, minSize = 5.5) {
   if (!text) return;
-  const t = safeText(text);
+  let t = safeText(text);
   let s = size;
   while (s > minSize && font.widthOfTextAtSize(t, s) > maxWidth) s -= 0.5;
+  if (font.widthOfTextAtSize(t, s) > maxWidth) {
+    // Three literal periods, not the "…" glyph — that's outside WinAnsi too.
+    while (t.length > 1 && font.widthOfTextAtSize(t + "...", s) > maxWidth) t = t.slice(0, -1);
+    t = t + "...";
+  }
   page.drawText(t, { x, y, size: s, font });
 }
 

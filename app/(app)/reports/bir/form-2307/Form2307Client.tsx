@@ -127,8 +127,8 @@ export function Form2307Client({
         </div>
       </div>
       <p className="mt-1 text-sm text-neutral-500">
-        One certificate per payee for the period, consolidating every payment you withheld tax from
-        and splitting it across the quarter&apos;s three months. Verify before issuing.
+        One certificate per ATC line per payee for the period, each splitting its income across the
+        quarter&apos;s three months. Verify before issuing.
       </p>
 
       <div className="mt-4 rounded-lg border border-neutral-200 p-4 text-sm text-neutral-600">
