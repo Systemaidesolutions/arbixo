@@ -93,7 +93,7 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, e
 
   // Print the BIR 2307 of the already-saved document (available once posted).
   function print2307() {
-    window.open(`/transactions/2307/PURCHASE_ON_ACCOUNT/${encodeURIComponent(documentNo)}?_embed=1`, "_blank");
+    window.open(`/api/transactions/2307/pdf?journalType=PURCHASE_ON_ACCOUNT&documentNo=${encodeURIComponent(documentNo)}`, "_blank");
   }
 
   async function resetForm() {

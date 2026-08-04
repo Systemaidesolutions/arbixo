@@ -36,7 +36,7 @@ export function TransactionActions({
   }
 
   function print2307() {
-    window.open(`/transactions/2307/${journalType}/${encodeURIComponent(documentNo)}?_embed=1`, "_blank");
+    window.open(`/api/transactions/2307/pdf?journalType=${journalType}&documentNo=${encodeURIComponent(documentNo)}`, "_blank");
   }
 
   // Opened as a stacked page (iframe) in normal use — ask the parent to close

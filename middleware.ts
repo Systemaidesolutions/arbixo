@@ -31,5 +31,5 @@ export const config = {
   // Everything except Next's internal assets and the logo files —
   // those need to load on the login page too, before anyone is
   // authenticated.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|arbixo-logo.jpg|arbixo-icon.png|arbixo-wordmark.png|login-footer-logo.png|bir-seal.png|bir-2307-barcode.png).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|arbixo-logo.jpg|arbixo-icon.png|arbixo-wordmark.png|login-footer-logo.png).*)"],
 };

@@ -68,16 +68,16 @@ export function Form2307Client({
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const num = (v: number) => (v ? formatPeso(v) : "");
 
-  // Shared query for the printable certificates.
+  // Shared query for the printable certificates (stamped PDF).
   const printQs = (payeeId?: string) => {
-    const p = new URLSearchParams({ from: range.from, to: range.to, _embed: "1" });
+    const p = new URLSearchParams({ from: range.from, to: range.to });
     if (locationId) p.set("locationId", locationId);
     if (payeeId) p.set("payeeId", payeeId);
     return p.toString();
   };
   const printOne = (payeeId: string) =>
-    window.open(`/reports/bir/form-2307/print?${printQs(payeeId)}`, "_blank");
-  const printAll = () => window.open(`/reports/bir/form-2307/print?${printQs()}`, "_blank");
+    window.open(`/api/reports/bir/form-2307/pdf?${printQs(payeeId)}`, "_blank");
+  const printAll = () => window.open(`/api/reports/bir/form-2307/pdf?${printQs()}`, "_blank");
 
   function exportExcel() {
     if (!data) return;

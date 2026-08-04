@@ -23,3 +23,6 @@ npm-debug.log*
 # IDE
 .vscode/
 .idea/
+
+.vercel
+.env*

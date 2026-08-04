@@ -1,26 +1,30 @@
-import { notFound } from "next/navigation";
+import { NextRequest, NextResponse } from "next/server";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { Form2307, type Row2307 } from "@/components/Form2307";
+import { renderForm2307Pdf, type Row2307 } from "@/lib/form2307Pdf";
 import type { JournalType } from "@prisma/client";
 
-// BIR 2307 for a POSTED document. Used by the money-out journals (Purchase on
-// Account / Cash Disbursement): the company is the PAYOR / withholding agent,
-// and the counterparty (supplier) is the PAYEE whose income had tax withheld.
-export default async function Form2307Page({ params }: { params: { journalType: string; documentNo: string } }) {
+// BIR 2307 for a POSTED document (Purchase on Account / Cash Disbursement),
+// stamped onto BIR's own blank form. The company is the PAYOR / withholding
+// agent; the counterparty is the PAYEE whose income had tax withheld.
+export async function GET(request: NextRequest) {
   const company = await requirePostingCompany();
-  if (!company) notFound();
+  if (!company) return NextResponse.json({ error: "No company." }, { status: 403 });
 
-  const journalType = params.journalType as JournalType;
-  const documentNo = decodeURIComponent(params.documentNo);
+  const sp = request.nextUrl.searchParams;
+  const journalType = sp.get("journalType") as JournalType | null;
+  const documentNo = sp.get("documentNo");
+  if (!journalType || !documentNo) {
+    return NextResponse.json({ error: "journalType and documentNo are required" }, { status: 400 });
+  }
+
   const entries = await prisma.ledgerEntry.findMany({
     where: { companyId: company.id, journalType, documentNo },
     include: { customer: true, vendor: true, employee: true, contact: true },
     orderBy: { lineNo: "asc" },
   });
-  if (entries.length === 0) notFound();
+  if (entries.length === 0) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  // Payee = the counterparty (supplier).
   const withParty = entries.find((e) => e.customer || e.vendor || e.employee || e.contact);
   const cp = withParty?.vendor || withParty?.customer || withParty?.contact;
   const payeeName =
@@ -29,15 +33,11 @@ export default async function Form2307Page({ params }: { params: { journalType: 
     [cp?.lastName, cp?.firstName].filter(Boolean).join(", ") || "";
   const payeeTin = withParty?.vendor?.tin ?? withParty?.customer?.tin ?? withParty?.contact?.tin ?? "";
 
-  // Payee address (zip goes in its own field on the form, so exclude it here).
   const payeeParty = cp ?? withParty?.employee ?? null;
   const payeeAddr = payeeParty
-    ? [payeeParty.address, payeeParty.barangay, payeeParty.district, payeeParty.city, payeeParty.province]
-        .filter(Boolean)
-        .join(", ")
+    ? [payeeParty.address, payeeParty.barangay, payeeParty.district, payeeParty.city, payeeParty.province].filter(Boolean).join(", ")
     : "";
 
-  // Payor = the company (withholding agent).
   const payorAddr = [company.businessAddress, company.barangay, company.district, company.city, company.province]
     .filter(Boolean)
     .join(", ");
@@ -57,15 +57,20 @@ export default async function Form2307Page({ params }: { params: { journalType: 
     }
   }
 
-  return (
-    <Form2307
-      data={{
-        payee: { name: payeeName, tin: payeeTin, address: payeeAddr, zip: payeeParty?.zipCode ?? "" },
-        payor: { name: company.registeredName || company.tradeName, tin: company.tin ?? "", address: payorAddr, zip: company.zipCode ?? "" },
-        postingDate: new Date(entries[0].postingDate).toISOString().slice(0, 10),
-        documentNo,
-        rows: [...rowsByAtc.values()],
-      }}
-    />
-  );
+  const pdf = await renderForm2307Pdf([
+    {
+      payee: { name: payeeName, tin: payeeTin, address: payeeAddr, zip: payeeParty?.zipCode ?? "" },
+      payor: { name: company.registeredName || company.tradeName, tin: company.tin ?? "", address: payorAddr, zip: company.zipCode ?? "" },
+      postingDate: new Date(entries[0].postingDate).toISOString().slice(0, 10),
+      documentNo,
+      rows: [...rowsByAtc.values()],
+    },
+  ]);
+
+  return new NextResponse(Buffer.from(pdf), {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="BIR-2307_${documentNo}.pdf"`,
+    },
+  });
 }

@@ -87,7 +87,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
   // the payee/supplier, payor is the company (withholding agent).
   // Print the BIR 2307 of the already-saved document (available once posted).
   function print2307() {
-    window.open(`/transactions/2307/CASH_DISBURSEMENT/${encodeURIComponent(documentNo)}?_embed=1`, "_blank");
+    window.open(`/api/transactions/2307/pdf?journalType=CASH_DISBURSEMENT&documentNo=${encodeURIComponent(documentNo)}`, "_blank");
   }
 
   async function resetForm() {
