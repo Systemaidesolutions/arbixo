@@ -67,30 +67,51 @@ function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
+// Standard fonts here are WinAnsi-encoded (~CP1252) and throw on anything
+// outside it — e.g. the peso sign (₱, U+20B1) used in seeded ATC
+// descriptions. Swap known offenders for ASCII equivalents, then drop
+// whatever's left rather than let one bad character 500 the whole PDF.
+const CHAR_REPLACEMENTS: [string, string][] = [
+  ["₱", "P"], // ₱
+  ["‘", "'"], ["’", "'"], // ‘ ’
+  ["“", '"'], ["”", '"'], // “ ”
+  ["–", "-"], ["—", "-"], // – —
+  ["…", "..."], // …
+];
+function safeText(text: string): string {
+  if (!text) return text;
+  let out = text;
+  for (const [from, to] of CHAR_REPLACEMENTS) out = out.split(from).join(to);
+  return out.replace(/[^\x00-\xFF]/g, "");
+}
+
 function centerText(page: PDFPage, font: PDFFont, size: number, text: string, cx: number, y: number) {
   if (!text) return;
-  const w = font.widthOfTextAtSize(text, size);
-  page.drawText(text, { x: cx - w / 2, y, size, font });
+  const t = safeText(text);
+  const w = font.widthOfTextAtSize(t, size);
+  page.drawText(t, { x: cx - w / 2, y, size, font });
 }
 
 function rightText(page: PDFPage, font: PDFFont, size: number, text: string, rightX: number, y: number) {
   if (!text) return;
-  const w = font.widthOfTextAtSize(text, size);
-  page.drawText(text, { x: rightX - w, y, size, font });
+  const t = safeText(text);
+  const w = font.widthOfTextAtSize(t, size);
+  page.drawText(t, { x: rightX - w, y, size, font });
 }
 
 // Left-aligned text that shrinks to fit maxWidth rather than overflow the cell.
 function fitText(page: PDFPage, font: PDFFont, text: string, x: number, y: number, maxWidth: number, size = 8, minSize = 5.5) {
   if (!text) return;
+  const t = safeText(text);
   let s = size;
-  while (s > minSize && font.widthOfTextAtSize(text, s) > maxWidth) s -= 0.5;
-  page.drawText(text, { x, y, size: s, font });
+  while (s > minSize && font.widthOfTextAtSize(t, s) > maxWidth) s -= 0.5;
+  page.drawText(t, { x, y, size: s, font });
 }
 
 // One digit per evenly-divided cell within [x, x+w).
 function drawCells(page: PDFPage, font: PDFFont, size: number, value: string, x: number, w: number, count: number, y: number) {
   const cellW = w / count;
-  const chars = (value ?? "").split("");
+  const chars = safeText(value ?? "").split("");
   for (let i = 0; i < count; i++) {
     const ch = chars[i];
     if (!ch) continue;
