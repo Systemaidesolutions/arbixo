@@ -17,13 +17,27 @@ function status(endsAt: string | null): { label: string; cls: string } {
   return { label: "active", cls: "bg-green-100 text-green-800" };
 }
 
+// yyyy-mm for <input type="month">, defaulting to the calendar month
+// containing endsAt (periodEnd for a month-aligned payment lands exactly on
+// the 1st of the next uncovered month, so this is "the next month to renew"
+// in the common case), or the current month if there's no subscription yet.
+function defaultMonth(endsAt: string | null): string {
+  const d = endsAt ? new Date(endsAt) : new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 export function RenewalsClient() {
   const [data, setData] = useState<Data | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [month, setMonth] = useState("");
   const [voucher, setVoucher] = useState("");
   const [gcashRef, setGcashRef] = useState("");
   const [busy, setBusy] = useState(false);
   const [rowMsg, setRowMsg] = useState<{ id: string; ok: boolean; text: string } | null>(null);
+
+  const [bulkMonth, setBulkMonth] = useState(defaultMonth(null));
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMsg, setBulkMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function refresh() {
     const res = await fetch("/api/admin/subscription/renewals");
@@ -33,8 +47,9 @@ export function RenewalsClient() {
     refresh();
   }, []);
 
-  function toggle(id: string) {
+  function toggle(id: string, endsAt: string | null) {
     setOpenId((cur) => (cur === id ? null : id));
+    setMonth(defaultMonth(endsAt));
     setVoucher("");
     setGcashRef("");
     setRowMsg(null);
@@ -56,12 +71,16 @@ export function RenewalsClient() {
   }
 
   async function renew(companyId: string) {
+    if (!month) {
+      setRowMsg({ id: companyId, ok: false, text: "Pick a month first." });
+      return;
+    }
     setBusy(true);
     setRowMsg(null);
     const res = await fetch("/api/admin/subscription/renewals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ companyId, voucherCode: voucher.trim(), gcashRef }),
+      body: JSON.stringify({ companyId, month, voucherCode: voucher.trim(), gcashRef }),
     });
     const j = await res.json().catch(() => ({}));
     setBusy(false);
@@ -69,11 +88,37 @@ export function RenewalsClient() {
       setRowMsg({ id: companyId, ok: false, text: j?.error ?? "Could not renew." });
       return;
     }
-    setRowMsg({ id: companyId, ok: true, text: `Renewed — now ends ${String(j.subscriptionEndsAt).slice(0, 10)}.` });
+    setRowMsg({ id: companyId, ok: true, text: `Recorded — now covered through ${String(j.subscriptionEndsAt).slice(0, 10)}.` });
     setData((d) =>
       d ? { ...d, companies: d.companies.map((c) => (c.id === companyId ? { ...c, subscriptionEndsAt: j.subscriptionEndsAt } : c)) } : d
     );
     setOpenId(null);
+  }
+
+  async function applyToAll() {
+    if (!data || !bulkMonth) return;
+    const label = new Date(`${bulkMonth}-01T00:00:00Z`).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+    if (
+      !window.confirm(
+        `Mark ${label} as paid for all ${data.companies.length} companies? This creates a $0 administrative grant for each — not a real GCash payment.`
+      )
+    )
+      return;
+    setBulkBusy(true);
+    setBulkMsg(null);
+    const res = await fetch("/api/admin/subscription/bulk-renew", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ month: bulkMonth }),
+    });
+    const j = await res.json().catch(() => ({}));
+    setBulkBusy(false);
+    if (!res.ok) {
+      setBulkMsg({ ok: false, text: j?.error ?? "Could not apply to all companies." });
+      return;
+    }
+    setBulkMsg({ ok: true, text: `${label} applied to ${j.updated} company(ies).` });
+    refresh();
   }
 
   if (!data) return <p className="mt-6 text-sm text-neutral-400">Loading…</p>;
@@ -89,6 +134,31 @@ export function RenewalsClient() {
           No current subscription price is set. Add one under Subscription → Pricing before renewing.
         </p>
       )}
+
+      {/* Bulk: mark one month paid for every company at once. */}
+      <div className="mb-4 rounded-lg border border-neutral-200 bg-neutral-50/60 p-4">
+        <div className="text-sm font-medium text-neutral-800">Apply a month to all companies</div>
+        <p className="mt-1 text-xs text-neutral-500">
+          Marks the chosen month as covered for every company as a $0 administrative grant — for platform-wide grants or
+          promotions, not for recording a real payment. Use the per-company Renew below for that.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <input
+            type="month"
+            value={bulkMonth}
+            onChange={(e) => setBulkMonth(e.target.value)}
+            className="rounded border border-neutral-300 px-2 py-1.5 text-sm"
+          />
+          <button
+            onClick={applyToAll}
+            disabled={bulkBusy || !bulkMonth}
+            className="rounded bg-brand-navy px-4 py-2 text-sm text-white hover:bg-brand-navyLight disabled:opacity-50"
+          >
+            {bulkBusy ? "Applying…" : "Apply to all companies"}
+          </button>
+          {bulkMsg && <span className={`text-xs ${bulkMsg.ok ? "text-green-600" : "text-red-600"}`}>{bulkMsg.text}</span>}
+        </div>
+      </div>
 
       <div className="overflow-hidden rounded-lg border border-neutral-200">
         <table className="w-full text-sm">
@@ -117,7 +187,7 @@ export function RenewalsClient() {
                             Cancel
                           </button>
                         )}
-                        <button onClick={() => toggle(c.id)} disabled={!price} className="text-xs font-medium text-brand-blue hover:underline disabled:opacity-40">
+                        <button onClick={() => toggle(c.id, c.subscriptionEndsAt)} disabled={!price} className="text-xs font-medium text-brand-blue hover:underline disabled:opacity-40">
                           {isOpen ? "Close" : "Renew"}
                         </button>
                       </div>
@@ -129,8 +199,17 @@ export function RenewalsClient() {
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <div className="space-y-3">
                             <div className="text-sm">
-                              Renewing <span className="font-medium">{c.tradeName}</span> — {price.name} <span className="font-mono">{fmt(price.amount)}</span> for 1 month.
+                              Renewing <span className="font-medium">{c.tradeName}</span> — {price.name} <span className="font-mono">{fmt(price.amount)}</span> for the month below.
                             </div>
+                            <label className="block text-xs text-neutral-500">
+                              Month to record payment for
+                              <input
+                                type="month"
+                                value={month}
+                                onChange={(e) => setMonth(e.target.value)}
+                                className="mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+                              />
+                            </label>
                             <label className="block text-xs text-neutral-500">
                               Voucher code (optional)
                               <input value={voucher} onChange={(e) => setVoucher(e.target.value.toUpperCase())} placeholder="Enter code" className="mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 font-mono text-sm uppercase" />
@@ -140,7 +219,7 @@ export function RenewalsClient() {
                               <input value={gcashRef} onChange={(e) => setGcashRef(e.target.value)} placeholder="If paid via GCash" className="mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 font-mono text-sm" />
                             </label>
                             <button onClick={() => renew(c.id)} disabled={busy} className="rounded bg-brand-navy px-4 py-2 text-sm text-white hover:bg-brand-navyLight disabled:opacity-50">
-                              {busy ? "Renewing…" : "Confirm renewal (extend 1 month)"}
+                              {busy ? "Recording…" : "Confirm renewal"}
                             </button>
                             {rowMsg?.id === c.id && <p className={`text-xs ${rowMsg.ok ? "text-green-600" : "text-red-600"}`}>{rowMsg.text}</p>}
                           </div>

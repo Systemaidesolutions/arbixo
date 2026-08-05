@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
+import { getCurrentPrice } from "@/lib/subscriptionPricing";
 import { AdminCompanyForm } from "../AdminCompanyForm";
 import { AuditToggle } from "../AuditToggle";
 import { SubscriptionPanel } from "../SubscriptionPanel";
@@ -16,6 +17,8 @@ export default async function EditCompanyPage({ params }: { params: { id: string
     include: { users: { select: { id: true, email: true } } },
   });
   if (!company) notFound();
+
+  const price = await getCurrentPrice();
 
   const branches = await prisma.location.findMany({
     where: { companyId: params.id },
@@ -69,6 +72,7 @@ export default async function EditCompanyPage({ params }: { params: { id: string
             subscriptionStartedAt: company.subscriptionStartedAt?.toISOString() ?? null,
             subscriptionEndsAt: company.subscriptionEndsAt?.toISOString() ?? null,
           }}
+          price={price ? { name: price.name, amount: Number(price.amount), currency: price.currency } : null}
         />
       </div>
 

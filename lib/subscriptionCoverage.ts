@@ -65,3 +65,40 @@ export function isMonthCovered(coverage: SubscriptionCoverage, date: Date): bool
 export async function isPostingDateSubscriptionCovered(companyId: string, date: Date): Promise<boolean> {
   return isMonthCovered(await getSubscriptionCoverage(companyId), date);
 }
+
+/** Parses an <input type="month"> value ("YYYY-MM") into the calendar month's
+ * [periodStart, periodEnd) — first-of-month through first-of-next-month,
+ * matching the half-open shape periodMonthRange() above expects. */
+export function monthStringToPeriod(monthStr: string): { periodStart: Date; periodEnd: Date } {
+  const [y, m] = monthStr.split("-").map(Number);
+  if (!y || !m || m < 1 || m > 12) throw new Error(`Invalid month "${monthStr}" — expected YYYY-MM.`);
+  return {
+    periodStart: new Date(Date.UTC(y, m - 1, 1)),
+    periodEnd: new Date(Date.UTC(y, m, 1)),
+  };
+}
+
+/**
+ * Recomputes Company.subscriptionStartedAt/EndsAt from the VERIFIED
+ * SubscriptionPayment chain (earliest periodStart, latest periodEnd) — call
+ * after creating or verifying a payment for any month, including one that
+ * doesn't roll forward from "now" (e.g. backfilling an earlier month, or a
+ * bulk grant). Keeps those two summary fields meaningful as "furthest paid
+ * span" even when months were paid out of order.
+ */
+export async function recomputeCompanySubscriptionSummary(companyId: string): Promise<void> {
+  const agg = await prisma.subscriptionPayment.aggregate({
+    where: { companyId, status: "VERIFIED", periodStart: { not: null }, periodEnd: { not: null } },
+    _min: { periodStart: true },
+    _max: { periodEnd: true },
+  });
+  if (!agg._min.periodStart || !agg._max.periodEnd) return;
+  await prisma.company.update({
+    where: { id: companyId },
+    data: {
+      subscriptionStartedAt: agg._min.periodStart,
+      subscriptionEndsAt: agg._max.periodEnd,
+      subscriptionReminderSentAt: null,
+    },
+  });
+}

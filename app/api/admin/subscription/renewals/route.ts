@@ -4,14 +4,10 @@ import { getAdminUser } from "@/lib/currentUser";
 import { getCurrentPrice } from "@/lib/subscriptionPricing";
 import { voucherDiscount, voucherStatus } from "@/lib/vouchers";
 import { setAuditSuppressed } from "@/lib/auditContext";
+import { monthStringToPeriod, recomputeCompanySubscriptionSummary } from "@/lib/subscriptionCoverage";
 
 function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
-}
-function addOneMonth(d: Date): Date {
-  const out = new Date(d);
-  out.setMonth(out.getMonth() + 1);
-  return out;
 }
 class VoucherError extends Error {}
 
@@ -37,9 +33,13 @@ export async function GET() {
   });
 }
 
-// Admin renews a company: extends the subscription by one month at the current
-// price and records a VERIFIED payment (admin is the authority, so no separate
-// verification step). Redeems a voucher if supplied.
+// Admin records a company's subscription payment for a specific calendar
+// month (picked in the UI, "YYYY-MM") at the current price, VERIFIED
+// immediately since the admin is the authority. Redeems a voucher if
+// supplied. Company.subscriptionStartedAt/EndsAt are then recomputed from
+// the full VERIFIED payment history, so paying for an out-of-order month
+// (e.g. backfilling one before the current span) still widens the summary
+// correctly instead of only ever rolling forward.
 export async function POST(request: NextRequest) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "Admins only." }, { status: 403 });
@@ -59,18 +59,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, subscriptionEndsAt: null });
   }
 
+  const month = typeof body?.month === "string" ? body.month : "";
+  let periodStart: Date, periodEnd: Date;
+  try {
+    ({ periodStart, periodEnd } = monthStringToPeriod(month));
+  } catch {
+    return NextResponse.json({ error: "A valid month (YYYY-MM) is required." }, { status: 400 });
+  }
+
   const [price, company] = await Promise.all([
     getCurrentPrice(),
-    prisma.company.findUnique({ where: { id: companyId }, select: { subscriptionEndsAt: true, subscriptionStartedAt: true } }),
+    prisma.company.findUnique({ where: { id: companyId }, select: { id: true } }),
   ]);
   if (!price) return NextResponse.json({ error: "No subscription price is set." }, { status: 400 });
   if (!company) return NextResponse.json({ error: "Company not found." }, { status: 404 });
 
   const base = Number(price.amount);
   const now = new Date();
-  const currentEnd = company.subscriptionEndsAt ? new Date(company.subscriptionEndsAt) : null;
-  const periodStart = currentEnd && currentEnd.getTime() > now.getTime() ? currentEnd : now;
-  const periodEnd = addOneMonth(periodStart);
 
   // Suppress auto-audit during the transaction: the extension's out-of-band
   // audit write needs a second DB connection, which deadlocks against the
@@ -88,10 +93,6 @@ export async function POST(request: NextRequest) {
         voucherCode = v.code;
         await tx.voucher.update({ where: { id: v.id }, data: { redeemedAt: now, redeemedByCompanyId: companyId } });
       }
-      await tx.company.update({
-        where: { id: companyId },
-        data: { subscriptionEndsAt: periodEnd, subscriptionStartedAt: company.subscriptionStartedAt ?? now },
-      });
       await tx.subscriptionPayment.create({
         data: {
           companyId,
@@ -112,7 +113,11 @@ export async function POST(request: NextRequest) {
         },
       });
     });
-    return NextResponse.json({ ok: true, subscriptionEndsAt: periodEnd });
+    // Outside the transaction — recomputing after it commits avoids a second
+    // connection contending with the one the transaction is still holding.
+    await recomputeCompanySubscriptionSummary(companyId);
+    const updated = await prisma.company.findUnique({ where: { id: companyId }, select: { subscriptionEndsAt: true } });
+    return NextResponse.json({ ok: true, subscriptionEndsAt: updated?.subscriptionEndsAt ?? periodEnd });
   } catch (err) {
     if (err instanceof VoucherError) return NextResponse.json({ error: err.message }, { status: 400 });
     console.error("[admin renew] failed:", err);

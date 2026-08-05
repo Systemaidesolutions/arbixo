@@ -11,9 +11,19 @@ const STATE_LABEL: Record<string, { text: string; cls: string }> = {
   expired: { text: "Expired", cls: "bg-red-100 text-red-700" },
 };
 
+// yyyy-mm for <input type="month">, defaulting to the calendar month
+// containing endsAt (a month-aligned payment's periodEnd lands exactly on
+// the 1st of the next uncovered month), or the current month if there's no
+// subscription yet.
+function defaultMonth(endsAt: string | null): string {
+  const d = endsAt ? new Date(endsAt) : new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 export function SubscriptionPanel({
   companyId,
   initial,
+  price,
 }: {
   companyId: string;
   initial: {
@@ -22,11 +32,13 @@ export function SubscriptionPanel({
     subscriptionStartedAt: string | null;
     subscriptionEndsAt: string | null;
   };
+  price: { name: string; amount: number; currency: string } | null;
 }) {
   const router = useRouter();
   const [isActive, setIsActive] = useState(initial.isActive);
   const [billingEmail, setBillingEmail] = useState(initial.billingEmail ?? "");
   const [endsAt, setEndsAt] = useState(toDateInput(initial.subscriptionEndsAt));
+  const [renewMonth, setRenewMonth] = useState(defaultMonth(initial.subscriptionEndsAt));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +71,8 @@ export function SubscriptionPanel({
   }
 
   async function renew() {
-    const data = await patch({ renewMonths: 1 }, "Renewed for 1 month.");
+    if (!renewMonth) return;
+    const data = await patch({ renewMonth }, `Recorded a payment for ${renewMonth}.`);
     if (data?.company?.subscriptionEndsAt) setEndsAt(toDateInput(data.company.subscriptionEndsAt));
   }
 
@@ -122,13 +135,6 @@ export function SubscriptionPanel({
           Save
         </button>
         <button
-          onClick={renew}
-          disabled={busy}
-          className="rounded border border-brand-green px-4 py-2 text-sm font-medium text-brand-green hover:bg-green-50 disabled:opacity-50"
-        >
-          Renew 1 month
-        </button>
-        <button
           onClick={cancel}
           disabled={busy || status.state === "none"}
           className="rounded border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-40"
@@ -137,6 +143,29 @@ export function SubscriptionPanel({
         </button>
         {msg && <span className="text-xs text-green-600">{msg}</span>}
         {error && <span className="text-xs text-red-600">{error}</span>}
+      </div>
+
+      {/* Renew: records a real SubscriptionPayment for a specific month,
+          separate from the raw date edit above (which is a direct override
+          with no payment trail). */}
+      <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-neutral-100 pt-4">
+        <label className={label}>
+          Record a payment for month
+          <input
+            type="month"
+            value={renewMonth}
+            onChange={(e) => setRenewMonth(e.target.value)}
+            className={field}
+          />
+        </label>
+        <button
+          onClick={renew}
+          disabled={busy || !renewMonth || !price}
+          className="rounded border border-brand-green px-4 py-2 text-sm font-medium text-brand-green hover:bg-green-50 disabled:opacity-50"
+        >
+          {price ? `Renew for month (${price.currency} ${price.amount.toFixed(2)})` : "Renew for month"}
+        </button>
+        {!price && <span className="text-xs text-amber-600">No subscription price is set.</span>}
       </div>
 
       {/* Company sign-in control */}

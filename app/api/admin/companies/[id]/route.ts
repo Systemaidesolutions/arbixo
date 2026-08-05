@@ -4,6 +4,9 @@ import { getAdminUser } from "@/lib/currentUser";
 import { validateCompanyPayload, type CompanyFormPayload } from "@/lib/company";
 import { invalidateAuditCache } from "@/lib/auditSettings";
 import { deleteCompany } from "@/lib/deleteCompany";
+import { getCurrentPrice } from "@/lib/subscriptionPricing";
+import { monthStringToPeriod, recomputeCompanySubscriptionSummary } from "@/lib/subscriptionCoverage";
+import { setAuditSuppressed } from "@/lib/auditContext";
 import type { Prisma } from "@prisma/client";
 
 // Permanently delete a company and all of its data. Admin-only; the UI gates
@@ -26,7 +29,7 @@ type SettingsPayload = {
   logoUrl?: string | null;
   subscriptionStartedAt?: string | null;
   subscriptionEndsAt?: string | null;
-  renewMonths?: number;
+  renewMonth?: string; // "YYYY-MM" — records a payment for that specific month
   cancelSubscription?: boolean;
 };
 
@@ -37,7 +40,7 @@ const SETTINGS_KEYS: (keyof SettingsPayload)[] = [
   "logoUrl",
   "subscriptionStartedAt",
   "subscriptionEndsAt",
-  "renewMonths",
+  "renewMonth",
   "cancelSubscription",
 ];
 
@@ -56,11 +59,58 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
   const isSettings = SETTINGS_KEYS.some((k) => k in raw);
   if (isSettings) {
-    const existing = await prisma.company.findUnique({
-      where: { id: params.id },
-      select: { id: true, subscriptionStartedAt: true, subscriptionEndsAt: true },
-    });
+    const existing = await prisma.company.findUnique({ where: { id: params.id }, select: { id: true } });
     if (!existing) return NextResponse.json({ error: "Company not found" }, { status: 404 });
+
+    // Renew for a specific month: its own action, recording a real
+    // SubscriptionPayment (closing the gap where this route used to move
+    // subscriptionEndsAt around with no payment trail at all) rather than
+    // bundling with the other settings fields below.
+    if (raw.renewMonth) {
+      let periodStart: Date, periodEnd: Date;
+      try {
+        ({ periodStart, periodEnd } = monthStringToPeriod(raw.renewMonth));
+      } catch {
+        return NextResponse.json({ error: "A valid month (YYYY-MM) is required." }, { status: 400 });
+      }
+      const price = await getCurrentPrice();
+      if (!price) return NextResponse.json({ error: "No subscription price is set." }, { status: 400 });
+
+      setAuditSuppressed(true);
+      try {
+        await prisma.subscriptionPayment.create({
+          data: {
+            companyId: params.id,
+            priceName: price.name,
+            baseAmount: price.amount,
+            currency: price.currency,
+            discountAmount: 0,
+            amountDue: price.amount,
+            status: "VERIFIED",
+            createdById: admin.id,
+            createdByEmail: admin.email,
+            verifiedById: admin.id,
+            verifiedAt: new Date(),
+            periodStart,
+            periodEnd,
+          },
+        });
+        await recomputeCompanySubscriptionSummary(params.id);
+      } finally {
+        setAuditSuppressed(false);
+      }
+      const company = await prisma.company.findUnique({ where: { id: params.id } });
+      return NextResponse.json({
+        ok: true,
+        company: {
+          isActive: company!.isActive,
+          auditLogEnabled: company!.auditLogEnabled,
+          billingEmail: company!.billingEmail,
+          subscriptionStartedAt: company!.subscriptionStartedAt,
+          subscriptionEndsAt: company!.subscriptionEndsAt,
+        },
+      });
+    }
 
     const data: Prisma.CompanyUpdateInput = {};
     if (typeof raw.auditLogEnabled === "boolean") data.auditLogEnabled = raw.auditLogEnabled;
@@ -78,20 +128,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (raw.cancelSubscription === true) {
       data.subscriptionEndsAt = null;
       data.subscriptionStartedAt = null;
-      data.subscriptionReminderSentAt = null;
-    }
-
-    // Renew: extend from the later of "now" and the current end date.
-    if (raw.renewMonths && raw.renewMonths > 0) {
-      const now = new Date();
-      const base =
-        existing.subscriptionEndsAt && existing.subscriptionEndsAt > now
-          ? existing.subscriptionEndsAt
-          : now;
-      const ends = new Date(base);
-      ends.setMonth(ends.getMonth() + raw.renewMonths);
-      data.subscriptionEndsAt = ends;
-      data.subscriptionStartedAt = existing.subscriptionStartedAt ?? now;
       data.subscriptionReminderSentAt = null;
     }
 
