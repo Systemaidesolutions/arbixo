@@ -27,10 +27,19 @@ const BADGE: Record<string, string> = {
   REJECTED: "bg-red-100 text-red-700",
 };
 
-// "August 2026" from a periodStart — the month a payment covers.
-function monthLabel(periodStart: string | null): string {
+// "August 2026" for a single-month payment, or "January - July 2026" for one
+// that spans several (e.g. a free-trial grant) — periodEnd is exclusive (the
+// instant coverage stops), so the last actually-covered month is one
+// millisecond before it, not periodEnd's own month.
+function monthLabel(periodStart: string | null, periodEnd: string | null): string {
   if (!periodStart) return "—";
-  return new Date(periodStart).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+  const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+  const start = new Date(periodStart);
+  if (!periodEnd) return fmt(start);
+  const lastCoveredMonth = new Date(new Date(periodEnd).getTime() - 1);
+  const startLabel = fmt(start);
+  const endLabel = fmt(lastCoveredMonth);
+  return startLabel === endLabel ? startLabel : `${startLabel} - ${endLabel}`;
 }
 
 export function PaymentsClient({ refreshSignal }: { refreshSignal?: number } = {}) {
@@ -95,7 +104,7 @@ export function PaymentsClient({ refreshSignal }: { refreshSignal?: number } = {
               <tr key={p.id}>
                 <td className="px-3 py-1.5 text-xs">{p.createdAt.slice(0, 10)}</td>
                 {isAdmin && <td className="px-3 py-1.5">{p.company.tradeName}</td>}
-                <td className="px-3 py-1.5 text-xs">{monthLabel(p.periodStart)}</td>
+                <td className="px-3 py-1.5 text-xs">{monthLabel(p.periodStart, p.periodEnd)}</td>
                 <td className="px-3 py-1.5 text-xs">{p.priceName} <span className="text-neutral-400">({money(p, p.baseAmount)})</span></td>
                 <td className="px-3 py-1.5 font-mono text-xs">{p.voucherCode ?? "—"}</td>
                 <td className="px-3 py-1.5 text-right font-mono">{Number(p.discountAmount) > 0 ? money(p, p.discountAmount) : "—"}</td>
