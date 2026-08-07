@@ -36,10 +36,9 @@ export type PostDocumentInput = {
   postingDate: Date;
   isReturn?: boolean;
   lines: LedgerLineInput[];
-  // Who posted it, and whether it lands approved. A Manager's own posts
-  // are approved on the spot; a User's posts are pending a Manager review.
+  // Who posted it. Every document lands approved on the spot — there's no
+  // maker-checker/pending-review workflow.
   createdById?: string | null;
-  isApproved?: boolean;
   // Cancellation reversals always post at today's date regardless of the
   // original entry's period, and (like resolvePoster's canCancel) shouldn't
   // require an active subscription just to undo something — this is the
@@ -114,8 +113,6 @@ export async function postDocument(input: PostDocumentInput) {
     );
   }
 
-  const isApproved = input.isApproved ?? true;
-
   return prisma.$transaction(
     input.lines.map((line, index) =>
       prisma.ledgerEntry.create({
@@ -129,9 +126,9 @@ export async function postDocument(input: PostDocumentInput) {
           postingDate: input.postingDate,
           isReturn: input.isReturn ?? false,
           createdById: input.createdById ?? null,
-          isApproved,
-          approvedById: isApproved ? input.createdById ?? null : null,
-          approvedAt: isApproved ? new Date() : null,
+          isApproved: true,
+          approvedById: input.createdById ?? null,
+          approvedAt: new Date(),
           accountId: line.accountId,
           debitAmount: line.debitAmount ?? 0,
           creditAmount: line.creditAmount ?? 0,

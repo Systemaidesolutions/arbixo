@@ -81,7 +81,6 @@ export async function POST(request: NextRequest) {
       isReturn: false,
       lines: reversalLines,
       createdById: auth.user.id,
-      isApproved: auth.capability.canApprove,
       skipSubscriptionCheck: true,
     });
   } catch (err) {

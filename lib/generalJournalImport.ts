@@ -160,7 +160,7 @@ export async function handleGeneralJournalImport(request: NextRequest) {
       await postDocument({
         companyId, locationId: d.locationId, journalType: "GENERAL_JOURNAL", documentType: "JOURNAL",
         documentNo: d.documentNo, postingDate: d.postingDate, lines: glLines,
-        createdById: auth.user.id, isApproved: auth.capability.canApprove,
+        createdById: auth.user.id,
       });
       posted++;
       results.push({ ref: d.documentNo, ok: true });

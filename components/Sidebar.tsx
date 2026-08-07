@@ -23,7 +23,6 @@ import {
   FileText,
   FileSpreadsheet,
   LayoutDashboard,
-  ClipboardCheck,
   ScrollText,
   Database,
   Palette,
@@ -51,12 +50,9 @@ import { capabilitiesFor } from "@/lib/permissions";
 import { usePageStack } from "@/components/PageStack";
 
 const REVIEW_SECTION: NavSection = {
-  title: "Review",
+  title: "Audit",
   icon: "admin",
-  links: [
-    { href: "/approvals", label: "Pending approvals", icon: "approvals" },
-    { href: "/utility/audit-trail", label: "Audit trail", icon: "audit" },
-  ],
+  links: [{ href: "/utility/audit-trail", label: "Audit trail", icon: "audit" }],
 };
 
 const COMPANY_BACKUP_LINK = { href: "/utility/backup", label: "Backup this company", icon: "backup" } as const;
@@ -64,8 +60,7 @@ const SUBSCRIPTION_PAYMENTS_LINK = { href: "/subscription/payments", label: "Sub
 
 // Builds the nav a subscriber sees based on their subtype: Report Creator
 // (read-only) loses the Transactions section; a Manager gains the History
-// group (ledger browsers + audit trail), a company-backup option in Setup,
-// and Approvals.
+// group (ledger browsers + audit trail) and a company-backup option in Setup.
 function sectionsFor(role: "ADMIN" | "USER", subtype: SubscriberSubtype | null): NavSection[] {
   if (role === "ADMIN") return ADMIN_NAV_SECTIONS;
   const cap = capabilitiesFor(role, subtype);
@@ -88,7 +83,7 @@ function sectionsFor(role: "ADMIN" | "USER", subtype: SubscriberSubtype | null):
   if (!cap.canApprove) return sections;
 
   // Managers additionally get a company-backup link inside Setup and the
-  // Review group (approvals + audit trail).
+  // Audit group.
   const managerSections = sections.map((s) =>
     s.title === "Setup" ? { ...s, links: [...s.links, COMPANY_BACKUP_LINK, SUBSCRIPTION_PAYMENTS_LINK] } : s
   );
@@ -117,7 +112,6 @@ const LINK_ICONS: Record<NavIcon, LucideIcon> = {
   dashboard: LayoutDashboard,
   users: Users,
   companies: Building2,
-  approvals: ClipboardCheck,
   audit: ScrollText,
   backup: Database,
   branding: Palette,

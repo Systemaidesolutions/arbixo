@@ -219,7 +219,7 @@ export async function handleVatJournalImport(request: NextRequest, key: VatJourn
   let posted = 0;
   for (const d of docs) {
     try {
-      await postVatJournal(companyId, key, d, auth.user.id, auth.capability.canApprove);
+      await postVatJournal(companyId, key, d, auth.user.id);
       posted++;
       results.push({ ref: d.documentNo, ok: true });
     } catch (err) {

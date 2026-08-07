@@ -117,7 +117,6 @@ export async function POST(request: NextRequest) {
       postingDate: new Date(postingDate),
       lines: glLines,
       createdById: auth.user.id,
-      isApproved: auth.capability.canApprove,
     });
     if (body.attachments?.length) {
       await saveAttachments(companyId, "GENERAL_JOURNAL", documentNo, body.attachments, auth.user.id);

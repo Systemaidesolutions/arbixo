@@ -20,7 +20,6 @@ export type NavIcon =
   | "dashboard"
   | "users"
   | "companies"
-  | "approvals"
   | "audit"
   | "backup"
   | "branding"

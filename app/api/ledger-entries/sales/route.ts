@@ -58,8 +58,7 @@ export async function POST(request: NextRequest) {
         isReturn: body.isReturn ?? false,
         lines,
       },
-      auth.user.id,
-      auth.capability.canApprove
+      auth.user.id
     );
     if (body.attachments?.length) {
       await saveAttachments(companyId, "SALES_ON_ACCOUNT", documentNo, body.attachments, auth.user.id);
