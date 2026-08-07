@@ -1,15 +1,15 @@
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserRecord } from "@/lib/currentUser";
-import { capabilitiesFor } from "@/lib/permissions";
+import { effectiveCompanyId, getCurrentCapability } from "@/lib/currentUser";
 import type { ItemType, VatType } from "@prisma/client";
 
 // Items are per-company operational data; anyone who can post transactions may
 // manage them (they need items to encode purchases). Returns the caller's
 // company id, or null if they can't post.
 export async function posterCompanyId(): Promise<string | null> {
-  const user = await getCurrentUserRecord();
-  if (!user || user.role !== "USER" || !user.companyId) return null;
-  return capabilitiesFor(user.role, user.subscriberSubtype).canPost ? user.companyId : null;
+  const companyId = await effectiveCompanyId();
+  if (!companyId) return null;
+  const cap = await getCurrentCapability();
+  return cap?.canPost ? companyId : null;
 }
 
 // CRUD for the inventory Item master (per company). Perpetual quantityOnHand /

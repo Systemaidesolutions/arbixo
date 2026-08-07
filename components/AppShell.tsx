@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { Sidebar } from "@/components/Sidebar";
 import { Footer } from "@/components/Footer";
+import { AdminActingAsBanner } from "@/components/AdminActingAsBanner";
 import { HelpWidget } from "@/components/HelpWidget";
 import { PageStackProvider, PageStackOverlay, BaseLinkInterceptor, EmbedLinkInterceptor } from "@/components/PageStack";
 import type { SessionPayload } from "@/lib/auth";
@@ -25,6 +26,7 @@ export function AppShell({
   userName = null,
   hasPhoto = false,
   hasCompanyLogo = false,
+  actingAsCompanyName = null,
   children,
 }: {
   user: SessionPayload | null;
@@ -35,6 +37,9 @@ export function AppShell({
   userName?: string | null;
   hasPhoto?: boolean;
   hasCompanyLogo?: boolean;
+  // Set when an ADMIN is currently acting inside this company (see
+  // lib/adminActingAs.ts) — shows a persistent banner above the header.
+  actingAsCompanyName?: string | null;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -94,6 +99,8 @@ export function AppShell({
           </div>
         )}
       </div>
+
+      {actingAsCompanyName && <AdminActingAsBanner companyName={actingAsCompanyName} />}
 
       <AppHeader
         user={user}

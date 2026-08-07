@@ -1,13 +1,15 @@
 import { redirect } from "next/navigation";
-import { getCurrentUserRecord } from "@/lib/currentUser";
-import { capabilitiesFor } from "@/lib/permissions";
+import { getCurrentUserRecord, getCurrentCapability, effectiveCompanyId } from "@/lib/currentUser";
+import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
 import { PaymentsClient } from "./PaymentsClient";
 
 export default async function SubscriptionPaymentsPage() {
   const user = await getCurrentUserRecord();
   if (!user) redirect("/login");
-  const isAdmin = user.role === "ADMIN";
-  const isManager = user.role === "USER" && capabilitiesFor(user.role, user.subscriberSubtype).canApprove;
+  const isAdmin = user.role === "ADMIN" && !getAdminActingAsCompanyId();
+  const companyId = await effectiveCompanyId();
+  const cap = await getCurrentCapability();
+  const isManager = !!companyId && !!cap?.canApprove;
   if (!isAdmin && !isManager) redirect("/dashboard");
 
   return (

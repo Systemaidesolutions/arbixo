@@ -1,18 +1,18 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserRecord } from "@/lib/currentUser";
-import { capabilitiesFor } from "@/lib/permissions";
+import { getCurrentUserRecord, effectiveCompanyId, getCurrentCapability } from "@/lib/currentUser";
 import { ApprovalsClient, type PendingDoc } from "./ApprovalsClient";
 
 export default async function ApprovalsPage() {
   const user = await getCurrentUserRecord();
   if (!user) redirect("/login");
-  const capability = capabilitiesFor(user.role, user.subscriberSubtype);
+  const companyId = await effectiveCompanyId();
+  const capability = await getCurrentCapability();
   // Only a Manager can approve.
-  if (!capability.canApprove || !user.companyId) redirect("/dashboard");
+  if (!capability?.canApprove || !companyId) redirect("/dashboard");
 
   const entries = await prisma.ledgerEntry.findMany({
-    where: { companyId: user.companyId, isCancelled: false, isApproved: false },
+    where: { companyId, isCancelled: false, isApproved: false },
     select: {
       journalType: true,
       documentNo: true,
@@ -68,7 +68,7 @@ export default async function ApprovalsPage() {
         Transactions posted by Users await your review. Approving stamps them as reviewed; it
         doesn&apos;t change the books (posted entries already appear in reports).
       </p>
-      <ApprovalsClient companyId={user.companyId} docs={docs} />
+      <ApprovalsClient companyId={companyId} docs={docs} />
     </main>
   );
 }

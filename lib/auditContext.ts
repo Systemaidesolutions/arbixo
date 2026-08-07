@@ -4,6 +4,12 @@ export type AuditActor = {
   userId: string;
   email: string;
   companyId: string | null;
+  // True when an ADMIN is acting inside a company's books (see
+  // lib/adminActingAs.ts) — companyId above is the company they're acting
+  // as, not their own (admins have none). Read by the subscription-coverage
+  // check (lib/subscriptionCoverage.ts) to bypass the date restriction for
+  // admin support access.
+  isAdminActingAs?: boolean;
   // When true, the Prisma extension skips auto-logging — used to keep a
   // restore's bulk deletes/inserts from flooding the audit trail.
   suppress?: boolean;
@@ -28,6 +34,7 @@ export function setAuditSuppressed(suppress: boolean): void {
     userId: current?.userId ?? "",
     email: current?.email ?? "system",
     companyId: current?.companyId ?? null,
+    isAdminActingAs: current?.isAdminActingAs,
     suppress,
   });
 }

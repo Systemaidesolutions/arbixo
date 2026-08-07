@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { getCurrentCompany, getCurrentUserRecord } from "@/lib/currentUser";
+import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
 import { getDashboardSummary, getDashboardBreakdowns } from "@/lib/reports";
 import { getDisplayLinks } from "@/lib/relatedLinks";
 import { subscriptionStatus } from "@/lib/subscription";
@@ -31,7 +32,10 @@ export default async function HomePage() {
   if (!user) {
     redirect("/login");
   }
-  if (user.role === "ADMIN") {
+  // A plain admin manages the platform from /admin; one currently acting
+  // inside a company (lib/adminActingAs.ts) sees this dashboard like that
+  // company's own users would.
+  if (user.role === "ADMIN" && !getAdminActingAsCompanyId()) {
     redirect("/admin");
   }
 

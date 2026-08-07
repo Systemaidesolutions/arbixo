@@ -11,7 +11,10 @@ export type Capability = {
 /**
  * The single source of truth for what a subscriber can do, derived from
  * their role + subtype. Admins manage the platform, not a company's books,
- * so they get no posting/approval powers here.
+ * so a plain admin (role="ADMIN") gets no posting/approval powers here. An
+ * admin acting inside a company (lib/adminActingAs.ts) is a deliberate
+ * exception, handled by callers passing ("USER", "MANAGER") instead of the
+ * admin's real role/subtype — see getCurrentCapability in lib/currentUser.ts.
  */
 export function capabilitiesFor(
   role: UserRole,

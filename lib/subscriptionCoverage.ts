@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getAuditActor } from "@/lib/auditContext";
 
 // Transaction-date coverage: a company may only post a transaction dated
 // within a calendar month it actually paid a subscription for. Built from
@@ -35,6 +36,11 @@ export type SubscriptionCoverage = { monthRanges: [number, number][] };
  * checking many dates (e.g. a bulk import) don't re-query per row.
  */
 export async function getSubscriptionCoverage(companyId: string): Promise<SubscriptionCoverage> {
+  // An admin acting inside this company's books (see lib/adminActingAs.ts)
+  // isn't bound by the date restriction — they may be helping with a
+  // lapsed or backdated situation the company itself couldn't fix.
+  if (getAuditActor()?.isAdminActingAs) return { monthRanges: [[-Infinity, Infinity]] };
+
   const payments = await prisma.subscriptionPayment.findMany({
     where: { companyId, status: "VERIFIED", periodStart: { not: null }, periodEnd: { not: null } },
     select: { periodStart: true, periodEnd: true },

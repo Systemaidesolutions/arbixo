@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/currentUser";
 import { subscriptionStatus } from "@/lib/subscription";
+import { AccessCompanyButton } from "./AccessCompanyButton";
 
 const SUB_BADGE: Record<string, string> = {
   none: "bg-neutral-100 text-neutral-500",
@@ -79,9 +80,12 @@ export default async function AdminCompaniesPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <a href="/admin/subscription/renewals" className="text-xs font-medium text-brand-blue hover:underline">
-                        Renew
-                      </a>
+                      <div className="flex items-center justify-end gap-3">
+                        <AccessCompanyButton companyId={c.id} companyName={c.tradeName} />
+                        <a href="/admin/subscription/renewals" className="text-xs font-medium text-brand-blue hover:underline">
+                          Renew
+                        </a>
+                      </div>
                     </td>
                   </tr>
                 );

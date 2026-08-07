@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
-import { getCurrentUserRecord } from "@/lib/currentUser";
-import { capabilitiesFor } from "@/lib/permissions";
+import { getCurrentUserRecord, getCurrentCapability } from "@/lib/currentUser";
 import { LedgerEntriesBrowser } from "../LedgerEntriesBrowser";
 
 export default async function GeneralLedgerHistoryPage() {
   const user = await getCurrentUserRecord();
   if (!user) redirect("/login");
-  if (user.role !== "USER" || !capabilitiesFor(user.role, user.subscriberSubtype).canApprove) redirect("/dashboard");
+  const cap = await getCurrentCapability();
+  if (!cap?.canApprove) redirect("/dashboard");
   return (
     <LedgerEntriesBrowser
       kind="all"

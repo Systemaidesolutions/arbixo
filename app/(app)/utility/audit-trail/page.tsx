@@ -1,18 +1,20 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserRecord } from "@/lib/currentUser";
-import { capabilitiesFor } from "@/lib/permissions";
+import { getCurrentUserRecord, effectiveCompanyId, getCurrentCapability } from "@/lib/currentUser";
+import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
 import { getAuditTrail } from "@/lib/audit";
 import { AuditTrailClient } from "./AuditTrailClient";
 
 export default async function AuditTrailPage() {
   const user = await getCurrentUserRecord();
   if (!user) redirect("/login");
-  const isAdmin = user.role === "ADMIN";
-  const isManager = capabilitiesFor(user.role, user.subscriberSubtype).canApprove;
+  const isAdmin = user.role === "ADMIN" && !getAdminActingAsCompanyId();
+  const scopedCompanyId = await effectiveCompanyId();
+  const cap = await getCurrentCapability();
+  const isManager = !!scopedCompanyId && !!cap?.canApprove;
   if (!isAdmin && !isManager) redirect("/dashboard");
 
-  const companyId = isAdmin ? undefined : user.companyId ?? undefined;
+  const companyId = isAdmin ? undefined : scopedCompanyId ?? undefined;
   const [rows, companies] = await Promise.all([
     getAuditTrail({ companyId }),
     isAdmin

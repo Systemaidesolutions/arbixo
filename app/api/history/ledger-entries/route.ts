@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUserRecord } from "@/lib/currentUser";
-import { capabilitiesFor } from "@/lib/permissions";
+import { effectiveCompanyId, getCurrentCapability } from "@/lib/currentUser";
 import { browseLedgerEntries } from "@/lib/ledgerBrowse";
 import type { JournalType } from "@prisma/client";
 
@@ -14,11 +13,12 @@ const KIND_JOURNALS: Record<string, JournalType[]> = {
 
 // Manager-only history browser (sales / purchase / general ledger entries).
 export async function GET(request: NextRequest) {
-  const user = await getCurrentUserRecord();
-  if (!user || user.role !== "USER" || !user.companyId) {
+  const companyId = await effectiveCompanyId();
+  if (!companyId) {
     return NextResponse.json({ error: "No company." }, { status: 403 });
   }
-  if (!capabilitiesFor(user.role, user.subscriberSubtype).canApprove) {
+  const cap = await getCurrentCapability();
+  if (!cap?.canApprove) {
     return NextResponse.json({ error: "Managers only." }, { status: 403 });
   }
 
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   const search = sp.get("q")?.trim() || undefined;
   const page = Math.max(1, Number(sp.get("page")) || 1);
 
-  const data = await browseLedgerEntries(user.companyId, {
+  const data = await browseLedgerEntries(companyId, {
     journalTypes,
     from: from ? new Date(`${from}T00:00:00`) : undefined,
     to: to ? new Date(`${to}T23:59:59.999`) : undefined,

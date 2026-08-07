@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserRecord } from "@/lib/currentUser";
+import { getCurrentUserRecord, effectiveCompanyId } from "@/lib/currentUser";
 
 // Read-only for subscribers. Company records are created and edited by an
 // Arbixo admin via /api/admin/companies — subscribers can only view their
-// own company, never create or change it.
+// own company, never create or change it. An admin acting inside a company
+// (lib/adminActingAs.ts) gets the same read access here, but still edits
+// via /api/admin/companies, not this route.
 export async function GET() {
   const user = await getCurrentUserRecord();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  if (!user.companyId) return NextResponse.json({ company: null });
+  const companyId = await effectiveCompanyId();
+  if (!companyId) return NextResponse.json({ company: null });
 
-  const company = await prisma.company.findUnique({ where: { id: user.companyId } });
+  const company = await prisma.company.findUnique({ where: { id: companyId } });
   return NextResponse.json({ company });
 }
 
