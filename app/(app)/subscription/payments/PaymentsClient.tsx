@@ -12,7 +12,9 @@ type Payment = {
   discountAmount: string;
   amountDue: string;
   gcashRef: string | null;
+  receiptImage: string | null;
   status: "PENDING" | "VERIFIED" | "REJECTED";
+  periodStart: string | null;
   periodEnd: string | null;
   createdByEmail: string | null;
   createdAt: string;
@@ -25,11 +27,18 @@ const BADGE: Record<string, string> = {
   REJECTED: "bg-red-100 text-red-700",
 };
 
-export function PaymentsClient() {
+// "August 2026" from a periodStart — the month a payment covers.
+function monthLabel(periodStart: string | null): string {
+  if (!periodStart) return "—";
+  return new Date(periodStart).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+export function PaymentsClient({ refreshSignal }: { refreshSignal?: number } = {}) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [zoomedReceipt, setZoomedReceipt] = useState<string | null>(null);
 
   async function refresh() {
     const res = await fetch("/api/subscription/payments");
@@ -40,7 +49,8 @@ export function PaymentsClient() {
   }
   useEffect(() => {
     refresh();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshSignal]);
 
   async function act(p: Payment, status: "VERIFIED" | "REJECTED") {
     if (status === "REJECTED" && !window.confirm("Reject this payment? Any voucher used is freed up again.")) return;
@@ -66,28 +76,41 @@ export function PaymentsClient() {
           <tr className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500">
             <th className="px-3 py-2">Date</th>
             {isAdmin && <th className="px-3 py-2">Company</th>}
+            <th className="px-3 py-2">Month</th>
             <th className="px-3 py-2">Price</th>
             <th className="px-3 py-2">Voucher</th>
             <th className="px-3 py-2 text-right">Discount</th>
             <th className="px-3 py-2 text-right">Amount due</th>
             <th className="px-3 py-2">GCash ref</th>
+            <th className="px-3 py-2">Receipt</th>
             <th className="px-3 py-2">Status</th>
             {isAdmin && <th className="px-3 py-2" />}
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
           {payments.length === 0 ? (
-            <tr><td colSpan={isAdmin ? 9 : 7} className="px-3 py-3 text-neutral-400">No payments yet.</td></tr>
+            <tr><td colSpan={isAdmin ? 11 : 9} className="px-3 py-3 text-neutral-400">No payments yet.</td></tr>
           ) : (
             payments.map((p) => (
               <tr key={p.id}>
                 <td className="px-3 py-1.5 text-xs">{p.createdAt.slice(0, 10)}</td>
                 {isAdmin && <td className="px-3 py-1.5">{p.company.tradeName}</td>}
+                <td className="px-3 py-1.5 text-xs">{monthLabel(p.periodStart)}</td>
                 <td className="px-3 py-1.5 text-xs">{p.priceName} <span className="text-neutral-400">({money(p, p.baseAmount)})</span></td>
                 <td className="px-3 py-1.5 font-mono text-xs">{p.voucherCode ?? "—"}</td>
                 <td className="px-3 py-1.5 text-right font-mono">{Number(p.discountAmount) > 0 ? money(p, p.discountAmount) : "—"}</td>
                 <td className="px-3 py-1.5 text-right font-mono font-medium">{money(p, p.amountDue)}</td>
                 <td className="px-3 py-1.5 font-mono text-xs">{p.gcashRef || "—"}</td>
+                <td className="px-3 py-1.5">
+                  {p.receiptImage ? (
+                    <button onClick={() => setZoomedReceipt(p.receiptImage)} className="block">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.receiptImage} alt="Receipt" className="h-8 w-8 rounded object-cover ring-1 ring-neutral-200 hover:ring-brand-blue" />
+                    </button>
+                  ) : (
+                    <span className="text-xs text-neutral-400">—</span>
+                  )}
+                </td>
                 <td className="px-3 py-1.5">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${BADGE[p.status]}`}>{p.status.toLowerCase()}</span>
                 </td>
@@ -106,6 +129,16 @@ export function PaymentsClient() {
           )}
         </tbody>
       </table>
+
+      {zoomedReceipt && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+          onClick={() => setZoomedReceipt(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={zoomedReceipt} alt="Receipt" className="max-h-full max-w-full rounded shadow-2xl" />
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { getAdminUser } from "@/lib/currentUser";
 import { validateCompanyPayload, type CompanyFormPayload } from "@/lib/company";
 import { seedDefaultChart } from "@/lib/seedChart";
 import { createTicketProjectForCompany } from "@/lib/ticketingSync";
+import { grantLaunchTrialIfEligible } from "@/lib/subscriptionCoverage";
 
 // Admin creates a company. It's created unassigned — assigning it to one or
 // more subscriber users is a separate step (PATCH /api/admin/users/[id]),
@@ -19,6 +20,10 @@ export async function POST(request: NextRequest) {
   if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
 
   const company = await prisma.company.create({ data: body });
+
+  // 2026 go-live launch promotion — free Jan-Jul for any company created
+  // this year. No-op outside 2026.
+  await grantLaunchTrialIfEligible(company.id, company.createdAt);
 
   // Seed the standard nested heading chart; posting accounts are added
   // afterward in the Chart of Accounts screen.

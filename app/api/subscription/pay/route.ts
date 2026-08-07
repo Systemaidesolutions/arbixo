@@ -5,6 +5,7 @@ import { capabilitiesFor } from "@/lib/permissions";
 import { getCurrentPrice } from "@/lib/subscriptionPricing";
 import { voucherDiscount, voucherStatus } from "@/lib/vouchers";
 import { setAuditSuppressed } from "@/lib/auditContext";
+import { monthStringToPeriod } from "@/lib/subscriptionCoverage";
 
 function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -12,8 +13,16 @@ function round2(n: number) {
 
 class VoucherError extends Error {}
 
-// Records a subscription payment as PENDING (admin verifies later). A voucher,
-// if supplied, is redeemed here (single-use) inside the same transaction.
+// Matches the 2 MB raw-file cap enforced client-side in RenewClient.tsx —
+// checked here as the base64 STRING length, which is ~4/3 the raw file size,
+// so this threshold is the raw cap inflated by that ratio (plus slack for
+// the "data:image/...;base64," prefix).
+const MAX_RECEIPT_BASE64_LENGTH = 2_800_000;
+
+// Records a subscription payment as PENDING for a specific month the
+// subscriber chose (admin verifies later against the uploaded receipt). A
+// voucher, if supplied, is redeemed here (single-use) inside the same
+// transaction.
 export async function POST(request: NextRequest) {
   const user = await getCurrentUserRecord();
   if (!user || user.role !== "USER" || !user.companyId) {
@@ -27,6 +36,18 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const code = typeof body?.voucherCode === "string" ? body.voucherCode.trim().toUpperCase() : "";
   const gcashRef = typeof body?.gcashRef === "string" ? body.gcashRef.trim() : "";
+  const month = typeof body?.month === "string" ? body.month : "";
+  const receiptImage = typeof body?.receiptImage === "string" ? body.receiptImage : "";
+
+  let periodStart: Date, periodEnd: Date;
+  try {
+    ({ periodStart, periodEnd } = monthStringToPeriod(month));
+  } catch {
+    return NextResponse.json({ error: "Pick a valid month to pay for." }, { status: 400 });
+  }
+  if (receiptImage && receiptImage.length > MAX_RECEIPT_BASE64_LENGTH) {
+    return NextResponse.json({ error: "Receipt image is too large (max ~2 MB)." }, { status: 400 });
+  }
 
   const price = await getCurrentPrice();
   if (!price) {
@@ -63,7 +84,10 @@ export async function POST(request: NextRequest) {
           discountAmount: discount,
           amountDue,
           gcashRef: gcashRef || null,
+          receiptImage: receiptImage || null,
           status: "PENDING",
+          periodStart,
+          periodEnd,
           createdById: user.id,
           createdByEmail: user.email,
         },

@@ -108,3 +108,46 @@ export async function recomputeCompanySubscriptionSummary(companyId: string): Pr
     },
   });
 }
+
+// 2026 go-live launch promotion: any company created in 2026 gets January
+// through July free — August 2026 onward needs an actual paid (or
+// admin-granted) month like any other. This is a one-time launch-year
+// provision, not an evergreen "first 7 months free" policy, so it's
+// deliberately hardcoded to 2026 rather than derived from the company's
+// creation month.
+const LAUNCH_TRIAL_YEAR = 2026;
+const LAUNCH_TRIAL_START = new Date(Date.UTC(2026, 0, 1)); // Jan 1, 2026
+const LAUNCH_TRIAL_END = new Date(Date.UTC(2026, 7, 1)); // Aug 1, 2026 (exclusive — covers through July 31)
+
+/**
+ * Grants the free Jan-Jul 2026 launch trial to a company created in 2026, as
+ * a $0 VERIFIED SubscriptionPayment (so it flows through the normal coverage
+ * chain like any other payment, including gap detection for August onward).
+ * No-op for companies created outside 2026, or that already have this grant
+ * (safe to call more than once).
+ */
+export async function grantLaunchTrialIfEligible(companyId: string, createdAt: Date): Promise<void> {
+  if (createdAt.getUTCFullYear() !== LAUNCH_TRIAL_YEAR) return;
+
+  const existing = await prisma.subscriptionPayment.findFirst({
+    where: { companyId, priceName: "Free trial (2026 launch)" },
+    select: { id: true },
+  });
+  if (existing) return;
+
+  await prisma.subscriptionPayment.create({
+    data: {
+      companyId,
+      priceName: "Free trial (2026 launch)",
+      baseAmount: 0,
+      currency: "PHP",
+      discountAmount: 0,
+      amountDue: 0,
+      status: "VERIFIED",
+      verifiedAt: new Date(),
+      periodStart: LAUNCH_TRIAL_START,
+      periodEnd: LAUNCH_TRIAL_END,
+    },
+  });
+  await recomputeCompanySubscriptionSummary(companyId);
+}

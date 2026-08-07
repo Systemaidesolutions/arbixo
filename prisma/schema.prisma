@@ -116,6 +116,10 @@ model SubscriptionPayment {
   discountAmount Decimal       @db.Decimal(10, 2) @default(0)
   amountDue      Decimal       @db.Decimal(10, 2)
   gcashRef       String?
+  // Proof of payment — a photo/screenshot of the receipt or bank/GCash
+  // transfer, uploaded by the subscriber. Base64 data URL, same approach as
+  // TransactionAttachment and company logos (no external object store).
+  receiptImage   String?       @db.Text
   status         PaymentStatus @default(PENDING)
   periodStart    DateTime?
   periodEnd      DateTime?     // the subscription end this payment sets when verified

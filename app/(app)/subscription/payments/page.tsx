@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUserRecord, getCurrentCapability, effectiveCompanyId } from "@/lib/currentUser";
 import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
-import { PaymentsClient } from "./PaymentsClient";
+import { SubscriptionPaymentsSection } from "./SubscriptionPaymentsSection";
 
 export default async function SubscriptionPaymentsPage() {
   const user = await getCurrentUserRecord();
@@ -17,10 +17,10 @@ export default async function SubscriptionPaymentsPage() {
       <h1 className="text-xl font-medium text-neutral-900">Subscription payments</h1>
       <p className="mt-1 text-sm text-neutral-500">
         {isAdmin
-          ? "All subscription payments. Verify a payment to extend that company's subscription by one month."
-          : "Your company's subscription payments. Verification is done by an administrator."}
+          ? "All subscription payments. Verify a payment to activate that month for the company."
+          : "Renew below and an administrator will verify your payment before the month is activated."}
       </p>
-      <PaymentsClient />
+      <SubscriptionPaymentsSection showRenew={!isAdmin} />
     </main>
   );
 }
