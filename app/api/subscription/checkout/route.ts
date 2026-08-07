@@ -1,24 +1,25 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserRecord } from "@/lib/currentUser";
-import { capabilitiesFor } from "@/lib/permissions";
+import { effectiveCompanyId, getCurrentCapability } from "@/lib/currentUser";
 import { getCurrentPrice } from "@/lib/subscriptionPricing";
 
 // Data the renew flow needs: current price, the GCash account, and the
-// company's current subscription end. Manager-only.
+// company's current subscription end. Manager-only (or an admin acting
+// inside the company — see lib/adminActingAs.ts).
 export async function GET() {
-  const user = await getCurrentUserRecord();
-  if (!user || user.role !== "USER" || !user.companyId) {
+  const companyId = await effectiveCompanyId();
+  if (!companyId) {
     return NextResponse.json({ error: "No company." }, { status: 403 });
   }
-  if (!capabilitiesFor(user.role, user.subscriberSubtype).canApprove) {
+  const cap = await getCurrentCapability();
+  if (!cap?.canApprove) {
     return NextResponse.json({ error: "Only a Manager can renew the subscription." }, { status: 403 });
   }
 
   const [price, settings, company] = await Promise.all([
     getCurrentPrice(),
     prisma.appSettings.findUnique({ where: { id: "singleton" }, select: { gcashName: true, gcashNumber: true, gcashQrImage: true } }),
-    prisma.company.findUnique({ where: { id: user.companyId }, select: { subscriptionEndsAt: true } }),
+    prisma.company.findUnique({ where: { id: companyId }, select: { subscriptionEndsAt: true } }),
   ]);
 
   return NextResponse.json({

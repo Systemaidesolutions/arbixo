@@ -30,6 +30,7 @@ function fileToDataUrl(file: File): Promise<string> {
 
 export function RenewClient({ onSubmitted }: { onSubmitted?: () => void }) {
   const [data, setData] = useState<CheckoutData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [month, setMonth] = useState("");
   const [voucher, setVoucher] = useState("");
   const [gcashRef, setGcashRef] = useState("");
@@ -40,11 +41,16 @@ export function RenewClient({ onSubmitted }: { onSubmitted?: () => void }) {
 
   useEffect(() => {
     fetch("/api/subscription/checkout")
-      .then((r) => r.json())
-      .then((j: CheckoutData) => {
-        setData(j);
-        setMonth(defaultMonth(j.subscriptionEndsAt));
-      });
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          setLoadError(j?.error ?? `Could not load renewal info (HTTP ${r.status}).`);
+          return;
+        }
+        setData(j as CheckoutData);
+        setMonth(defaultMonth((j as CheckoutData).subscriptionEndsAt));
+      })
+      .catch(() => setLoadError("Could not reach the server."));
   }, []);
 
   async function handleFile(file: File | null) {
@@ -93,6 +99,7 @@ export function RenewClient({ onSubmitted }: { onSubmitted?: () => void }) {
     onSubmitted?.();
   }
 
+  if (loadError) return <p className="text-sm text-red-600">{loadError}</p>;
   if (!data) return <p className="text-sm text-neutral-400">Loading…</p>;
   const price = data.price;
   const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";

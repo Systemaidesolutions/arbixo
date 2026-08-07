@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserRecord } from "@/lib/currentUser";
-import { capabilitiesFor } from "@/lib/permissions";
+import { getCurrentUserRecord, effectiveCompanyId, getCurrentCapability } from "@/lib/currentUser";
 import { getCurrentPrice } from "@/lib/subscriptionPricing";
 import { voucherDiscount, voucherStatus } from "@/lib/vouchers";
 import { setAuditSuppressed } from "@/lib/auditContext";
@@ -25,13 +24,17 @@ const MAX_RECEIPT_BASE64_LENGTH = 2_800_000;
 // transaction.
 export async function POST(request: NextRequest) {
   const user = await getCurrentUserRecord();
-  if (!user || user.role !== "USER" || !user.companyId) {
+  if (!user) {
+    return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  }
+  const companyId = await effectiveCompanyId();
+  if (!companyId) {
     return NextResponse.json({ error: "No company." }, { status: 403 });
   }
-  if (!capabilitiesFor(user.role, user.subscriberSubtype).canApprove) {
+  const cap = await getCurrentCapability();
+  if (!cap?.canApprove) {
     return NextResponse.json({ error: "Only a Manager can renew the subscription." }, { status: 403 });
   }
-  const companyId = user.companyId;
 
   const body = await request.json().catch(() => null);
   const code = typeof body?.voucherCode === "string" ? body.voucherCode.trim().toUpperCase() : "";
