@@ -165,6 +165,7 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
       { href: "/admin/users", label: "User list", icon: "users" },
       { href: "/admin/companies", label: "Company list", icon: "companies" },
       { href: "/admin/atc-codes", label: "ATC codes", icon: "withholding" },
+      { href: "/admin/accounts/standard-chart", label: "Chart of accounts", icon: "accounts" },
       { href: "/admin/branding", label: "Branding", icon: "branding" },
       { href: "/admin/related-links", label: "Related links", icon: "links" },
     ],
