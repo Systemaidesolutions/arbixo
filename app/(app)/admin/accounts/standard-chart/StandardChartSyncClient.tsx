@@ -15,6 +15,8 @@ type Result = {
   companyName: string;
   created: number;
   conflicts: Conflict[];
+  droppedOldCodes: string[];
+  keptOldCodes: string[];
 };
 
 export function StandardChartSyncClient() {
@@ -29,13 +31,15 @@ export function StandardChartSyncClient() {
     const j = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) {
-      setError(j?.error ?? "Could not sync the standard chart.");
+      setError(j?.error ?? "Could not migrate the standard chart.");
       return;
     }
     setResults(j.results as Result[]);
   }
 
   const totalCreated = results?.reduce((s, r) => s + r.created, 0) ?? 0;
+  const totalDropped = results?.reduce((s, r) => s + r.droppedOldCodes.length, 0) ?? 0;
+  const totalKept = results?.reduce((s, r) => s + r.keptOldCodes.length, 0) ?? 0;
   const totalConflicts = results?.reduce((s, r) => s + r.conflicts.length, 0) ?? 0;
 
   return (
@@ -45,21 +49,27 @@ export function StandardChartSyncClient() {
         disabled={busy}
         className="rounded bg-brand-navy px-4 py-2 text-sm text-white hover:bg-brand-navyLight disabled:opacity-50"
       >
-        {busy ? "Applying…" : "Apply standard chart to all companies"}
+        {busy ? "Migrating…" : "Migrate all companies to the new codes"}
       </button>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 
       {results && (
         <div className="mt-4">
           <p className="text-sm text-neutral-600">
-            Added <span className="font-medium text-neutral-900">{totalCreated}</span> account{totalCreated === 1 ? "" : "s"} across{" "}
-            {results.length} companies.{" "}
-            {totalConflicts > 0 && (
-              <span className="text-amber-700">
-                {totalConflicts} code{totalConflicts === 1 ? "" : "s"} already existed under a different name — review below.
-              </span>
-            )}
+            Old codes dropped: <span className="font-medium text-neutral-900">{totalDropped}</span>. New accounts added:{" "}
+            <span className="font-medium text-neutral-900">{totalCreated}</span>. Across {results.length} companies.
           </p>
+          {(totalKept > 0 || totalConflicts > 0) && (
+            <p className="mt-1 text-sm text-amber-700">
+              {totalKept > 0 && <>{totalKept} old account{totalKept === 1 ? "" : "s"} couldn&apos;t be dropped (still in use).</>}{" "}
+              {totalConflicts > 0 && (
+                <>
+                  {totalConflicts} standard code{totalConflicts === 1 ? "" : "s"} collide with an existing account under a
+                  different name — review below.
+                </>
+              )}
+            </p>
+          )}
 
           <div className="mt-3 space-y-3">
             {results.map((r) => (
@@ -67,9 +77,16 @@ export function StandardChartSyncClient() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-neutral-800">{r.companyName}</span>
                   <span className="text-xs text-neutral-500">
-                    {r.created} added{r.conflicts.length > 0 ? ` · ${r.conflicts.length} conflicts` : ""}
+                    {r.droppedOldCodes.length} dropped · {r.created} added
+                    {r.keptOldCodes.length > 0 ? ` · ${r.keptOldCodes.length} kept` : ""}
+                    {r.conflicts.length > 0 ? ` · ${r.conflicts.length} conflicts` : ""}
                   </span>
                 </div>
+                {r.keptOldCodes.length > 0 && (
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Kept (still has children or ledger entries): {r.keptOldCodes.join(", ")}
+                  </p>
+                )}
                 {r.conflicts.length > 0 && (
                   <table className="mt-2 w-full text-xs">
                     <thead>

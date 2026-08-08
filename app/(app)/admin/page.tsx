@@ -186,7 +186,7 @@ export default async function AdminDashboardPage() {
           href="/admin/accounts/standard-chart"
           className="rounded border border-neutral-200 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
         >
-          Standard chart of accounts →
+          Migrate chart of accounts →
         </a>
       </div>
     </main>
