@@ -1,8 +1,10 @@
-// AUTO-GENERATED from the client's approved "Chart of Accounts (V.2 cleaned).csv".
-// The default chart seeded into every new company: a nested tree of Heading
-// accounts (non-postable). Posting accounts are added afterward in the Chart
-// of Accounts screen. classification/normalBalance are carried for schema
-// completeness; they only drive behavior on Posting accounts.
+// Sourced from "ARbixo Standard Chart of Accounts (FINAL).pdf" — the
+// client-approved standard chart. ALL-CAPS titles in the source PDF are
+// non-postable Heading rows; everything else is a postable leaf account.
+// classification/normalBalance drive real behavior on Posting accounts
+// (transaction-form dropdown filters, financial report grouping) — see
+// lib/accounts.ts and lib/reports.ts. On Heading rows they're carried for
+// schema completeness only.
 import type { AccountClassification, AccountType, NormalBalance } from "@prisma/client";
 
 export type DefaultAccount = {
@@ -16,409 +18,202 @@ export type DefaultAccount = {
 };
 
 export const DEFAULT_CHART_OF_ACCOUNTS: DefaultAccount[] = [
-  {
-    "code": "10000",
-    "title": "ASSETS",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT",
-    "parentCode": null,
-    "sortOrder": 0
-  },
-  {
-    "code": "11000",
-    "title": "CURRENT ASSETS",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT",
-    "parentCode": "10000",
-    "sortOrder": 1
-  },
-  {
-    "code": "11100",
-    "title": "Cash and Cash Equivalents",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT",
-    "parentCode": "11000",
-    "sortOrder": 2
-  },
-  {
-    "code": "11200",
-    "title": "Accounts Receivable",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT",
-    "parentCode": "11000",
-    "sortOrder": 3
-  },
-  {
-    "code": "11300",
-    "title": "Merchandise Inventory",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT",
-    "parentCode": "11000",
-    "sortOrder": 4
-  },
-  {
-    "code": "11400",
-    "title": "Prepayments",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT",
-    "parentCode": "11000",
-    "sortOrder": 5
-  },
-  {
-    "code": "11500",
-    "title": "Input VAT",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT",
-    "parentCode": "11000",
-    "sortOrder": 6
-  },
-  {
-    "code": "11600",
-    "title": "Other Current Assets",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT",
-    "parentCode": "11000",
-    "sortOrder": 7
-  },
-  {
-    "code": "12200",
-    "title": "NON-CURRENT ASSETS",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT",
-    "parentCode": "10000",
-    "sortOrder": 8
-  },
-  {
-    "code": "12010",
-    "title": "Land",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT",
-    "parentCode": "12200",
-    "sortOrder": 9
-  },
-  {
-    "code": "12020",
-    "title": "Fixed Asset",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT",
-    "parentCode": "12200",
-    "sortOrder": 10
-  },
-  {
-    "code": "12030",
-    "title": "Goodwill",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT",
-    "parentCode": "12200",
-    "sortOrder": 11
-  },
-  {
-    "code": "12040",
-    "title": "Accumulated Depreciation",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_ASSET",
-    "normalBalance": "DEBIT",
-    "parentCode": "12200",
-    "sortOrder": 12
-  },
-  {
-    "code": "20000",
-    "title": "LIABILITIES",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT",
-    "parentCode": null,
-    "sortOrder": 13
-  },
-  {
-    "code": "21000",
-    "title": "CURRENT LIABILITIES",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT",
-    "parentCode": "20000",
-    "sortOrder": 14
-  },
-  {
-    "code": "21100",
-    "title": "Accounts Payable",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT",
-    "parentCode": "21000",
-    "sortOrder": 15
-  },
-  {
-    "code": "21200",
-    "title": "Notes Payable",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT",
-    "parentCode": "21000",
-    "sortOrder": 16
-  },
-  {
-    "code": "21300",
-    "title": "Accrued Expenses",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT",
-    "parentCode": "21000",
-    "sortOrder": 17
-  },
-  {
-    "code": "21400",
-    "title": "Government Payable",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT",
-    "parentCode": "21000",
-    "sortOrder": 18
-  },
-  {
-    "code": "21500",
-    "title": "Other Current Liabilities",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT",
-    "parentCode": "21000",
-    "sortOrder": 19
-  },
-  {
-    "code": "22000",
-    "title": "NONCURRENT LIABILITY",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT",
-    "parentCode": "20000",
-    "sortOrder": 20
-  },
-  {
-    "code": "22010",
-    "title": "Long-term Notes Payable",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT",
-    "parentCode": "22000",
-    "sortOrder": 21
-  },
-  {
-    "code": "22020",
-    "title": "Other Non-Current Payable",
-    "accountType": "HEADING",
-    "classification": "OTHER_CURRENT_LIABILITY",
-    "normalBalance": "CREDIT",
-    "parentCode": "22000",
-    "sortOrder": 22
-  },
-  {
-    "code": "30000",
-    "title": "EQUITY",
-    "accountType": "HEADING",
-    "classification": "EQUITY_DOES_NOT_CLOSE",
-    "normalBalance": "CREDIT",
-    "parentCode": null,
-    "sortOrder": 23
-  },
-  {
-    "code": "31000",
-    "title": "Capital Stock",
-    "accountType": "HEADING",
-    "classification": "EQUITY_DOES_NOT_CLOSE",
-    "normalBalance": "CREDIT",
-    "parentCode": "30000",
-    "sortOrder": 24
-  },
-  {
-    "code": "31100",
-    "title": "Additional Paid-in Capital",
-    "accountType": "HEADING",
-    "classification": "EQUITY_DOES_NOT_CLOSE",
-    "normalBalance": "CREDIT",
-    "parentCode": "30000",
-    "sortOrder": 25
-  },
-  {
-    "code": "31200",
-    "title": "Owner's Capital",
-    "accountType": "HEADING",
-    "classification": "EQUITY_DOES_NOT_CLOSE",
-    "normalBalance": "CREDIT",
-    "parentCode": "30000",
-    "sortOrder": 26
-  },
-  {
-    "code": "31300",
-    "title": "Owner's Drawings",
-    "accountType": "HEADING",
-    "classification": "EQUITY_DOES_NOT_CLOSE",
-    "normalBalance": "CREDIT",
-    "parentCode": "30000",
-    "sortOrder": 27
-  },
-  {
-    "code": "31400",
-    "title": "Retained Earnings",
-    "accountType": "HEADING",
-    "classification": "EQUITY_DOES_NOT_CLOSE",
-    "normalBalance": "CREDIT",
-    "parentCode": "30000",
-    "sortOrder": 28
-  },
-  {
-    "code": "31500",
-    "title": "Current Year Earnings",
-    "accountType": "HEADING",
-    "classification": "EQUITY_DOES_NOT_CLOSE",
-    "normalBalance": "CREDIT",
-    "parentCode": "30000",
-    "sortOrder": 29
-  },
-  {
-    "code": "31600",
-    "title": "Prior Year Adjustments",
-    "accountType": "HEADING",
-    "classification": "EQUITY_DOES_NOT_CLOSE",
-    "normalBalance": "CREDIT",
-    "parentCode": "30000",
-    "sortOrder": 30
-  },
-  {
-    "code": "40000",
-    "title": "REVENUE",
-    "accountType": "HEADING",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT",
-    "parentCode": null,
-    "sortOrder": 31
-  },
-  {
-    "code": "41000",
-    "title": "Sales",
-    "accountType": "HEADING",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT",
-    "parentCode": "40000",
-    "sortOrder": 32
-  },
-  {
-    "code": "41110",
-    "title": "VATable Sales",
-    "accountType": "HEADING",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT",
-    "parentCode": "41000",
-    "sortOrder": 33
-  },
-  {
-    "code": "41200",
-    "title": "Zero Rated Sales",
-    "accountType": "HEADING",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT",
-    "parentCode": "41000",
-    "sortOrder": 34
-  },
-  {
-    "code": "41300",
-    "title": "Exempt Sales",
-    "accountType": "HEADING",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT",
-    "parentCode": "41000",
-    "sortOrder": 35
-  },
-  {
-    "code": "41400",
-    "title": "Non-VAT Sales",
-    "accountType": "HEADING",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT",
-    "parentCode": "41000",
-    "sortOrder": 36
-  },
-  {
-    "code": "41040",
-    "title": "Sales Returns and Allowances (-)",
-    "accountType": "HEADING",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT",
-    "parentCode": "41000",
-    "sortOrder": 37
-  },
-  {
-    "code": "41050",
-    "title": "Sales Discount (-)",
-    "accountType": "HEADING",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT",
-    "parentCode": "41000",
-    "sortOrder": 38
-  },
-  {
-    "code": "42000",
-    "title": "Other Income",
-    "accountType": "HEADING",
-    "classification": "REVENUE",
-    "normalBalance": "CREDIT",
-    "parentCode": "40000",
-    "sortOrder": 39
-  },
-  {
-    "code": "50000",
-    "title": "COST OF SALES / SERVICES",
-    "accountType": "HEADING",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT",
-    "parentCode": null,
-    "sortOrder": 40
-  },
-  {
-    "code": "51000",
-    "title": "Cost of Goods Sold",
-    "accountType": "HEADING",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT",
-    "parentCode": "50000",
-    "sortOrder": 41
-  },
-  {
-    "code": "52000",
-    "title": "Cost of Services",
-    "accountType": "HEADING",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT",
-    "parentCode": "50000",
-    "sortOrder": 42
-  },
-  {
-    "code": "6000",
-    "title": "OPERATING EXPENSES",
-    "accountType": "HEADING",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT",
-    "parentCode": null,
-    "sortOrder": 43
-  },
-  {
-    "code": "80000",
-    "title": "OTHER EXPENSES",
-    "accountType": "HEADING",
-    "classification": "EXPENSE",
-    "normalBalance": "DEBIT",
-    "parentCode": null,
-    "sortOrder": 44
-  }
+  // ---------------------------------------------------------------- ASSETS
+  { code: "10000", title: "ASSETS", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: null, sortOrder: 0 },
+  { code: "11000", title: "CURRENT ASSETS", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "10000", sortOrder: 1 },
+  { code: "11100", title: "CASH AND CASH EQUIVALENTS", accountType: "HEADING", classification: "CASH_IN_BANK", normalBalance: "DEBIT", parentCode: "11000", sortOrder: 2 },
+  { code: "11110", title: "CASH ON HAND", accountType: "HEADING", classification: "CASH_ON_HAND", normalBalance: "DEBIT", parentCode: "11100", sortOrder: 3 },
+  { code: "11111", title: "Petty Cash Fund", accountType: "POSTING", classification: "CASH_ON_HAND", normalBalance: "DEBIT", parentCode: "11110", sortOrder: 4 },
+  { code: "11112", title: "Revolving Fund", accountType: "POSTING", classification: "CASH_ON_HAND", normalBalance: "DEBIT", parentCode: "11110", sortOrder: 5 },
+  { code: "11120", title: "CASH IN BANK", accountType: "HEADING", classification: "CASH_IN_BANK", normalBalance: "DEBIT", parentCode: "11100", sortOrder: 6 },
+  { code: "11121", title: "Bank 1", accountType: "POSTING", classification: "CASH_IN_BANK", normalBalance: "DEBIT", parentCode: "11120", sortOrder: 7 },
+  { code: "11122", title: "Bank 2", accountType: "POSTING", classification: "CASH_IN_BANK", normalBalance: "DEBIT", parentCode: "11120", sortOrder: 8 },
+  { code: "11123", title: "Bank 3", accountType: "POSTING", classification: "CASH_IN_BANK", normalBalance: "DEBIT", parentCode: "11120", sortOrder: 9 },
+  { code: "11200", title: "ACCOUNTS RECEIVABLE", accountType: "HEADING", classification: "ACCOUNTS_RECEIVABLE", normalBalance: "DEBIT", parentCode: "11000", sortOrder: 10 },
+  { code: "11210", title: "Trade Receivables", accountType: "POSTING", classification: "ACCOUNTS_RECEIVABLE", normalBalance: "DEBIT", parentCode: "11200", sortOrder: 11 },
+  { code: "11220", title: "NON-TRADE RECEIVABLES", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11200", sortOrder: 12 },
+  { code: "11221", title: "Employee Receivables", accountType: "POSTING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11220", sortOrder: 13 },
+  { code: "11222", title: "Receivable - Officers", accountType: "POSTING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11220", sortOrder: 14 },
+  { code: "11223", title: "Receivable - Stockholders", accountType: "POSTING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11220", sortOrder: 15 },
+  { code: "11224", title: "Affiliate Receivables", accountType: "POSTING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11220", sortOrder: 16 },
+  { code: "11230", title: "Allowance for Doubtful Accounts (-)", accountType: "POSTING", classification: "OTHER_CURRENT_ASSET", normalBalance: "CREDIT", parentCode: "11200", sortOrder: 17 },
+  { code: "11300", title: "INVENTORIES", accountType: "HEADING", classification: "INVENTORY", normalBalance: "DEBIT", parentCode: "11000", sortOrder: 18 },
+  { code: "11310", title: "Merchandise Inventory", accountType: "POSTING", classification: "INVENTORY", normalBalance: "DEBIT", parentCode: "11300", sortOrder: 19 },
+  { code: "11320", title: "Raw Materials", accountType: "POSTING", classification: "INVENTORY", normalBalance: "DEBIT", parentCode: "11300", sortOrder: 20 },
+  { code: "11330", title: "Work in Process", accountType: "POSTING", classification: "INVENTORY", normalBalance: "DEBIT", parentCode: "11300", sortOrder: 21 },
+  { code: "11340", title: "Finished Goods", accountType: "POSTING", classification: "INVENTORY", normalBalance: "DEBIT", parentCode: "11300", sortOrder: 22 },
+  { code: "11350", title: "Office Supplies Inventory", accountType: "POSTING", classification: "INVENTORY", normalBalance: "DEBIT", parentCode: "11300", sortOrder: 23 },
+  { code: "11360", title: "Shop Supplies", accountType: "POSTING", classification: "INVENTORY", normalBalance: "DEBIT", parentCode: "11300", sortOrder: 24 },
+  { code: "11370", title: "Spare Parts", accountType: "POSTING", classification: "INVENTORY", normalBalance: "DEBIT", parentCode: "11300", sortOrder: 25 },
+  { code: "11400", title: "PREPAYMENTS", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11000", sortOrder: 26 },
+  { code: "11410", title: "Prepaid Rent", accountType: "POSTING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11400", sortOrder: 27 },
+  { code: "11420", title: "Prepaid Insurance", accountType: "POSTING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11400", sortOrder: 28 },
+  { code: "11430", title: "Prepaid Licenses", accountType: "POSTING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11400", sortOrder: 29 },
+  { code: "11440", title: "Prepaid Software", accountType: "POSTING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11400", sortOrder: 30 },
+  { code: "11500", title: "TAX CREDITS AND VAT RECEIVABLES", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11000", sortOrder: 31 },
+  { code: "11510", title: "Input VAT", accountType: "POSTING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11500", sortOrder: 32 },
+  { code: "11520", title: "Creditable Withholding Tax", accountType: "POSTING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11500", sortOrder: 33 },
+  { code: "11530", title: "Prepaid Tax", accountType: "POSTING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11500", sortOrder: 34 },
+  { code: "11540", title: "Deferred Input VAT", accountType: "POSTING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11500", sortOrder: 35 },
+  { code: "11600", title: "Other Current Assets", accountType: "POSTING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11000", sortOrder: 36 },
+  { code: "12000", title: "NON-CURRENT ASSETS", accountType: "HEADING", classification: "OTHER_ASSET", normalBalance: "DEBIT", parentCode: "10000", sortOrder: 37 },
+  { code: "12100", title: "PROPERTY, PLANT AND EQUIPMENT", accountType: "HEADING", classification: "FIXED_ASSET", normalBalance: "DEBIT", parentCode: "12000", sortOrder: 38 },
+  { code: "12110", title: "Land", accountType: "POSTING", classification: "FIXED_ASSET", normalBalance: "DEBIT", parentCode: "12100", sortOrder: 39 },
+  { code: "12120", title: "Land Improvements", accountType: "POSTING", classification: "FIXED_ASSET", normalBalance: "DEBIT", parentCode: "12100", sortOrder: 40 },
+  { code: "12130", title: "Building", accountType: "POSTING", classification: "FIXED_ASSET", normalBalance: "DEBIT", parentCode: "12100", sortOrder: 41 },
+  { code: "12140", title: "Building Improvements", accountType: "POSTING", classification: "FIXED_ASSET", normalBalance: "DEBIT", parentCode: "12100", sortOrder: 42 },
+  { code: "12150", title: "Furniture and Fixtures", accountType: "POSTING", classification: "FIXED_ASSET", normalBalance: "DEBIT", parentCode: "12100", sortOrder: 43 },
+  { code: "12160", title: "Office Equipment", accountType: "POSTING", classification: "FIXED_ASSET", normalBalance: "DEBIT", parentCode: "12100", sortOrder: 44 },
+  { code: "12170", title: "Computer Equipment", accountType: "POSTING", classification: "FIXED_ASSET", normalBalance: "DEBIT", parentCode: "12100", sortOrder: 45 },
+  { code: "12180", title: "Transportation Equipment", accountType: "POSTING", classification: "FIXED_ASSET", normalBalance: "DEBIT", parentCode: "12100", sortOrder: 46 },
+  { code: "12190", title: "Machinery", accountType: "POSTING", classification: "FIXED_ASSET", normalBalance: "DEBIT", parentCode: "12100", sortOrder: 47 },
+  { code: "12200", title: "Leasehold Improvements", accountType: "POSTING", classification: "FIXED_ASSET", normalBalance: "DEBIT", parentCode: "12000", sortOrder: 48 },
+  { code: "12300", title: "INTANGIBLE ASSETS", accountType: "HEADING", classification: "OTHER_ASSET", normalBalance: "DEBIT", parentCode: "12000", sortOrder: 49 },
+  { code: "12310", title: "Software", accountType: "POSTING", classification: "OTHER_ASSET", normalBalance: "DEBIT", parentCode: "12300", sortOrder: 50 },
+  { code: "12320", title: "Website Development", accountType: "POSTING", classification: "OTHER_ASSET", normalBalance: "DEBIT", parentCode: "12300", sortOrder: 51 },
+  { code: "12330", title: "Trademark", accountType: "POSTING", classification: "OTHER_ASSET", normalBalance: "DEBIT", parentCode: "12300", sortOrder: 52 },
+  { code: "12340", title: "Patent", accountType: "POSTING", classification: "OTHER_ASSET", normalBalance: "DEBIT", parentCode: "12300", sortOrder: 53 },
+  { code: "12350", title: "Goodwill", accountType: "POSTING", classification: "OTHER_ASSET", normalBalance: "DEBIT", parentCode: "12300", sortOrder: 54 },
+  { code: "12900", title: "ACCUMULATED DEPRECIATION AND AMORTIZATION", accountType: "HEADING", classification: "ACCUMULATED_DEPRECIATION", normalBalance: "CREDIT", parentCode: "12000", sortOrder: 55 },
+  { code: "12910", title: "Accumulated Depreciation - Building", accountType: "POSTING", classification: "ACCUMULATED_DEPRECIATION", normalBalance: "CREDIT", parentCode: "12900", sortOrder: 56 },
+  { code: "12920", title: "Accumulated Depreciation - Furniture", accountType: "POSTING", classification: "ACCUMULATED_DEPRECIATION", normalBalance: "CREDIT", parentCode: "12900", sortOrder: 57 },
+  { code: "12930", title: "Accumulated Depreciation - Office Equipment", accountType: "POSTING", classification: "ACCUMULATED_DEPRECIATION", normalBalance: "CREDIT", parentCode: "12900", sortOrder: 58 },
+  { code: "12940", title: "Accumulated Depreciation - Vehicles", accountType: "POSTING", classification: "ACCUMULATED_DEPRECIATION", normalBalance: "CREDIT", parentCode: "12900", sortOrder: 59 },
+  { code: "12950", title: "Accumulated Depreciation - Machinery", accountType: "POSTING", classification: "ACCUMULATED_DEPRECIATION", normalBalance: "CREDIT", parentCode: "12900", sortOrder: 60 },
+
+  // ----------------------------------------------------------- LIABILITIES
+  { code: "20000", title: "LIABILITIES", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: null, sortOrder: 61 },
+  { code: "21000", title: "CURRENT LIABILITIES", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "20000", sortOrder: 62 },
+  { code: "21100", title: "ACCOUNTS PAYABLE", accountType: "HEADING", classification: "ACCOUNTS_PAYABLE", normalBalance: "CREDIT", parentCode: "21000", sortOrder: 63 },
+  { code: "21110", title: "Trade Payables", accountType: "POSTING", classification: "ACCOUNTS_PAYABLE", normalBalance: "CREDIT", parentCode: "21100", sortOrder: 64 },
+  { code: "21120", title: "Non-Trade Payables", accountType: "POSTING", classification: "ACCOUNTS_PAYABLE", normalBalance: "CREDIT", parentCode: "21100", sortOrder: 65 },
+  { code: "21200", title: "Notes Payable", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21000", sortOrder: 66 },
+  { code: "21300", title: "ACCRUED EXPENSES", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21000", sortOrder: 67 },
+  { code: "21310", title: "Accrued Salaries", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21300", sortOrder: 68 },
+  { code: "21320", title: "Accrued Utilities", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21300", sortOrder: 69 },
+  { code: "21330", title: "Accrued Professional Fees", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21300", sortOrder: 70 },
+  { code: "21400", title: "GOVERNMENT PAYABLES", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21000", sortOrder: 71 },
+  { code: "21410", title: "Output VAT Payable", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21400", sortOrder: 72 },
+  { code: "21420", title: "Withholding Tax Payable - Expanded", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21400", sortOrder: 73 },
+  { code: "21430", title: "Withholding Tax Payable - Compensation", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21400", sortOrder: 74 },
+  { code: "21440", title: "Final Tax Payable", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21400", sortOrder: 75 },
+  { code: "21450", title: "SSS Payable", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21400", sortOrder: 76 },
+  { code: "21460", title: "PhilHealth Payable", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21400", sortOrder: 77 },
+  { code: "21470", title: "Pag-IBIG Payable", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21400", sortOrder: 78 },
+  { code: "21480", title: "Income Tax Payable", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21400", sortOrder: 79 },
+  { code: "21490", title: "Local Business Tax Payable", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21400", sortOrder: 80 },
+  { code: "21500", title: "OTHER CURRENT LIABILITIES", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21000", sortOrder: 81 },
+  { code: "21510", title: "Due to Employees", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21500", sortOrder: 82 },
+  { code: "21520", title: "Due to Officers", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21500", sortOrder: 83 },
+  { code: "21530", title: "Due to Stockholders", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21500", sortOrder: 84 },
+  { code: "21540", title: "Customer Deposits", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21500", sortOrder: 85 },
+  { code: "21550", title: "Unearned Revenue", accountType: "POSTING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21500", sortOrder: 86 },
+  { code: "22000", title: "NON-CURRENT LIABILITIES", accountType: "HEADING", classification: "LONG_TERM_PAYABLE", normalBalance: "CREDIT", parentCode: "20000", sortOrder: 87 },
+  { code: "22100", title: "Long-term Notes Payable", accountType: "POSTING", classification: "LONG_TERM_PAYABLE", normalBalance: "CREDIT", parentCode: "22000", sortOrder: 88 },
+  { code: "22200", title: "Bank Loan", accountType: "POSTING", classification: "LONG_TERM_PAYABLE", normalBalance: "CREDIT", parentCode: "22000", sortOrder: 89 },
+  { code: "22300", title: "Lease Liability", accountType: "POSTING", classification: "LONG_TERM_PAYABLE", normalBalance: "CREDIT", parentCode: "22000", sortOrder: 90 },
+  { code: "22400", title: "Deferred Tax Liability", accountType: "POSTING", classification: "LONG_TERM_PAYABLE", normalBalance: "CREDIT", parentCode: "22000", sortOrder: 91 },
+
+  // ---------------------------------------------------------------- EQUITY
+  { code: "30000", title: "EQUITY", accountType: "HEADING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: null, sortOrder: 92 },
+  { code: "31000", title: "CAPITAL", accountType: "HEADING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "30000", sortOrder: 93 },
+  { code: "31100", title: "Capital Stock", accountType: "POSTING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "31000", sortOrder: 94 },
+  { code: "31200", title: "Additional Paid-in Capital", accountType: "POSTING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "31000", sortOrder: 95 },
+  { code: "31300", title: "Owner's Capital", accountType: "POSTING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "31000", sortOrder: 96 },
+  { code: "31400", title: "Partner's Capital", accountType: "POSTING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "31000", sortOrder: 97 },
+  { code: "32000", title: "DRAWINGS AND DISTRIBUTIONS", accountType: "HEADING", classification: "EQUITY_GETS_CLOSED", normalBalance: "DEBIT", parentCode: "30000", sortOrder: 98 },
+  { code: "32100", title: "Owner's Drawings", accountType: "POSTING", classification: "EQUITY_GETS_CLOSED", normalBalance: "DEBIT", parentCode: "32000", sortOrder: 99 },
+  { code: "32200", title: "Dividends", accountType: "POSTING", classification: "EQUITY_GETS_CLOSED", normalBalance: "DEBIT", parentCode: "32000", sortOrder: 100 },
+  { code: "33000", title: "RETAINED EARNINGS", accountType: "HEADING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "30000", sortOrder: 101 },
+  { code: "33100", title: "Retained Earnings", accountType: "POSTING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "33000", sortOrder: 102 },
+  { code: "33200", title: "Current Year Earnings", accountType: "POSTING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "33000", sortOrder: 103 },
+  { code: "33300", title: "Prior Year Adjustments", accountType: "POSTING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "33000", sortOrder: 104 },
+
+  // -------------------------------------------------------------- REVENUE
+  { code: "40000", title: "REVENUE", accountType: "HEADING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: null, sortOrder: 105 },
+  { code: "41000", title: "SALES REVENUE", accountType: "HEADING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "40000", sortOrder: 106 },
+  { code: "41100", title: "Sales (Goods)", accountType: "POSTING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "41000", sortOrder: 107 },
+  { code: "41200", title: "Sales (Services)", accountType: "POSTING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "41000", sortOrder: 108 },
+  { code: "42000", title: "NON-VAT SALES", accountType: "HEADING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "40000", sortOrder: 109 },
+  { code: "42100", title: "Non-VAT Sales - Services", accountType: "POSTING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "42000", sortOrder: 110 },
+  { code: "42200", title: "Non-VAT Sales - Goods", accountType: "POSTING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "42000", sortOrder: 111 },
+  { code: "49000", title: "SALES ADJUSTMENTS", accountType: "HEADING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "40000", sortOrder: 112 },
+  { code: "49100", title: "Sales Returns and Allowances (-)", accountType: "POSTING", classification: "REVENUE", normalBalance: "DEBIT", parentCode: "49000", sortOrder: 113 },
+  { code: "49200", title: "Sales Discount (-)", accountType: "POSTING", classification: "REVENUE", normalBalance: "DEBIT", parentCode: "49000", sortOrder: 114 },
+
+  // ----------------------------------------------- COST OF SALES/SERVICES
+  { code: "50000", title: "COST OF SALES AND SERVICES", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: null, sortOrder: 115 },
+  { code: "51000", title: "COST OF GOODS SOLD", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "50000", sortOrder: 116 },
+  { code: "51100", title: "Direct Materials", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "51000", sortOrder: 117 },
+  { code: "51200", title: "Direct Labor", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "51000", sortOrder: 118 },
+  { code: "51300", title: "Factory Overhead", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "51000", sortOrder: 119 },
+  { code: "51400", title: "Purchases", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "51000", sortOrder: 120 },
+  { code: "51500", title: "Purchase Returns", accountType: "POSTING", classification: "EXPENSE", normalBalance: "CREDIT", parentCode: "51000", sortOrder: 121 },
+  { code: "51600", title: "Purchase Discounts", accountType: "POSTING", classification: "EXPENSE", normalBalance: "CREDIT", parentCode: "51000", sortOrder: 122 },
+  { code: "52000", title: "COST OF SERVICES", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "50000", sortOrder: 123 },
+  { code: "52100", title: "Parts and Other Materials", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "52000", sortOrder: 124 },
+  { code: "52200", title: "Subcontracting", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "52000", sortOrder: 125 },
+  { code: "52300", title: "Salaries and Wages", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "52000", sortOrder: 126 },
+  { code: "52400", title: "SSS, PhilHealth and HDMF Contributions", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "52000", sortOrder: 127 },
+
+  // ---------------------------------------------------- OPERATING EXPENSES
+  { code: "60000", title: "OPERATING EXPENSES", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: null, sortOrder: 128 },
+  { code: "61000", title: "PERSONNEL EXPENSES", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "60000", sortOrder: 129 },
+  { code: "61100", title: "Salaries, Wages and Allowances", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "61000", sortOrder: 130 },
+  { code: "61200", title: "Fringe Benefits", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "61000", sortOrder: 131 },
+  { code: "61300", title: "SSS, GSIS, Philhealth, HDMF and Other Contributions", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "61000", sortOrder: 132 },
+  { code: "61400", title: "Pension Trust", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "61000", sortOrder: 133 },
+  { code: "61500", title: "Uniform, Medical and Other Benefits", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "61000", sortOrder: 134 },
+  { code: "61600", title: "Training and Seminar", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "61000", sortOrder: 135 },
+  { code: "62000", title: "OFFICE AND ADMINISTRATIVE EXPENSES", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "60000", sortOrder: 136 },
+  { code: "62100", title: "Office Supplies Expense", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "62000", sortOrder: 137 },
+  { code: "62200", title: "Telephone Expense", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "62000", sortOrder: 138 },
+  { code: "62300", title: "Internet Expense", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "62000", sortOrder: 139 },
+  { code: "62400", title: "Postage Expense", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "62000", sortOrder: 140 },
+  { code: "62500", title: "Professional Fees", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "62000", sortOrder: 141 },
+  { code: "62600", title: "Bank Charges", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "62000", sortOrder: 142 },
+  { code: "62700", title: "Software Subscription", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "62000", sortOrder: 143 },
+  { code: "62800", title: "Research and Development", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "62000", sortOrder: 144 },
+  { code: "63000", title: "FACILITIES AND OCCUPANCY EXPENSES", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "60000", sortOrder: 145 },
+  { code: "63100", title: "Rental", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "63000", sortOrder: 146 },
+  { code: "63200", title: "Light and Water", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "63000", sortOrder: 147 },
+  { code: "63300", title: "Janitorial and Messengerial Services", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "63000", sortOrder: 148 },
+  { code: "63400", title: "Security Services", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "63000", sortOrder: 149 },
+  { code: "63500", title: "Repairs and Maintenance", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "63000", sortOrder: 150 },
+  { code: "63600", title: "Insurance Expense", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "63000", sortOrder: 151 },
+  { code: "64000", title: "SELLING AND MARKETING EXPENSES", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "60000", sortOrder: 152 },
+  { code: "64100", title: "Advertising Expense", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "64000", sortOrder: 153 },
+  { code: "64200", title: "Commission Expense", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "64000", sortOrder: 154 },
+  { code: "64300", title: "Entertainment, Amusement and Recreation", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "64000", sortOrder: 155 },
+  { code: "65000", title: "TRANSPORTATION AND TRAVEL EXPENSES", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "60000", sortOrder: 156 },
+  { code: "65100", title: "Transportation and Travel", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "65000", sortOrder: 157 },
+  { code: "65200", title: "Fuel and Oil", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "65000", sortOrder: 158 },
+  { code: "66000", title: "TAXES AND LICENSES", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "60000", sortOrder: 159 },
+  { code: "66100", title: "Taxes and Licenses", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "66000", sortOrder: 160 },
+  { code: "67000", title: "DEPRECIATION, AMORTIZATION AND DEPLETION", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "60000", sortOrder: 161 },
+  { code: "67100", title: "Depreciation", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "67000", sortOrder: 162 },
+  { code: "67200", title: "Amortization", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "67000", sortOrder: 163 },
+  { code: "67300", title: "Depletion", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "67000", sortOrder: 164 },
+  { code: "68000", title: "OTHER OPERATING EXPENSES", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "60000", sortOrder: 165 },
+  { code: "68100", title: "Bad Debts Expense", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "68000", sortOrder: 166 },
+
+  // ---------------------------------------------------------- OTHER INCOME
+  { code: "70000", title: "OTHER INCOME", accountType: "HEADING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: null, sortOrder: 167 },
+  { code: "71000", title: "Interest Income", accountType: "POSTING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "70000", sortOrder: 168 },
+  { code: "72000", title: "Rental Income", accountType: "POSTING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "70000", sortOrder: 169 },
+  { code: "73000", title: "Dividend Income", accountType: "POSTING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "70000", sortOrder: 170 },
+  { code: "74000", title: "Gain on Sale of Assets", accountType: "POSTING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "70000", sortOrder: 171 },
+  { code: "75000", title: "Foreign Exchange Gain", accountType: "POSTING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "70000", sortOrder: 172 },
+  { code: "76000", title: "Miscellaneous Income", accountType: "POSTING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "70000", sortOrder: 173 },
+
+  // --------------------------------------------------------- OTHER EXPENSES
+  { code: "80000", title: "OTHER EXPENSES", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: null, sortOrder: 174 },
+  { code: "80100", title: "Interest Expense", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "80000", sortOrder: 175 },
+  { code: "80200", title: "Foreign Exchange Loss", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "80000", sortOrder: 176 },
+  { code: "80300", title: "Loss on Sale of Assets", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "80000", sortOrder: 177 },
+  { code: "80400", title: "Charitable Contributions", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "80000", sortOrder: 178 },
+  { code: "80500", title: "Donation Expense", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "80000", sortOrder: 179 },
+  { code: "80600", title: "Penalties and Surcharges", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "80000", sortOrder: 180 },
+  { code: "80700", title: "Loss Due to Theft", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "80000", sortOrder: 181 },
+  { code: "80800", title: "Prior Period Adjustments", accountType: "POSTING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "80000", sortOrder: 182 },
 ];
