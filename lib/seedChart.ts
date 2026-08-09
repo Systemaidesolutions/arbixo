@@ -1,60 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_CHART_OF_ACCOUNTS, type DefaultAccount } from "@/lib/defaultChartOfAccounts";
+import { DEFAULT_CHART_OF_ACCOUNTS } from "@/lib/defaultChartOfAccounts";
 
 const norm = (s: string) => s.trim().toLowerCase();
-
-// The chart previously seeded into every company, before it was replaced by
-// the client-approved standard chart in defaultChartOfAccounts.ts. Kept only
-// so migrateCompanyToStandardChart() can recognize an untouched old-seed
-// heading (safe to drop and replace with the new code) vs. an account the
-// company actually renamed, restructured, or posted to (never touched).
-const LEGACY_DEFAULT_CHART: DefaultAccount[] = [
-  { code: "10000", title: "ASSETS", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: null, sortOrder: 0 },
-  { code: "11000", title: "CURRENT ASSETS", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "10000", sortOrder: 1 },
-  { code: "11100", title: "Cash and Cash Equivalents", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11000", sortOrder: 2 },
-  { code: "11200", title: "Accounts Receivable", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11000", sortOrder: 3 },
-  { code: "11300", title: "Merchandise Inventory", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11000", sortOrder: 4 },
-  { code: "11400", title: "Prepayments", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11000", sortOrder: 5 },
-  { code: "11500", title: "Input VAT", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11000", sortOrder: 6 },
-  { code: "11600", title: "Other Current Assets", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "11000", sortOrder: 7 },
-  { code: "12200", title: "NON-CURRENT ASSETS", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "10000", sortOrder: 8 },
-  { code: "12010", title: "Land", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "12200", sortOrder: 9 },
-  { code: "12020", title: "Fixed Asset", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "12200", sortOrder: 10 },
-  { code: "12030", title: "Goodwill", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "12200", sortOrder: 11 },
-  { code: "12040", title: "Accumulated Depreciation", accountType: "HEADING", classification: "OTHER_CURRENT_ASSET", normalBalance: "DEBIT", parentCode: "12200", sortOrder: 12 },
-  { code: "20000", title: "LIABILITIES", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: null, sortOrder: 13 },
-  { code: "21000", title: "CURRENT LIABILITIES", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "20000", sortOrder: 14 },
-  { code: "21100", title: "Accounts Payable", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21000", sortOrder: 15 },
-  { code: "21200", title: "Notes Payable", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21000", sortOrder: 16 },
-  { code: "21300", title: "Accrued Expenses", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21000", sortOrder: 17 },
-  { code: "21400", title: "Government Payable", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21000", sortOrder: 18 },
-  { code: "21500", title: "Other Current Liabilities", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "21000", sortOrder: 19 },
-  { code: "22000", title: "NONCURRENT LIABILITY", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "20000", sortOrder: 20 },
-  { code: "22010", title: "Long-term Notes Payable", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "22000", sortOrder: 21 },
-  { code: "22020", title: "Other Non-Current Payable", accountType: "HEADING", classification: "OTHER_CURRENT_LIABILITY", normalBalance: "CREDIT", parentCode: "22000", sortOrder: 22 },
-  { code: "30000", title: "EQUITY", accountType: "HEADING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: null, sortOrder: 23 },
-  { code: "31000", title: "Capital Stock", accountType: "HEADING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "30000", sortOrder: 24 },
-  { code: "31100", title: "Additional Paid-in Capital", accountType: "HEADING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "30000", sortOrder: 25 },
-  { code: "31200", title: "Owner's Capital", accountType: "HEADING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "30000", sortOrder: 26 },
-  { code: "31300", title: "Owner's Drawings", accountType: "HEADING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "30000", sortOrder: 27 },
-  { code: "31400", title: "Retained Earnings", accountType: "HEADING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "30000", sortOrder: 28 },
-  { code: "31500", title: "Current Year Earnings", accountType: "HEADING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "30000", sortOrder: 29 },
-  { code: "31600", title: "Prior Year Adjustments", accountType: "HEADING", classification: "EQUITY_DOES_NOT_CLOSE", normalBalance: "CREDIT", parentCode: "30000", sortOrder: 30 },
-  { code: "40000", title: "REVENUE", accountType: "HEADING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: null, sortOrder: 31 },
-  { code: "41000", title: "Sales", accountType: "HEADING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "40000", sortOrder: 32 },
-  { code: "41110", title: "VATable Sales", accountType: "HEADING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "41000", sortOrder: 33 },
-  { code: "41200", title: "Zero Rated Sales", accountType: "HEADING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "41000", sortOrder: 34 },
-  { code: "41300", title: "Exempt Sales", accountType: "HEADING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "41000", sortOrder: 35 },
-  { code: "41400", title: "Non-VAT Sales", accountType: "HEADING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "41000", sortOrder: 36 },
-  { code: "41040", title: "Sales Returns and Allowances (-)", accountType: "HEADING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "41000", sortOrder: 37 },
-  { code: "41050", title: "Sales Discount (-)", accountType: "HEADING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "41000", sortOrder: 38 },
-  { code: "42000", title: "Other Income", accountType: "HEADING", classification: "REVENUE", normalBalance: "CREDIT", parentCode: "40000", sortOrder: 39 },
-  { code: "50000", title: "COST OF SALES / SERVICES", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: null, sortOrder: 40 },
-  { code: "51000", title: "Cost of Goods Sold", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "50000", sortOrder: 41 },
-  { code: "52000", title: "Cost of Services", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: "50000", sortOrder: 42 },
-  { code: "6000", title: "OPERATING EXPENSES", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: null, sortOrder: 43 },
-  { code: "80000", title: "OTHER EXPENSES", accountType: "HEADING", classification: "EXPENSE", normalBalance: "DEBIT", parentCode: null, sortOrder: 44 },
-];
 
 /**
  * Seeds the default nested heading chart into a company. Safe to run on a
@@ -194,62 +141,49 @@ export async function syncStandardChartForAllCompanies(): Promise<ChartSyncResul
   return results;
 }
 
-export type ChartMigrationResult = ChartSyncResult & {
-  droppedOldCodes: string[];
-  keptOldCodes: string[];
+export type ChartResetResult = ChartSyncResult & {
+  deletedCount: number;
+  keptAccounts: { code: string; title: string }[];
 };
 
 /**
- * Renumbers a company's chart onto the new standard codes: any account that
- * still exactly matches the OLD default seed (title/classification/
- * normalBalance/type all untouched) is dropped so the new code can take its
- * place — the database itself is the safety check here, since a Postgres FK
- * constraint blocks the delete (and this catches it and leaves the row
- * alone) if the account still has children or ledger entries, i.e. if the
- * company actually used or customized it. Runs several passes so a heading
- * only becomes deletable once its own (also-untouched) children are gone.
- * Finishes by laying down the standard chart via syncStandardChartForCompany.
+ * Wipes a company's entire chart of accounts and rebuilds it from scratch
+ * using only the standard chart — no old codes carried over. Every existing
+ * account is deleted, EXCEPT one that a Postgres FK constraint refuses to
+ * let go (it still has ledger entries posted to it, a child account, or a
+ * tax-posting-setup reference) — that's the safety net that keeps this from
+ * destroying real transaction history, and any such account is left in
+ * place and reported back so it can be reviewed manually. Runs several
+ * passes so a heading only becomes deletable once its own children are gone.
  */
-export async function migrateCompanyToStandardChart(companyId: string, companyName: string): Promise<ChartMigrationResult> {
-  const accounts = await prisma.account.findMany({ where: { companyId } });
-  const legacyByCode = new Map(LEGACY_DEFAULT_CHART.map((a) => [a.code, a]));
+export async function resetCompanyToStandardChart(companyId: string, companyName: string): Promise<ChartResetResult> {
+  let candidates = await prisma.account.findMany({ where: { companyId } });
 
-  let candidates = accounts.filter((a) => {
-    const legacy = legacyByCode.get(a.code);
-    return (
-      legacy &&
-      norm(a.title) === norm(legacy.title) &&
-      a.classification === legacy.classification &&
-      a.normalBalance === legacy.normalBalance &&
-      a.accountType === legacy.accountType
-    );
-  });
-
-  const droppedOldCodes: string[] = [];
-  for (let pass = 0; pass < 6 && candidates.length > 0; pass++) {
+  let deletedCount = 0;
+  for (let pass = 0; pass < 8 && candidates.length > 0; pass++) {
     const stillThere: typeof candidates = [];
     for (const a of candidates) {
       try {
         await prisma.account.delete({ where: { id: a.id } });
-        droppedOldCodes.push(a.code);
+        deletedCount++;
       } catch {
         stillThere.push(a);
       }
     }
     candidates = stillThere;
   }
-  const keptOldCodes = candidates.map((a) => a.code);
+  const keptAccounts = candidates.map((a) => ({ code: a.code, title: a.title }));
 
   const syncResult = await syncStandardChartForCompany(companyId, companyName);
-  return { ...syncResult, droppedOldCodes, keptOldCodes };
+  return { ...syncResult, deletedCount, keptAccounts };
 }
 
-/** Runs migrateCompanyToStandardChart across every company. */
-export async function migrateAllCompaniesToStandardChart(): Promise<ChartMigrationResult[]> {
+/** Runs resetCompanyToStandardChart across every company. */
+export async function resetAllCompaniesToStandardChart(): Promise<ChartResetResult[]> {
   const companies = await prisma.company.findMany({ select: { id: true, tradeName: true } });
-  const results: ChartMigrationResult[] = [];
+  const results: ChartResetResult[] = [];
   for (const c of companies) {
-    results.push(await migrateCompanyToStandardChart(c.id, c.tradeName));
+    results.push(await resetCompanyToStandardChart(c.id, c.tradeName));
   }
   return results;
 }
