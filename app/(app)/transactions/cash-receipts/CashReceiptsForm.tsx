@@ -11,12 +11,22 @@ import { TransactionSearch } from "@/components/TransactionSearch";
 
 type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; referenceNo: string; lineDescription: string };
 type Attachment = { fileName: string; contentType: string; sizeBytes: number; data: string };
+type ScannedReceipt = { date: string | null; payorName: string | null; referenceNo: string | null; totalAmount: number; vatType: VatType; particulars: string | null; confidence: "high" | "medium" | "low" };
 
 const VAT_LABEL: Partial<Record<VatType, string>> = { VAT_12: "12% VAT", ZERO_RATED: "Zero-Rated", VAT_EXEMPT: "VAT Exempt", NON_VAT: "Non-VAT" };
 const uid = () => crypto.randomUUID();
 const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT", amount: 0, amountIsGross: true, atcCodeId: null, referenceNo: "", lineDescription: "" });
 const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const MAX_FILE = 3_000_000;
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
 
 export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, employees, contacts, customers, atcCodes, locations, suggestedDocumentNo }: {
   companyId: string; accounts: Account[]; cashAccounts: Account[]; vendors: Vendor[]; employees: Employee[]; contacts: Contact[]; customers: Customer[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
@@ -38,6 +48,10 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
   const [employeeList, setEmployeeList] = useState(employees);
   const [contactList, setContactList] = useState(contacts);
   const [customerList, setCustomerList] = useState(customers);
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
+  const [scanPayorHint, setScanPayorHint] = useState<string | null>(null);
 
   const atcById = useMemo(() => new Map(atcCodes.map((a) => [a.id, a])), [atcCodes]);
   function onPartyCreated(type: CounterpartyType, record: Vendor | Employee | Contact | Customer) {
@@ -71,6 +85,74 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
       if (f.size > MAX_FILE) { setAttachError(`"${f.name}" is too large (max 3 MB).`); continue; }
       const data = await new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result as string); r.onerror = reject; r.readAsDataURL(f); });
       setAttachments((prev) => [...prev, { fileName: f.name, contentType: f.type, sizeBytes: f.size, data }]);
+    }
+  }
+
+  async function scanReceipt(fileList: FileList | null) {
+    const file = fileList?.[0];
+    if (!file) return;
+    setScanError(null);
+    setScanNotice(null);
+    setScanPayorHint(null);
+    if (file.size > MAX_FILE) {
+      setScanError("Photo is too large (max 3 MB).");
+      return;
+    }
+    setScanning(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const res = await fetch("/api/transactions/scan-receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: dataUrl }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setScanError(data?.error ?? "Could not read this receipt.");
+        return;
+      }
+      const scanned = data as ScannedReceipt;
+
+      if (scanned.date) setPostingDate(scanned.date);
+
+      if (scanned.payorName) {
+        const needle = scanned.payorName.trim().toLowerCase();
+        const matches = customerList.filter((c) => {
+          const name = [c.registeredName, c.tradeName].filter(Boolean).join(" ").toLowerCase();
+          return name.includes(needle) || needle.includes(name);
+        });
+        if (matches.length === 1) {
+          setCounterpartyType("CUSTOMER");
+          setCounterpartyId(matches[0].id);
+        } else {
+          setScanPayorHint(scanned.payorName);
+        }
+      }
+
+      setLines((prev) => {
+        const first = prev[0];
+        const patched: LineState = {
+          ...first,
+          amount: scanned.totalAmount,
+          vatType: scanned.vatType,
+          amountIsGross: true,
+          referenceNo: scanned.referenceNo ?? first.referenceNo,
+          lineDescription: scanned.particulars ?? first.lineDescription,
+        };
+        return [patched, ...prev.slice(1)];
+      });
+
+      setAttachments((prev) => [...prev, { fileName: file.name, contentType: file.type, sizeBytes: file.size, data: dataUrl }]);
+
+      setScanNotice(
+        scanned.confidence === "low"
+          ? "Extracted from the receipt, but the photo was hard to read — please double-check every field before saving."
+          : "Extracted from the receipt — please review the account and details below before saving."
+      );
+    } catch {
+      setScanError("Could not reach the scanning service. Check your connection and try again.");
+    } finally {
+      setScanning(false);
     }
   }
 
@@ -109,10 +191,31 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
         <h1 className="text-xl font-medium text-neutral-900">Cash Receipts</h1>
         <div className="flex shrink-0 items-center gap-2">
           <TransactionSearch companyId={companyId} journalType="CASH_RECEIPT" title="Cash Receipts — search" />
+          <label className="shrink-0 cursor-pointer rounded border border-brand-blue px-3 py-1.5 text-sm font-medium text-brand-blue hover:bg-blue-50">
+            {scanning ? "Scanning…" : "📷 Scan receipt"}
+            <input
+              type="file"
+              accept="image/*"
+              disabled={scanning}
+              className="hidden"
+              onChange={(e) => { scanReceipt(e.target.files); e.currentTarget.value = ""; }}
+            />
+          </label>
           <a href="/transactions/cash-receipts/import" className="shrink-0 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Import from Excel</a>
         </div>
       </div>
       <p className="mt-1 text-sm text-neutral-500">Every peso received — cash sales, collections on account, other income.</p>
+      {scanError && <p className="mt-2 text-sm text-red-600">{scanError}</p>}
+      {scanNotice && (
+        <p className="mt-2 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+          {scanNotice}
+          {scanPayorHint && (
+            <>
+              {" "}The receipt shows payor <span className="font-medium">&quot;{scanPayorHint}&quot;</span> — no matching customer found, pick or create one below.
+            </>
+          )}
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
         <div className="grid grid-cols-1 gap-3 rounded-lg border border-neutral-200 p-4 sm:grid-cols-3">
