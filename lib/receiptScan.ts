@@ -99,7 +99,8 @@ async function scanWithGemini(imageBase64: string, mediaType: string, apiKey: st
       }),
       signal: AbortSignal.timeout(45000),
     });
-  } catch {
+  } catch (err) {
+    console.error("[receiptScan] fetch failed:", err);
     throw new ReceiptScanFailedError("Could not reach the scanning service. Check your connection and try again.");
   }
 
@@ -171,7 +172,8 @@ async function scanWithAnthropic(imageBase64: string, mediaType: string, apiKey:
       }),
       signal: AbortSignal.timeout(45000),
     });
-  } catch {
+  } catch (err) {
+    console.error("[receiptScan] fetch failed:", err);
     throw new ReceiptScanFailedError("Could not reach the scanning service. Check your connection and try again.");
   }
 

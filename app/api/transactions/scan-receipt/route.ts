@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { effectiveCompanyId, getCurrentCapability } from "@/lib/currentUser";
 import { scanReceiptImage, ReceiptScanUnavailableError, ReceiptScanFailedError } from "@/lib/receiptScan";
 
+// Without this, real (multi-second-to-process) photos hit Vercel's default
+// function timeout before the vision API responds — the function gets
+// killed outright, showing up as an edge-layer 502 with nothing logged,
+// rather than the graceful "could not read" error from lib/receiptScan.ts.
+// Must stay above receiptScan.ts's own 45s AbortSignal.timeout.
+export const maxDuration = 60;
+
 // Matches the ~3 MB raw-file cap enforced client-side, inflated by base64's
 // ~4/3 ratio plus slack for the data-URL prefix.
 const MAX_IMAGE_BASE64_LENGTH = 4_500_000;
