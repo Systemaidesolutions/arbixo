@@ -28,6 +28,9 @@ export class ReceiptScanUnavailableError extends Error {}
 export class ReceiptScanFailedError extends Error {}
 
 const VAT_TYPES: VatType[] = ["VAT_12", "ZERO_RATED", "VAT_EXEMPT", "NON_VAT"];
+// 429 = rate-limited, 503 = provider momentarily overloaded — both are
+// worth a friendlier "try again" message rather than a flat failure.
+const RETRYABLE_STATUSES = new Set([429, 503]);
 
 const EXTRACTION_PROMPT =
   "Extract this receipt's details for a Philippine cash receipt transaction. If a field truly isn't shown or legible, use null rather than guessing.";
@@ -103,7 +106,7 @@ async function scanWithGemini(imageBase64: string, mediaType: string, apiKey: st
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     console.error(`[receiptScan] Gemini API returned ${res.status}: ${body.slice(0, 500)}`);
-    throw new ReceiptScanFailedError(res.status === 429 ? "Scanning is busy right now — try again in a moment." : "Could not read this receipt.");
+    throw new ReceiptScanFailedError(RETRYABLE_STATUSES.has(res.status) ? "Scanning is busy right now — try again in a moment." : "Could not read this receipt.");
   }
 
   const data = (await res.json().catch(() => null)) as { candidates?: { content?: { parts?: { text?: string }[] } }[] } | null;
@@ -175,7 +178,7 @@ async function scanWithAnthropic(imageBase64: string, mediaType: string, apiKey:
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     console.error(`[receiptScan] Anthropic API returned ${res.status}: ${body.slice(0, 500)}`);
-    throw new ReceiptScanFailedError(res.status === 429 ? "Scanning is busy right now — try again in a moment." : "Could not read this receipt.");
+    throw new ReceiptScanFailedError(RETRYABLE_STATUSES.has(res.status) ? "Scanning is busy right now — try again in a moment." : "Could not read this receipt.");
   }
 
   const data = (await res.json().catch(() => null)) as { content?: { type: string; name?: string; input?: Record<string, unknown> }[] } | null;
