@@ -8,10 +8,16 @@ import type { VatType } from "@prisma/client";
 // input + a forced structured-output schema so the shape is identical either
 // way — see ScannedReceipt.
 
-// "-latest" alias so this doesn't need to be updated by hand as Google
-// ships new Gemini versions (verified 2026-08-14: pinned "gemini-2.0-flash"
-// was already gone from the model list by then).
-const GEMINI_MODEL = "gemini-flash-latest";
+// "-lite-latest" rather than plain "-latest": Google's newest full model
+// (currently what "gemini-flash-latest" resolves to) was seeing frequent
+// 503 "high demand" rejections and slow responses on free-tier traffic —
+// confirmed by hand, repeated direct calls to the lite model were
+// consistently fast (~1-1.5s) with none of that. A lite model is plenty
+// capable for structured field extraction, which doesn't need heavy
+// reasoning. Still an alias, not a pinned version, for the same reason as
+// before (verified 2026-08-14: pinned "gemini-2.0-flash" was already gone
+// from the model list by then).
+const GEMINI_MODEL = "gemini-flash-lite-latest";
 const ANTHROPIC_MODEL = "claude-opus-4-8";
 
 export type ScannedReceipt = {
