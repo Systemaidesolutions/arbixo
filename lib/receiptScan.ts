@@ -28,9 +28,14 @@ export class ReceiptScanUnavailableError extends Error {}
 export class ReceiptScanFailedError extends Error {}
 
 const VAT_TYPES: VatType[] = ["VAT_12", "ZERO_RATED", "VAT_EXEMPT", "NON_VAT"];
-// 429 = rate-limited, 503 = provider momentarily overloaded — both are
-// worth a friendlier "try again" message rather than a flat failure.
+// 429 = rate-limited, 503 = provider momentarily overloaded — both are worth
+// a couple of quick automatic retries rather than failing outright; free-
+// tier Gemini in particular sees brief "high demand" 503 bursts that clear
+// up within a second or two.
 const RETRYABLE_STATUSES = new Set([429, 503]);
+const MAX_ATTEMPTS = 3;
+const ATTEMPT_TIMEOUT_MS = 15000;
+const RETRY_DELAYS_MS = [1000, 2000];
 
 const EXTRACTION_PROMPT =
   "Extract this receipt's details for a Philippine cash receipt transaction. If a field truly isn't shown or legible, use null rather than guessing.";
@@ -64,6 +69,35 @@ function normalize(input: RawExtraction | undefined): ScannedReceipt {
   };
 }
 
+type Attempt = { ok: true; res: Response } | { ok: false; retryable: boolean; message: string };
+
+async function attemptFetch(url: string, init: RequestInit, logPrefix: string): Promise<Attempt> {
+  try {
+    const res = await fetch(url, { ...init, signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS) });
+    if (res.ok) return { ok: true, res };
+    const body = await res.text().catch(() => "");
+    console.error(`[receiptScan] ${logPrefix} returned ${res.status}: ${body.slice(0, 500)}`);
+    const retryable = RETRYABLE_STATUSES.has(res.status);
+    return { ok: false, retryable, message: retryable ? "Scanning is busy right now — try again in a moment." : "Could not read this receipt." };
+  } catch (err) {
+    console.error(`[receiptScan] ${logPrefix} fetch failed:`, err);
+    return { ok: false, retryable: true, message: "Could not reach the scanning service. Check your connection and try again." };
+  }
+}
+
+/** Retries up to MAX_ATTEMPTS times on a retryable failure (rate-limited, momentarily overloaded, or unreachable), with a short backoff between tries. */
+async function fetchWithRetry(url: string, init: RequestInit, logPrefix: string): Promise<Response> {
+  let lastMessage = "Could not read this receipt.";
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const result = await attemptFetch(url, init, logPrefix);
+    if (result.ok) return result.res;
+    lastMessage = result.message;
+    if (!result.retryable || attempt === MAX_ATTEMPTS - 1) break;
+    await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt] ?? 2000));
+  }
+  throw new ReceiptScanFailedError(lastMessage);
+}
+
 async function scanWithGemini(imageBase64: string, mediaType: string, apiKey: string): Promise<ScannedReceipt> {
   const schema = {
     type: "OBJECT",
@@ -84,9 +118,9 @@ async function scanWithGemini(imageBase64: string, mediaType: string, apiKey: st
     required: ["totalAmount", "vatType", "confidence"],
   };
 
-  let res: Response;
-  try {
-    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
+  const res = await fetchWithRetry(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+    {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -97,18 +131,9 @@ async function scanWithGemini(imageBase64: string, mediaType: string, apiKey: st
         ],
         generationConfig: { responseMimeType: "application/json", responseSchema: schema },
       }),
-      signal: AbortSignal.timeout(45000),
-    });
-  } catch (err) {
-    console.error("[receiptScan] fetch failed:", err);
-    throw new ReceiptScanFailedError("Could not reach the scanning service. Check your connection and try again.");
-  }
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    console.error(`[receiptScan] Gemini API returned ${res.status}: ${body.slice(0, 500)}`);
-    throw new ReceiptScanFailedError(RETRYABLE_STATUSES.has(res.status) ? "Scanning is busy right now — try again in a moment." : "Could not read this receipt.");
-  }
+    },
+    "Gemini API"
+  );
 
   const data = (await res.json().catch(() => null)) as { candidates?: { content?: { parts?: { text?: string }[] } }[] } | null;
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -146,9 +171,9 @@ async function scanWithAnthropic(imageBase64: string, mediaType: string, apiKey:
     },
   };
 
-  let res: Response;
-  try {
-    res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetchWithRetry(
+    "https://api.anthropic.com/v1/messages",
+    {
       method: "POST",
       headers: {
         "x-api-key": apiKey,
@@ -170,18 +195,9 @@ async function scanWithAnthropic(imageBase64: string, mediaType: string, apiKey:
           },
         ],
       }),
-      signal: AbortSignal.timeout(45000),
-    });
-  } catch (err) {
-    console.error("[receiptScan] fetch failed:", err);
-    throw new ReceiptScanFailedError("Could not reach the scanning service. Check your connection and try again.");
-  }
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    console.error(`[receiptScan] Anthropic API returned ${res.status}: ${body.slice(0, 500)}`);
-    throw new ReceiptScanFailedError(RETRYABLE_STATUSES.has(res.status) ? "Scanning is busy right now — try again in a moment." : "Could not read this receipt.");
-  }
+    },
+    "Anthropic API"
+  );
 
   const data = (await res.json().catch(() => null)) as { content?: { type: string; name?: string; input?: Record<string, unknown> }[] } | null;
   const toolUse = data?.content?.find((b) => b.type === "tool_use" && b.name === "extract_receipt");
