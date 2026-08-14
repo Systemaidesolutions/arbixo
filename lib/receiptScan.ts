@@ -33,9 +33,13 @@ const VAT_TYPES: VatType[] = ["VAT_12", "ZERO_RATED", "VAT_EXEMPT", "NON_VAT"];
 // tier Gemini in particular sees brief "high demand" 503 bursts that clear
 // up within a second or two.
 const RETRYABLE_STATUSES = new Set([429, 503]);
-const MAX_ATTEMPTS = 3;
-const ATTEMPT_TIMEOUT_MS = 15000;
-const RETRY_DELAYS_MS = [1000, 2000];
+// A real photo can genuinely take 20-30s+ to process (a lot more than the
+// tiny test images this was first tuned against), so each attempt needs
+// real headroom — 2 attempts at 40s beats 3 at 15s, since a too-short
+// per-attempt timeout just kills a call that was about to succeed.
+const MAX_ATTEMPTS = 2;
+const ATTEMPT_TIMEOUT_MS = 40000;
+const RETRY_DELAYS_MS = [1500];
 
 const EXTRACTION_PROMPT =
   "Extract this receipt's details for a Philippine cash receipt transaction. If a field truly isn't shown or legible, use null rather than guessing.";

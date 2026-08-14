@@ -6,8 +6,9 @@ import { scanReceiptImage, ReceiptScanUnavailableError, ReceiptScanFailedError }
 // function timeout before the vision API responds — the function gets
 // killed outright, showing up as an edge-layer 502 with nothing logged,
 // rather than the graceful "could not read" error from lib/receiptScan.ts.
-// Must stay above receiptScan.ts's own 45s AbortSignal.timeout.
-export const maxDuration = 60;
+// Must comfortably exceed receiptScan.ts's own worst case: 2 attempts at
+// 40s each plus a short retry delay (~82s).
+export const maxDuration = 100;
 
 // Matches the ~3 MB raw-file cap enforced client-side, inflated by base64's
 // ~4/3 ratio plus slack for the data-URL prefix.
