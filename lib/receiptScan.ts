@@ -81,6 +81,8 @@ export async function scanReceiptImage(imageBase64: string, mediaType: string): 
   }
 
   if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error(`[receiptScan] Anthropic API returned ${res.status}: ${body.slice(0, 500)}`);
     throw new ReceiptScanFailedError(res.status === 429 ? "Scanning is busy right now — try again in a moment." : "Could not read this receipt.");
   }
 
