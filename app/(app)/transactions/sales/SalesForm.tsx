@@ -30,6 +30,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
   const [postingDate, setPostingDate] = useState(todayLocal());
   const [locationId, setLocationId] = useLastBranch(companyId, locations);
   const [documentNo, setDocumentNo] = useState(suggestedDocumentNo);
+  const [checkNo, setCheckNo] = useState("");
   const [isReturn, setIsReturn] = useState(false);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [receivableAccountId, setReceivableAccountId] = useState(receivableAccounts[0]?.id ?? "");
@@ -87,7 +88,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
     const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=SALES_ON_ACCOUNT`);
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
-    setCustomerId(null); setPaymentTerms(""); setDueDate(todayLocal()); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setCheckNo(""); setCustomerId(null); setPaymentTerms(""); setDueDate(todayLocal()); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
     setPosted(false); setError(null); setSuccess(null);
   }
 
@@ -96,7 +97,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
   async function post(retain: boolean) {
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
-      companyId, locationId: locationId || null, documentNo, postingDate, isReturn,
+      companyId, locationId: locationId || null, documentNo, checkNo: checkNo || null, postingDate, isReturn,
       counterpartyType: "CUSTOMER" as const, counterpartyId: customerId, receivableAccountId, particulars: "", paymentTerms: paymentTerms || null, dueDate: dueDate || null,
       lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, referenceNo: l.referenceNo || null, lineDescription: l.lineDescription || null })),
       attachments,
@@ -127,12 +128,13 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
         {/* Header */}
-        <div className="grid grid-cols-1 gap-3 rounded-lg border border-neutral-200 p-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 rounded-lg border border-neutral-200 p-4 sm:grid-cols-4">
           <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => onDateChange(e.target.value)} className={field} /></label>
           <label className={label}>{isReturn ? "CM no." : "Invoice no."}<input required value={documentNo} onChange={(e) => setDocumentNo(e.target.value)} className={`${field} font-mono`} /></label>
+          <label className={label}>Check no. (optional)<input value={checkNo} onChange={(e) => setCheckNo(e.target.value)} className={field} /></label>
           <label className={label}>Branch<select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={field}><option value="">—</option>{locations.map((l) => <option key={l.id} value={l.id}>{branchOptionLabel(l)}</option>)}</select></label>
 
-          <label className="flex items-center gap-2 text-xs text-neutral-500 sm:col-span-3">
+          <label className="flex items-center gap-2 text-xs text-neutral-500 sm:col-span-4">
             <input type="checkbox" checked={isReturn} onChange={(e) => setIsReturn(e.target.checked)} /> Sales return (reverses the entry below)
           </label>
 
@@ -144,7 +146,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
           <label className={label}>Due date<input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} /></label>
 
           {/* Attachments */}
-          <div className="sm:col-span-3">
+          <div className="sm:col-span-4">
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-xs text-neutral-500">Attachments</span>
               <label className="cursor-pointer rounded border border-neutral-300 px-3 py-1 text-xs text-neutral-700 hover:bg-neutral-50">

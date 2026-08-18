@@ -34,6 +34,7 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
   const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
   const [locationId, setLocationId] = useLastBranch(companyId, locations);
   const [documentNo, setDocumentNo] = useState(suggestedDocumentNo);
+  const [checkNo, setCheckNo] = useState("");
   const [counterpartyType, setCounterpartyType] = useState<CounterpartyType | null>("CUSTOMER");
   const [counterpartyId, setCounterpartyId] = useState<string | null>(null);
   const [cashAccountId, setCashAccountId] = useState(cashAccounts[0]?.id ?? "");
@@ -160,14 +161,14 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
     const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=CASH_RECEIPT`);
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
-    setCounterpartyId(null); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setCheckNo(""); setCounterpartyId(null); setLines([newLine()]); setAttachments([]); setAttachError(null);
     setPosted(false); setError(null); setSuccess(null);
   }
 
   async function post(retain: boolean) {
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
-      companyId, locationId: locationId || null, documentNo, postingDate,
+      companyId, locationId: locationId || null, documentNo, checkNo: checkNo || null, postingDate,
       counterpartyType, counterpartyId, cashAccountId, particulars: "",
       lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, referenceNo: l.referenceNo || null, lineDescription: l.lineDescription || null })),
       attachments,
@@ -218,17 +219,18 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
       )}
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-        <div className="grid grid-cols-1 gap-3 rounded-lg border border-neutral-200 p-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 rounded-lg border border-neutral-200 p-4 sm:grid-cols-4">
           <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => setPostingDate(e.target.value)} className={field} /></label>
           <label className={label}>OR no.<input required value={documentNo} onChange={(e) => setDocumentNo(e.target.value)} className={`${field} font-mono`} /></label>
+          <label className={label}>Check no. (optional)<input value={checkNo} onChange={(e) => setCheckNo(e.target.value)} className={field} /></label>
           <label className={label}>Branch<select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={field}><option value="">—</option>{locations.map((l) => <option key={l.id} value={l.id}>{branchOptionLabel(l)}</option>)}</select></label>
 
-          <div className="sm:col-span-2">
+          <div className="sm:col-span-3">
             <CounterpartyPicker counterpartyType={counterpartyType} counterpartyId={counterpartyId} onTypeChange={setCounterpartyType} onIdChange={setCounterpartyId} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} types={["CUSTOMER", "VENDOR", "EMPLOYEE", "CONTACT"]} label="Payor" companyId={companyId} onCreated={onPartyCreated} showDetails />
           </div>
           <label className={label}>Cash account<select required value={cashAccountId} onChange={(e) => setCashAccountId(e.target.value)} className={field}>{cashAccounts.length === 0 && <option value="">No Cash accounts yet</option>}{cashAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
 
-          <div className="sm:col-span-3">
+          <div className="sm:col-span-4">
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-xs text-neutral-500">Attachments</span>
               <label className="cursor-pointer rounded border border-neutral-300 px-3 py-1 text-xs text-neutral-700 hover:bg-neutral-50">+ Add file

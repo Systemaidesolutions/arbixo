@@ -107,7 +107,10 @@ export default async function VoucherPage({ params }: { params: { journalType: s
         <tbody>
           <tr>
             <td className={`w-2/3 border-b border-r border-neutral-800 px-2 py-1`}><span className="font-semibold">{meta.partyLabel}</span> &nbsp;: {partyName}</td>
-            <td className={`border-b border-neutral-800 px-2 py-1`}><span className="font-semibold">Date:</span> {new Date(entries[0].postingDate).toLocaleDateString()}</td>
+            <td className={`border-b border-neutral-800 px-2 py-1`}>
+              <span className="font-semibold">Date:</span> {new Date(entries[0].postingDate).toLocaleDateString()}
+              <span className="ml-3 font-semibold">Check No:</span> {checkNo || "—"}
+            </td>
           </tr>
           <tr><td colSpan={2} className={`border-b border-neutral-800 px-2 py-1`}><span className="font-semibold">Address</span> : {partyAddress}</td></tr>
           <tr><td colSpan={2} className={`px-2 py-1`}><span className="font-semibold">TIN</span> &nbsp;&nbsp;&nbsp;&nbsp;: {partyTin}</td></tr>
@@ -179,7 +182,6 @@ export default async function VoucherPage({ params }: { params: { journalType: s
           <div><span className="font-semibold">Pesos</span> : {pesosInWords(particularsTotal)}</div>
           <div className="mt-4 border-t border-neutral-300 pt-1">
             <span className="font-semibold">Bank</span> : {journalType === "CASH_DISBURSEMENT" ? "" : "—"}
-            <span className="ml-3 font-semibold">Check No:</span> {checkNo || "—"}
           </div>
           <div className="mt-2 font-semibold">Received Payment by</div>
           <div className="mt-auto pt-8 text-center text-[10px] text-neutral-500">_______________________</div>

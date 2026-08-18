@@ -40,20 +40,20 @@ export const VAT_JOURNALS: Record<VatJournalKey, VatJournalConfig> = {
     key: "CASH_RECEIPT", path: "cash-receipts", title: "Cash Receipt", refLabel: "OR No",
     journalType: "CASH_RECEIPT", documentType: "RECEIPT", direction: "CREDIT", balancingSide: "debit",
     balancingHeader: "Cash Account Code", balancingLabel: "Cash account", defaultParty: null,
-    hasCheck: false, hasReturn: false, zeroMessage: "Computed cash amount is zero or negative — check the line amounts.",
+    hasCheck: true, hasReturn: false, zeroMessage: "Computed cash amount is zero or negative — check the line amounts.",
   },
   SALES_ON_ACCOUNT: {
     key: "SALES_ON_ACCOUNT", path: "sales", title: "Sales", refLabel: "Invoice No",
     journalType: "SALES_ON_ACCOUNT", documentType: "INVOICE", returnDocumentType: "CREDIT_MEMO",
     direction: "CREDIT", balancingSide: "debit", balancingHeader: "Receivable Account Code",
-    balancingLabel: "Receivable account", defaultParty: "CUSTOMER", hasCheck: false, hasReturn: true,
+    balancingLabel: "Receivable account", defaultParty: "CUSTOMER", hasCheck: true, hasReturn: true,
     zeroMessage: "Computed receivable amount is zero or negative — check the line amounts.",
   },
   PURCHASE_ON_ACCOUNT: {
     key: "PURCHASE_ON_ACCOUNT", path: "purchases", title: "Purchase", refLabel: "PV No",
     journalType: "PURCHASE_ON_ACCOUNT", documentType: "PURCHASE", returnDocumentType: "CREDIT_MEMO",
     direction: "DEBIT", balancingSide: "credit", balancingHeader: "Payable Account Code",
-    balancingLabel: "Payable account", defaultParty: "VENDOR", hasCheck: false, hasReturn: true,
+    balancingLabel: "Payable account", defaultParty: "VENDOR", hasCheck: true, hasReturn: true,
     zeroMessage: "Computed payable amount is zero or negative — check the line amounts.",
   },
 };

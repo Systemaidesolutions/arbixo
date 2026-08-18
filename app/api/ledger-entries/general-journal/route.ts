@@ -36,6 +36,7 @@ type RequestBody = {
   companyId: string;
   locationId?: string | null;
   documentNo: string; // JV no.
+  checkNo?: string | null;
   postingDate: string;
   particulars?: string | null;
   dueDate?: string | null;
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
 
   const { companyId, documentNo, postingDate, lines } = body;
-  const textErr = firstSpecialCharError({ "Document no.": documentNo, Particulars: body.particulars });
+  const textErr = firstSpecialCharError({ "Document no.": documentNo, "Check no.": body.checkNo, Particulars: body.particulars });
   if (textErr) return NextResponse.json({ error: textErr }, { status: 400 });
   if (!companyId || !documentNo || !postingDate || !lines || lines.length < 2) {
     return NextResponse.json(
@@ -95,6 +96,7 @@ export async function POST(request: NextRequest) {
       description: body.particulars ?? null,
       lineDescription: line.description ?? null,
       referenceNo: line.referenceNo ?? null,
+      checkNo: body.checkNo ?? null,
       dueDate: body.dueDate ?? null,
       ...counterpartyFields(line.counterpartyType, line.counterpartyId),
       vatType: line.vatType ?? null,

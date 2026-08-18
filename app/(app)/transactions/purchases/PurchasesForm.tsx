@@ -26,6 +26,7 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, e
   const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
   const [locationId, setLocationId] = useLastBranch(companyId, locations);
   const [documentNo, setDocumentNo] = useState(suggestedDocumentNo);
+  const [checkNo, setCheckNo] = useState("");
   const [isReturn, setIsReturn] = useState(false);
   const [vendorId, setVendorId] = useState<string | null>(null);
   const [payableAccountId, setPayableAccountId] = useState(payableAccounts[0]?.id ?? "");
@@ -100,14 +101,14 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, e
     const nextRes = await fetch(`/api/ledger-entries/next-document-no?companyId=${companyId}&journalType=PURCHASE_ON_ACCOUNT`);
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
-    setVendorId(null); setPaymentTerms(""); setDueDate(postingDate); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setCheckNo(""); setVendorId(null); setPaymentTerms(""); setDueDate(postingDate); setIsReturn(false); setLines([newLine()]); setAttachments([]); setAttachError(null);
     setPosted(false); setError(null); setSuccess(null);
   }
 
   async function post(retain: boolean) {
     setSaving(true); setError(null); setSuccess(null);
     const payload = {
-      companyId, locationId: locationId || null, documentNo, postingDate, isReturn,
+      companyId, locationId: locationId || null, documentNo, checkNo: checkNo || null, postingDate, isReturn,
       counterpartyType: "VENDOR" as const, counterpartyId: vendorId, payableAccountId, particulars: "", paymentTerms: paymentTerms || null, dueDate: dueDate || null,
       lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, taxSource: l.taxSource, referenceNo: l.referenceNo || null, lineDescription: l.lineDescription || null, counterpartyType: l.showParty ? l.counterpartyType : null, counterpartyId: l.showParty ? l.counterpartyId : null })),
       attachments,
@@ -140,12 +141,13 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, e
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
         {/* Header */}
-        <div className="grid grid-cols-1 gap-3 rounded-lg border border-neutral-200 p-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 rounded-lg border border-neutral-200 p-4 sm:grid-cols-4">
           <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => onDateChange(e.target.value)} className={field} /></label>
           <label className={label}>{isReturn ? "CM no." : "PV no."}<input required value={documentNo} onChange={(e) => setDocumentNo(e.target.value)} className={`${field} font-mono`} /></label>
+          <label className={label}>Check no. (optional)<input value={checkNo} onChange={(e) => setCheckNo(e.target.value)} className={field} /></label>
           <label className={label}>Branch<select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={field}><option value="">—</option>{locations.map((l) => <option key={l.id} value={l.id}>{branchOptionLabel(l)}</option>)}</select></label>
 
-          <label className="flex items-center gap-2 text-xs text-neutral-500 sm:col-span-3">
+          <label className="flex items-center gap-2 text-xs text-neutral-500 sm:col-span-4">
             <input type="checkbox" checked={isReturn} onChange={(e) => setIsReturn(e.target.checked)} /> Purchase return (reverses the entry below)
           </label>
 
@@ -157,7 +159,7 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, e
           <label className={label}>Due date<input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} /></label>
 
           {/* Attachments */}
-          <div className="sm:col-span-3">
+          <div className="sm:col-span-4">
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-xs text-neutral-500">Attachments</span>
               <label className="cursor-pointer rounded border border-neutral-300 px-3 py-1 text-xs text-neutral-700 hover:bg-neutral-50">
