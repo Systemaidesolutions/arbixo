@@ -116,6 +116,8 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
   function handleSubmit(e: React.FormEvent) { e.preventDefault(); post(false); }
   // Print the voucher of the already-saved document (no posting).
   function printVoucher() { window.open(`/transactions/voucher/CASH_DISBURSEMENT/${encodeURIComponent(documentNo)}?_embed=1`, "_blank"); }
+  // Print the check itself (payee, amount in words/figures, signature line) of the already-saved document.
+  function printCheck() { window.open(`/transactions/check/${encodeURIComponent(documentNo)}?_embed=1`, "_blank"); }
 
   const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const label = "block text-xs text-neutral-500";
@@ -227,6 +229,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
           <button type="submit" disabled={saving || posted} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save & new"}</button>
           <button type="button" onClick={() => post(true)} disabled={saving || posted} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save</button>
           <button type="button" onClick={printVoucher} disabled={saving || !posted} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Print voucher</button>
+          <button type="button" onClick={printCheck} disabled={saving || !posted} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Print check</button>
           <button type="button" onClick={print2307} disabled={saving || !posted} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Print 2307</button>
           {posted && <button type="button" onClick={resetForm} className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">New</button>}
         </div>
