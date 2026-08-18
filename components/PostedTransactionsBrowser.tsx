@@ -96,6 +96,8 @@ export function PostedTransactionsBrowser({
   };
   const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
+  const isCashDisbursement = journalType === "CASH_DISBURSEMENT";
+  const printCheck = (docNo: string) => window.open(`/transactions/check/${encodeURIComponent(docNo)}?_embed=1`, "_blank");
 
   return (
     <main className="mx-auto max-w-6xl p-4 sm:p-8">
@@ -154,11 +156,12 @@ export function PostedTransactionsBrowser({
               <th className="px-3 py-2 text-right">Amount</th>
               <th className="px-3 py-2">Files</th>
               <th className="px-3 py-2">Status</th>
+              {isCashDisbursement && <th className="px-3 py-2"></th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
             {!loading && rows.length === 0 ? (
-              <tr><td colSpan={9} className="px-3 py-10 text-center text-sm text-neutral-400">No transactions found.</td></tr>
+              <tr><td colSpan={isCashDisbursement ? 10 : 9} className="px-3 py-10 text-center text-sm text-neutral-400">No transactions found.</td></tr>
             ) : (
               rows.map((d) => (
                 <tr key={d.documentNo} onClick={() => openDoc(d.documentNo)} className="cursor-pointer hover:bg-blue-50">
@@ -183,6 +186,17 @@ export function PostedTransactionsBrowser({
                   <td className="px-3 py-1.5 text-xs">
                     {d.isCancelled ? <span className="text-red-500">Cancelled</span> : <span className="text-neutral-400">Posted</span>}
                   </td>
+                  {isCashDisbursement && (
+                    <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => printCheck(d.documentNo)}
+                        className="whitespace-nowrap rounded border border-brand-blue px-2 py-1 text-xs font-medium text-brand-blue hover:bg-blue-50"
+                      >
+                        Print check
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
