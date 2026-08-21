@@ -846,6 +846,7 @@ model LedgerEntry {
   @@index([vendorId])
   @@index([employeeId])
   @@index([contactId])
+  @@index([agentId])
   @@index([locationId])
 }
 
