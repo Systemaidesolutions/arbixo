@@ -6,6 +6,7 @@ import { MissingPostingAccountError, type ExpandInputLine } from "@/lib/vatLineE
 import { postVatJournal, ZeroBalanceError } from "@/lib/vatJournals";
 import { saveAttachments, type AttachmentInput } from "@/lib/transactionAttachments";
 import { firstSpecialCharError } from "@/lib/textValidation";
+import { recordReceivableApplications, ApplicationOverLimitError, type ApplicationInput } from "@/lib/receivableApplications";
 import type { CounterpartyType } from "@prisma/client";
 
 type RequestBody = {
@@ -22,6 +23,11 @@ type RequestBody = {
   dueDate?: string | null;
   lines: ExpandInputLine[];
   attachments?: AttachmentInput[];
+  // Which posted Sales on Account invoice(s) this receipt pays off, and how
+  // much of the receipt applies to each — only meaningful when
+  // counterpartyType is CUSTOMER. Optional: a receipt can also just be an
+  // on-account payment with nothing applied yet.
+  applications?: ApplicationInput[];
 };
 
 export async function POST(request: NextRequest) {
@@ -63,13 +69,29 @@ export async function POST(request: NextRequest) {
     if (body.attachments?.length) {
       await saveAttachments(companyId, "CASH_RECEIPT", documentNo, body.attachments, auth.user.id);
     }
+
+    let applicationError: string | null = null;
+    if (body.counterpartyType === "CUSTOMER" && body.counterpartyId && body.applications?.length) {
+      try {
+        await recordReceivableApplications(companyId, body.counterpartyId, documentNo, body.applications, auth.user.id);
+      } catch (err) {
+        // The receipt itself already posted successfully at this point — don't
+        // fail the whole request (that would read as "nothing happened" and
+        // invite a duplicate post). Surface it as a warning instead.
+        applicationError =
+          err instanceof ApplicationOverLimitError
+            ? `Posted, but couldn't record the invoice application: ${err.message}`
+            : "Posted, but couldn't record which invoice(s) this payment applies to.";
+      }
+    }
+
     await logAudit({
       companyId,
       username: auth.user.email,
       action: `Posted Cash Receipt ${documentNo}`,
       ipAddress: getClientIp(request),
     });
-    return NextResponse.json({ entries: created }, { status: 201 });
+    return NextResponse.json({ entries: created, applicationError }, { status: 201 });
   } catch (err) {
     if (
       err instanceof MissingPostingAccountError ||

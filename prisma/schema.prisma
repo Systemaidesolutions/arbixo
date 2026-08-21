@@ -258,6 +258,7 @@ model Company {
   employees     Employee[]
   contacts      Contact[]
   ledgerEntries LedgerEntry[]
+  receivableApplications ReceivableApplication[]
   auditLogs     AuditLog[]
   taxPostingSetup TaxPostingSetup?
   users         User[]
@@ -510,8 +511,36 @@ model Customer {
   updatedAt         DateTime @updatedAt
 
   ledgerEntries LedgerEntry[]
+  receivableApplications ReceivableApplication[]
 
   @@unique([companyId, code])
+}
+
+// Tags which posted Cash Receipt paid off which posted Sales on Account
+// invoice, and how much. Deliberately a thin reference layer on top of the
+// existing debit/credit ledger — it doesn't change how AR is posted (still
+// one aggregate balance per customer), it just lets a payment be pointed at
+// a specific invoice for open-item tracking (invoice shows as settled)
+// instead of only ever a running balance-forward total.
+model ReceivableApplication {
+  id        String  @id @default(cuid())
+  company   Company @relation(fields: [companyId], references: [id])
+  companyId String
+
+  customer   Customer @relation(fields: [customerId], references: [id])
+  customerId String
+
+  paymentDocumentNo String // Cash Receipt OR no.
+  invoiceDocumentNo String // Sales on Account invoice no. being settled
+
+  amountApplied Decimal @db.Decimal(18, 2)
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  @@index([companyId, customerId])
+  @@index([companyId, invoiceDocumentNo])
+  @@index([companyId, paymentDocumentNo])
 }
 
 model Vendor {

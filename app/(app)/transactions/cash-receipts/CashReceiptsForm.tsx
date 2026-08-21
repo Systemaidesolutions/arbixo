@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { useLastBranch } from "@/lib/useLastBranch";
 import { branchOptionLabel } from "@/lib/branchLabel";
@@ -9,15 +9,18 @@ import type { Account, AtcCode, Contact, CounterpartyType, Customer, Employee, L
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
 import { TransactionSearch } from "@/components/TransactionSearch";
 
-type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; referenceNo: string; lineDescription: string };
+type Application = { invoiceDocumentNo: string; amount: number };
+type OpenInvoice = { documentNo: string; postingDate: string; referenceNo: string | null; amount: number; applied: number; openBalance: number };
+type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; referenceNo: string; lineDescription: string; applyExpanded: boolean; applications: Application[] };
 type Attachment = { fileName: string; contentType: string; sizeBytes: number; data: string };
 type ScannedReceipt = { date: string | null; payorName: string | null; referenceNo: string | null; totalAmount: number; vatType: VatType; particulars: string | null; confidence: "high" | "medium" | "low" };
 
 const VAT_LABEL: Partial<Record<VatType, string>> = { VAT_12: "12% VAT", ZERO_RATED: "Zero-Rated", VAT_EXEMPT: "VAT Exempt", NON_VAT: "Non-VAT" };
 const uid = () => crypto.randomUUID();
-const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT", amount: 0, amountIsGross: true, atcCodeId: null, referenceNo: "", lineDescription: "" });
+const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT", amount: 0, amountIsGross: true, atcCodeId: null, referenceNo: "", lineDescription: "", applyExpanded: false, applications: [] });
 const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const MAX_FILE = 3_000_000;
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -53,8 +56,54 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
   const [scanPayorHint, setScanPayorHint] = useState<string | null>(null);
+  const [openInvoices, setOpenInvoices] = useState<OpenInvoice[]>([]);
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
 
   const atcById = useMemo(() => new Map(atcCodes.map((a) => [a.id, a])), [atcCodes]);
+  const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
+  // How much of each open invoice this receipt has allocated so far, across
+  // every line — an invoice's balance is shared, so applying part of it on
+  // one line reduces what's left to apply on another.
+  const allocatedByInvoice = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of lines) for (const a of l.applications) m.set(a.invoiceDocumentNo, (m.get(a.invoiceDocumentNo) ?? 0) + a.amount);
+    return m;
+  }, [lines]);
+
+  async function loadOpenInvoices(customerId: string | null) {
+    if (!customerId) { setOpenInvoices([]); return; }
+    setLoadingInvoices(true);
+    try {
+      const res = await fetch(`/api/receivables/open-invoices?customerId=${encodeURIComponent(customerId)}`);
+      const data = await res.json().catch(() => ({ invoices: [] }));
+      setOpenInvoices(data.invoices ?? []);
+    } finally {
+      setLoadingInvoices(false);
+    }
+  }
+  function clearApplications() {
+    setLines((prev) => prev.map((l) => ({ ...l, applications: [] })));
+  }
+  function handleCounterpartyTypeChange(t: CounterpartyType | null) {
+    setCounterpartyType(t);
+    clearApplications();
+    if (t === "CUSTOMER" && counterpartyId) loadOpenInvoices(counterpartyId);
+    else setOpenInvoices([]);
+  }
+  function handleCounterpartyIdChange(id: string | null) {
+    setCounterpartyId(id);
+    clearApplications();
+    if (counterpartyType === "CUSTOMER") loadOpenInvoices(id);
+  }
+  function setLineApplication(lineKey: string, invoiceDocumentNo: string, amount: number) {
+    setLines((prev) =>
+      prev.map((l) => {
+        if (l.key !== lineKey) return l;
+        const rest = l.applications.filter((a) => a.invoiceDocumentNo !== invoiceDocumentNo);
+        return { ...l, applications: amount > 0 ? [...rest, { invoiceDocumentNo, amount }] : rest };
+      })
+    );
+  }
   function onPartyCreated(type: CounterpartyType, record: Vendor | Employee | Contact | Customer) {
     if (type === "VENDOR") setVendorList((l) => [...l, record as Vendor]);
     else if (type === "EMPLOYEE") setEmployeeList((l) => [...l, record as Employee]);
@@ -162,21 +211,25 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
     setCheckNo(""); setCounterpartyId(null); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setOpenInvoices([]);
     setPosted(false); setError(null); setSuccess(null);
   }
 
   async function post(retain: boolean) {
     setSaving(true); setError(null); setSuccess(null);
+    const applications = lines.flatMap((l) => l.applications);
     const payload = {
       companyId, locationId: locationId || null, documentNo, checkNo: checkNo || null, postingDate,
       counterpartyType, counterpartyId, cashAccountId, particulars: "",
       lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, referenceNo: l.referenceNo || null, lineDescription: l.lineDescription || null })),
       attachments,
+      applications,
     };
     const res = await fetch("/api/ledger-entries/cash-receipts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSaving(false);
     if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error ?? "Something went wrong posting this entry."); return; }
-    setSuccess(`Posted OR ${documentNo}.`);
+    const data = await res.json().catch(() => ({}));
+    setSuccess(data?.applicationError ? `Posted OR ${documentNo}. ${data.applicationError}` : `Posted OR ${documentNo}.`);
     if (retain) { setPosted(true); return; }
     await resetForm();
   }
@@ -226,7 +279,7 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
           <label className={label}>Branch<select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={field}><option value="">—</option>{locations.map((l) => <option key={l.id} value={l.id}>{branchOptionLabel(l)}</option>)}</select></label>
 
           <div className="sm:col-span-3">
-            <CounterpartyPicker counterpartyType={counterpartyType} counterpartyId={counterpartyId} onTypeChange={setCounterpartyType} onIdChange={setCounterpartyId} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} types={["CUSTOMER", "VENDOR", "EMPLOYEE", "CONTACT"]} label="Payor" companyId={companyId} onCreated={onPartyCreated} showDetails />
+            <CounterpartyPicker counterpartyType={counterpartyType} counterpartyId={counterpartyId} onTypeChange={handleCounterpartyTypeChange} onIdChange={handleCounterpartyIdChange} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} types={["CUSTOMER", "VENDOR", "EMPLOYEE", "CONTACT"]} label="Payor" companyId={companyId} onCreated={onPartyCreated} showDetails />
           </div>
           <label className={label}>Cash account<select required value={cashAccountId} onChange={(e) => setCashAccountId(e.target.value)} className={field}>{cashAccounts.length === 0 && <option value="">No Cash accounts yet</option>}{cashAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
 
@@ -256,12 +309,17 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
               <thead>
                 <tr className="bg-neutral-50 text-left text-neutral-500">
                   <th className={cell}>Account</th><th className={cell}>Ref No.</th><th className={cell}>Description</th><th className={cell}>VAT</th><th className={cell}>Amount</th><th className={cell}>Gross/Net</th><th className={cell}>ATC (withholding)</th>
-                  <th className={`${cell} text-right`}>Net</th><th className={`${cell} text-right`}>VAT</th><th className={`${cell} text-right`}>W/tax</th><th className={`${cell} text-right`}><button type="button" onClick={clearLines} className="font-medium text-red-600 hover:underline">Clear</button></th>
+                  <th className={`${cell} text-right`}>Net</th><th className={`${cell} text-right`}>VAT</th><th className={`${cell} text-right`}>W/tax</th><th className={cell}>Apply to</th><th className={`${cell} text-right`}><button type="button" onClick={clearLines} className="font-medium text-red-600 hover:underline">Clear</button></th>
                 </tr>
               </thead>
               <tbody>
-                {computed.rows.map((r) => (
-                  <tr key={r.key}>
+                {computed.rows.map((r) => {
+                  const isReceivableLine = accountById.get(r.accountId)?.classification === "ACCOUNTS_RECEIVABLE";
+                  const canApply = isReceivableLine && counterpartyType === "CUSTOMER" && !!counterpartyId;
+                  const appliedOnLine = r.applications.reduce((s, a) => s + a.amount, 0);
+                  return (
+                  <Fragment key={r.key}>
+                  <tr>
                     <td className={cell}><select required value={r.accountId} onChange={(e) => updateLine(r.key, { accountId: e.target.value })} className="w-44 rounded border border-neutral-300 px-1 py-1"><option value="">Select…</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></td>
                     <td className={cell}><input value={r.referenceNo} onChange={(e) => updateLine(r.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><input value={r.lineDescription} onChange={(e) => updateLine(r.key, { lineDescription: e.target.value })} className="w-40 rounded border border-neutral-300 px-1 py-1" /></td>
@@ -272,12 +330,81 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.net)}</td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.vat)}</td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.withholdingAmt)}</td>
+                    <td className={cell}>
+                      {canApply && (
+                        <button type="button" onClick={() => updateLine(r.key, { applyExpanded: !r.applyExpanded })} className="rounded border border-neutral-300 px-2 py-0.5 text-neutral-600 hover:bg-neutral-50">
+                          {r.applyExpanded ? "Hide" : "⋯"}{appliedOnLine > 0 && !r.applyExpanded ? ` (${formatPeso(appliedOnLine)})` : ""}
+                        </button>
+                      )}
+                    </td>
                     <td className={cell}>{lines.length > 1 && <button type="button" onClick={() => removeLine(r.key)} className="text-red-500 hover:text-red-700">✕</button>}</td>
                   </tr>
-                ))}
+                  {canApply && r.applyExpanded && (
+                    <tr>
+                      <td className="border-b border-neutral-100 bg-neutral-50/60 px-3 py-3" colSpan={12}>
+                        <div className="text-xs font-medium text-neutral-700">Apply this line to invoice(s)</div>
+                        {loadingInvoices ? (
+                          <p className="mt-1 text-xs text-neutral-400">Loading open invoices…</p>
+                        ) : openInvoices.length === 0 ? (
+                          <p className="mt-1 text-xs text-neutral-400">This customer has no open (unpaid) invoices.</p>
+                        ) : (
+                          <table className="mt-2 w-full max-w-xl text-xs">
+                            <thead>
+                              <tr className="text-left text-neutral-400">
+                                <th className="py-1 pr-2 font-normal"></th>
+                                <th className="py-1 pr-2 font-normal">Invoice</th>
+                                <th className="py-1 pr-2 font-normal">Date</th>
+                                <th className="py-1 pr-2 text-right font-normal">Open balance</th>
+                                <th className="py-1 text-right font-normal">Apply</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {openInvoices.map((inv) => {
+                                const ownAmount = r.applications.find((a) => a.invoiceDocumentNo === inv.documentNo)?.amount ?? 0;
+                                const claimedByOthers = (allocatedByInvoice.get(inv.documentNo) ?? 0) - ownAmount;
+                                const availableForThisLine = Math.max(0, round2(inv.openBalance - claimedByOthers));
+                                return (
+                                  <tr key={inv.documentNo} className="border-t border-neutral-100">
+                                    <td className="py-1 pr-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={ownAmount > 0}
+                                        disabled={availableForThisLine <= 0}
+                                        onChange={(e) => setLineApplication(r.key, inv.documentNo, e.target.checked ? Math.min(availableForThisLine, Math.max(0, r.amount - appliedOnLine + ownAmount)) : 0)}
+                                      />
+                                    </td>
+                                    <td className="py-1 pr-2 font-mono">{inv.documentNo}</td>
+                                    <td className="py-1 pr-2">{new Date(inv.postingDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}</td>
+                                    <td className="py-1 pr-2 text-right font-mono">{formatPeso(inv.openBalance)}</td>
+                                    <td className="py-1 text-right">
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min={0}
+                                        max={availableForThisLine}
+                                        value={ownAmount || ""}
+                                        onChange={(e) => setLineApplication(r.key, inv.documentNo, Math.min(availableForThisLine, Math.max(0, Number(e.target.value))))}
+                                        className="w-24 rounded border border-neutral-300 px-1 py-0.5 text-right"
+                                      />
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        )}
+                        <p className="mt-2 text-[11px] text-neutral-500">
+                          Applied on this line: {formatPeso(appliedOnLine)} of {formatPeso(r.amount || 0)}
+                        </p>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
+                  );
+                })}
               </tbody>
               <tfoot>
-                <tr className="bg-neutral-50 font-medium"><td className={cell} colSpan={7}>Totals</td><td className={`${cell} text-right font-mono`} colSpan={2}>Credit {formatPeso(computed.totalCredit)}</td><td className={`${cell} text-right font-mono`}>{formatPeso(computed.totalWithholding)}</td><td className={cell}></td></tr>
+                <tr className="bg-neutral-50 font-medium"><td className={cell} colSpan={7}>Totals</td><td className={`${cell} text-right font-mono`} colSpan={2}>Credit {formatPeso(computed.totalCredit)}</td><td className={`${cell} text-right font-mono`}>{formatPeso(computed.totalWithholding)}</td><td className={cell} colSpan={2}></td></tr>
               </tfoot>
             </table>
           </div>
