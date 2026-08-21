@@ -257,6 +257,7 @@ model Company {
   vendors       Vendor[]
   employees     Employee[]
   contacts      Contact[]
+  agents        Agent[]
   ledgerEntries LedgerEntry[]
   receivableApplications ReceivableApplication[]
   auditLogs     AuditLog[]
@@ -641,6 +642,42 @@ model Contact {
   @@unique([companyId, code])
 }
 
+// A commission agent/broker — same shape as Contact, kept as its own type
+// so it appears distinctly in the party picker and can be tagged on
+// commission-related transactions (Commission Expense on Cash Disbursement,
+// Purchase on Account, or a General Journal accrual) for easy reference of
+// how much a given agent has been paid.
+model Agent {
+  id                String   @id @default(cuid())
+  company           Company  @relation(fields: [companyId], references: [id])
+  companyId         String
+  code              String
+  tin               String?
+  taxClassification TaxClassification
+  registeredName    String?
+  lastName          String?
+  firstName         String?
+  middleName        String?
+  tradeName         String
+  registrationType  RegistrationType
+  address           String?
+  barangay          String?
+  district          String?
+  city              String?
+  province          String?
+  zipCode           String?
+  telNo             String?
+  cellNo            String?
+  email             String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  ledgerEntries LedgerEntry[]
+
+  @@unique([companyId, code])
+}
+
 // ------------------------------------------------------------
 // ATC (Alphanumeric Tax Code) reference table — deliberately NOT
 // hardcoded into application logic. BIR revises these rates
@@ -716,6 +753,7 @@ enum CounterpartyType {
   VENDOR
   EMPLOYEE
   CONTACT
+  AGENT
 }
 
 model LedgerEntry {
@@ -750,6 +788,8 @@ model LedgerEntry {
   employeeId       String?
   contact          Contact?  @relation(fields: [contactId], references: [id])
   contactId        String?
+  agent            Agent?    @relation(fields: [agentId], references: [id])
+  agentId          String?
 
   debitAmount  Decimal @db.Decimal(18, 2) @default(0)
   creditAmount Decimal @db.Decimal(18, 2) @default(0)

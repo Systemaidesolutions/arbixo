@@ -4,7 +4,7 @@ import { Fragment, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { useLastBranch } from "@/lib/useLastBranch";
 import { branchOptionLabel } from "@/lib/branchLabel";
-import type { Account, AtcCode, Contact, CounterpartyType, Customer, Employee, Location, Vendor, VatType } from "@prisma/client";
+import type { Account, Agent, AtcCode, Contact, CounterpartyType, Customer, Employee, Location, Vendor, VatType } from "@prisma/client";
 import { VatComputationFields, type VatComputationValue } from "@/components/VatComputationFields";
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
 
@@ -22,8 +22,8 @@ function newLine(): LineState {
 const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const MAX_FILE = 3_000_000;
 
-export function GeneralJournalForm({ companyId, accounts, vendors, employees, contacts, customers, atcCodes, locations, suggestedDocumentNo }: {
-  companyId: string; accounts: Account[]; vendors: Vendor[]; employees: Employee[]; contacts: Contact[]; customers: Customer[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
+export function GeneralJournalForm({ companyId, accounts, vendors, employees, contacts, customers, agents, atcCodes, locations, suggestedDocumentNo }: {
+  companyId: string; accounts: Account[]; vendors: Vendor[]; employees: Employee[]; contacts: Contact[]; customers: Customer[]; agents: Agent[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
 }) {
   const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
   const [locationId, setLocationId] = useLastBranch(companyId, locations);
@@ -40,11 +40,13 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
   const [employeeList, setEmployeeList] = useState(employees);
   const [contactList, setContactList] = useState(contacts);
   const [customerList, setCustomerList] = useState(customers);
+  const [agentList, setAgentList] = useState(agents);
 
-  function appendParty(type: CounterpartyType, record: Vendor | Employee | Contact | Customer) {
+  function appendParty(type: CounterpartyType, record: Vendor | Employee | Contact | Customer | Agent) {
     if (type === "VENDOR") setVendorList((l) => [...l, record as Vendor]);
     else if (type === "EMPLOYEE") setEmployeeList((l) => [...l, record as Employee]);
     else if (type === "CONTACT") setContactList((l) => [...l, record as Contact]);
+    else if (type === "AGENT") setAgentList((l) => [...l, record as Agent]);
     else setCustomerList((l) => [...l, record as Customer]);
   }
   const updateLine = (key: string, patch: Partial<LineState>) => setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
@@ -169,7 +171,7 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
                           </div>
                           {line.showParty && (
                             <div className="mt-3">
-                              <CounterpartyPicker counterpartyType={line.counterpartyType} counterpartyId={line.counterpartyId} onTypeChange={(t) => updateLine(line.key, { counterpartyType: t })} onIdChange={(id) => updateLine(line.key, { counterpartyId: id })} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} companyId={companyId} onCreated={(type, record) => { appendParty(type, record); updateLine(line.key, { counterpartyId: record.id, counterpartyType: type }); }} />
+                              <CounterpartyPicker counterpartyType={line.counterpartyType} counterpartyId={line.counterpartyId} onTypeChange={(t) => updateLine(line.key, { counterpartyType: t })} onIdChange={(id) => updateLine(line.key, { counterpartyId: id })} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} agents={agentList} companyId={companyId} onCreated={(type, record) => { appendParty(type, record); updateLine(line.key, { counterpartyId: record.id, counterpartyType: type }); }} />
                             </div>
                           )}
                           {line.showVatInfo && (

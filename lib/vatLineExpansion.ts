@@ -21,7 +21,7 @@ export type ExpandInputLine = {
 
 export type CounterpartyFields = Pick<
   LedgerLineInput,
-  "counterpartyType" | "customerId" | "vendorId" | "employeeId" | "contactId"
+  "counterpartyType" | "customerId" | "vendorId" | "employeeId" | "contactId" | "agentId"
 >;
 
 export function counterpartyFields(
@@ -29,7 +29,7 @@ export function counterpartyFields(
   counterpartyId: string | null | undefined
 ): CounterpartyFields {
   if (!counterpartyType || !counterpartyId) {
-    return { counterpartyType: null, customerId: null, vendorId: null, employeeId: null, contactId: null };
+    return { counterpartyType: null, customerId: null, vendorId: null, employeeId: null, contactId: null, agentId: null };
   }
   return {
     counterpartyType,
@@ -37,6 +37,7 @@ export function counterpartyFields(
     vendorId: counterpartyType === "VENDOR" ? counterpartyId : null,
     employeeId: counterpartyType === "EMPLOYEE" ? counterpartyId : null,
     contactId: counterpartyType === "CONTACT" ? counterpartyId : null,
+    agentId: counterpartyType === "AGENT" ? counterpartyId : null,
   };
 }
 

@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import type {
   Account,
   AccountClassification,
+  Agent,
   Contact,
   CounterpartyType,
   Customer,
@@ -69,9 +70,10 @@ const PARTY_ENDPOINT: Record<CounterpartyType, { url: string; key: string; label
   VENDOR: { url: "/api/vendors", key: "vendor", label: "vendor" },
   EMPLOYEE: { url: "/api/employees", key: "employee", label: "employee" },
   CONTACT: { url: "/api/contacts", key: "contact", label: "contact" },
+  AGENT: { url: "/api/agents", key: "agent", label: "agent" },
 };
 
-type AnyParty = Customer | Vendor | Employee | Contact;
+type AnyParty = Customer | Vendor | Employee | Contact | Agent;
 
 type PartyForm = {
   code: string;

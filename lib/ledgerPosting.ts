@@ -14,6 +14,7 @@ export type LedgerLineInput = {
   vendorId?: string | null;
   employeeId?: string | null;
   contactId?: string | null;
+  agentId?: string | null;
   vatType?: VatType | null;
   grossAmount?: number | null;
   netAmount?: number | null;
@@ -140,6 +141,7 @@ export async function postDocument(input: PostDocumentInput) {
           vendorId: line.vendorId ?? null,
           employeeId: line.employeeId ?? null,
           contactId: line.contactId ?? null,
+          agentId: line.agentId ?? null,
           vatType: line.vatType ?? null,
           grossAmount: line.grossAmount ?? null,
           netAmount: line.netAmount ?? null,

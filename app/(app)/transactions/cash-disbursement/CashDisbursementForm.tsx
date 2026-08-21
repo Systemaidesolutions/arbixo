@@ -5,7 +5,7 @@ import { formatPeso } from "@/lib/format";
 import { useLastBranch } from "@/lib/useLastBranch";
 import { branchOptionLabel } from "@/lib/branchLabel";
 import { computeVat, computeWithholding } from "@/lib/vat";
-import type { Account, AtcCode, Contact, CounterpartyType, Customer, Employee, Location, TaxSource, Vendor, VatType } from "@prisma/client";
+import type { Account, Agent, AtcCode, Contact, CounterpartyType, Customer, Employee, Location, TaxSource, Vendor, VatType } from "@prisma/client";
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
 import { TransactionSearch } from "@/components/TransactionSearch";
 
@@ -19,8 +19,8 @@ const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT
 const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const MAX_FILE = 3_000_000;
 
-export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendors, employees, contacts, customers, atcCodes, locations, suggestedDocumentNo }: {
-  companyId: string; accounts: Account[]; cashAccounts: Account[]; vendors: Vendor[]; employees: Employee[]; contacts: Contact[]; customers: Customer[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
+export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendors, employees, contacts, customers, agents, atcCodes, locations, suggestedDocumentNo }: {
+  companyId: string; accounts: Account[]; cashAccounts: Account[]; vendors: Vendor[]; employees: Employee[]; contacts: Contact[]; customers: Customer[]; agents: Agent[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
 }) {
   const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
   const [locationId, setLocationId] = useLastBranch(companyId, locations);
@@ -40,15 +40,17 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
   const [employeeList, setEmployeeList] = useState(employees);
   const [contactList, setContactList] = useState(contacts);
   const [customerList, setCustomerList] = useState(customers);
+  const [agentList, setAgentList] = useState(agents);
 
   const atcById = useMemo(() => new Map(atcCodes.map((a) => [a.id, a])), [atcCodes]);
-  function appendParty(type: CounterpartyType, record: Vendor | Employee | Contact | Customer) {
+  function appendParty(type: CounterpartyType, record: Vendor | Employee | Contact | Customer | Agent) {
     if (type === "VENDOR") setVendorList((l) => [...l, record as Vendor]);
     else if (type === "EMPLOYEE") setEmployeeList((l) => [...l, record as Employee]);
     else if (type === "CONTACT") setContactList((l) => [...l, record as Contact]);
+    else if (type === "AGENT") setAgentList((l) => [...l, record as Agent]);
     else setCustomerList((l) => [...l, record as Customer]);
   }
-  function onPartyCreated(type: CounterpartyType, record: Vendor | Employee | Contact | Customer) {
+  function onPartyCreated(type: CounterpartyType, record: Vendor | Employee | Contact | Customer | Agent) {
     appendParty(type, record);
     setCounterpartyId(record.id);
   }
@@ -142,7 +144,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
           <label className={label}>Branch<select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={field}><option value="">—</option>{locations.map((l) => <option key={l.id} value={l.id}>{branchOptionLabel(l)}</option>)}</select></label>
 
           <div className="sm:col-span-4">
-            <CounterpartyPicker counterpartyType={counterpartyType} counterpartyId={counterpartyId} onTypeChange={setCounterpartyType} onIdChange={setCounterpartyId} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} label="Payee" companyId={companyId} onCreated={onPartyCreated} showDetails />
+            <CounterpartyPicker counterpartyType={counterpartyType} counterpartyId={counterpartyId} onTypeChange={setCounterpartyType} onIdChange={setCounterpartyId} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} agents={agentList} label="Payee" companyId={companyId} onCreated={onPartyCreated} showDetails />
           </div>
           <label className={label}>Cash account<select required value={cashAccountId} onChange={(e) => setCashAccountId(e.target.value)} className={field}>{cashAccounts.length === 0 && <option value="">No Cash accounts yet</option>}{cashAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
 
@@ -199,7 +201,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                         <button type="button" onClick={() => updateLine(r.key, { showParty: !r.showParty, ...(r.showParty ? { counterpartyType: null, counterpartyId: null } : {}) })} className="text-xs text-neutral-600 hover:text-neutral-900">{r.showParty ? "− remove party" : "+ attach party"}</button>
                         {r.showParty && (
                           <div className="mt-3">
-                            <CounterpartyPicker counterpartyType={r.counterpartyType} counterpartyId={r.counterpartyId} onTypeChange={(t) => updateLine(r.key, { counterpartyType: t })} onIdChange={(id) => updateLine(r.key, { counterpartyId: id })} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} label="Line party" companyId={companyId} onCreated={(type, record) => { appendParty(type, record); updateLine(r.key, { counterpartyType: type, counterpartyId: record.id }); }} />
+                            <CounterpartyPicker counterpartyType={r.counterpartyType} counterpartyId={r.counterpartyId} onTypeChange={(t) => updateLine(r.key, { counterpartyType: t })} onIdChange={(id) => updateLine(r.key, { counterpartyId: id })} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} agents={agentList} label="Line party" companyId={companyId} onCreated={(type, record) => { appendParty(type, record); updateLine(r.key, { counterpartyType: type, counterpartyId: record.id }); }} />
                           </div>
                         )}
                       </td>

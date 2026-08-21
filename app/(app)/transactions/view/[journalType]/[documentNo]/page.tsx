@@ -38,14 +38,14 @@ export default async function TransactionViewPage({ params }: { params: { journa
   const documentNo = decodeURIComponent(params.documentNo);
   const entries = await prisma.ledgerEntry.findMany({
     where: { companyId: company.id, journalType, documentNo },
-    include: { account: true, customer: true, vendor: true, employee: true, contact: true, location: true },
+    include: { account: true, customer: true, vendor: true, employee: true, contact: true, agent: true, location: true },
     orderBy: { lineNo: "asc" },
   });
   if (entries.length === 0) notFound();
 
   const first = entries[0];
-  const withParty = entries.find((e) => e.customer || e.vendor || e.employee || e.contact);
-  const p = withParty?.customer || withParty?.vendor || withParty?.contact;
+  const withParty = entries.find((e) => e.customer || e.vendor || e.employee || e.contact || e.agent);
+  const p = withParty?.customer || withParty?.vendor || withParty?.contact || withParty?.agent;
   const partyName =
     p?.registeredName || p?.tradeName ||
     (withParty?.employee ? [withParty.employee.firstName, withParty.employee.middleName, withParty.employee.lastName].filter(Boolean).join(" ") : null) ||

@@ -2,13 +2,14 @@
 // this module is safe to use from client components. Server-side allocation
 // lives in lib/numberSeriesServer.ts.
 
-export type PartyEntity = "customer" | "vendor" | "employee" | "contact";
+export type PartyEntity = "customer" | "vendor" | "employee" | "contact" | "agent";
 
 export const NUMBER_SERIES: { entityType: PartyEntity; label: string; defaultPrefix: string }[] = [
   { entityType: "customer", label: "Customers", defaultPrefix: "CUST" },
   { entityType: "vendor", label: "Vendors", defaultPrefix: "VEND" },
   { entityType: "employee", label: "Employees", defaultPrefix: "EMP" },
   { entityType: "contact", label: "Contacts", defaultPrefix: "CONT" },
+  { entityType: "agent", label: "Agents", defaultPrefix: "AGT" },
 ];
 
 export const SERIES_PADDING = 7;

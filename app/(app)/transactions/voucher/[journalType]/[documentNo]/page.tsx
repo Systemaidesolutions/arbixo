@@ -27,13 +27,13 @@ export default async function VoucherPage({ params }: { params: { journalType: s
   const documentNo = decodeURIComponent(params.documentNo);
   const entries = await prisma.ledgerEntry.findMany({
     where: { companyId: company.id, journalType, documentNo },
-    include: { account: true, customer: true, vendor: true, employee: true, contact: true },
+    include: { account: true, customer: true, vendor: true, employee: true, contact: true, agent: true },
     orderBy: { lineNo: "asc" },
   });
   if (entries.length === 0) notFound();
 
-  const withParty = entries.find((e) => e.customer || e.vendor || e.employee || e.contact);
-  const p = withParty?.customer || withParty?.vendor || withParty?.contact;
+  const withParty = entries.find((e) => e.customer || e.vendor || e.employee || e.contact || e.agent);
+  const p = withParty?.customer || withParty?.vendor || withParty?.contact || withParty?.agent;
   const partyName =
     p?.registeredName || p?.tradeName ||
     (withParty?.employee ? [withParty.employee.firstName, withParty.employee.middleName, withParty.employee.lastName].filter(Boolean).join(" ") : null) ||
@@ -44,7 +44,7 @@ export default async function VoucherPage({ params }: { params: { journalType: s
         .filter(Boolean)
         .join(", ")
     : "";
-  const partyTin = withParty?.customer?.tin ?? withParty?.vendor?.tin ?? withParty?.contact?.tin ?? "";
+  const partyTin = withParty?.customer?.tin ?? withParty?.vendor?.tin ?? withParty?.contact?.tin ?? withParty?.agent?.tin ?? "";
   const checkNo = entries.find((e) => e.checkNo)?.checkNo ?? "";
 
   // Preparer + approver.

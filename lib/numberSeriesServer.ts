@@ -38,6 +38,8 @@ async function codeExists(companyId: string, entityType: PartyEntity, code: stri
       return Boolean(await prisma.employee.findUnique({ where }));
     case "contact":
       return Boolean(await prisma.contact.findUnique({ where }));
+    case "agent":
+      return Boolean(await prisma.agent.findUnique({ where }));
   }
 }
 

@@ -16,7 +16,7 @@ export default async function CashDisbursementPage() {
     );
   }
 
-  const [accounts, cashAccounts, vendors, employees, contacts, customers, atcCodes, locations, suggestedDocumentNo] =
+  const [accounts, cashAccounts, vendors, employees, contacts, customers, agents, atcCodes, locations, suggestedDocumentNo] =
     await Promise.all([
       prisma.account.findMany({ where: { companyId: company.id, isActive: true, accountType: "POSTING" }, orderBy: { code: "asc" } }),
       prisma.account.findMany({
@@ -27,6 +27,7 @@ export default async function CashDisbursementPage() {
       prisma.employee.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
       prisma.contact.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
       prisma.customer.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
+      prisma.agent.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
       prisma.atcCode.findMany({ where: { isActive: true }, orderBy: { code: "asc" } }),
       prisma.location.findMany({ where: { companyId: company.id }, orderBy: { name: "asc" } }),
       suggestNextDocumentNo(company.id, "CASH_DISBURSEMENT"),
@@ -41,6 +42,7 @@ export default async function CashDisbursementPage() {
       employees={employees}
       contacts={contacts}
       customers={customers}
+      agents={agents}
       atcCodes={toPlain(atcCodes)}
       locations={locations}
       suggestedDocumentNo={suggestedDocumentNo}

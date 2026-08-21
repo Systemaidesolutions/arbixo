@@ -36,6 +36,7 @@ export async function searchLedgerDocuments(
           { customer: { is: { tradeName: contains } } },
           { vendor: { is: { tradeName: contains } } },
           { contact: { is: { tradeName: contains } } },
+          { agent: { is: { tradeName: contains } } },
           { employee: { is: { OR: [{ firstName: contains }, { lastName: contains }] } } },
         ],
       }
@@ -53,7 +54,7 @@ export async function searchLedgerDocuments(
 
   const entries = await prisma.ledgerEntry.findMany({
     where: { companyId, journalType, documentNo: { in: docNos } },
-    include: { customer: true, vendor: true, employee: true, contact: true },
+    include: { customer: true, vendor: true, employee: true, contact: true, agent: true },
     orderBy: [{ postingDate: "desc" }, { documentNo: "asc" }, { lineNo: "asc" }],
   });
 
@@ -68,6 +69,7 @@ export async function searchLedgerDocuments(
       reg(entry.vendor) ??
       (entry.employee ? [entry.employee.firstName, entry.employee.middleName, entry.employee.lastName].filter(Boolean).join(" ") : null) ??
       reg(entry.contact) ??
+      reg(entry.agent) ??
       null;
 
     const net = Number(entry.netAmount ?? 0);

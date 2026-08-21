@@ -33,6 +33,7 @@ function parsePayeeType(s: string): CounterpartyType | null {
   if (t.startsWith("emp")) return "EMPLOYEE";
   if (t.startsWith("cont")) return "CONTACT";
   if (t.startsWith("cust")) return "CUSTOMER";
+  if (t.startsWith("agt") || t.startsWith("agen")) return "AGENT";
   return null;
 }
 function isYes(s: string): boolean {
@@ -57,19 +58,20 @@ export async function buildVatJournalDocs(
   rows: SheetRow[]
 ): Promise<{ docs: PreparedDoc[]; issues: ImportIssue[] }> {
   const cfg = VAT_JOURNALS[key];
-  const [accounts, atcCodes, vendors, customers, employees, contacts, locations] = await Promise.all([
+  const [accounts, atcCodes, vendors, customers, employees, contacts, agents, locations] = await Promise.all([
     prisma.account.findMany({ where: { companyId, isActive: true, accountType: "POSTING" }, select: { id: true, code: true, title: true } }),
     prisma.atcCode.findMany({ where: { isActive: true }, select: { id: true, code: true } }),
     prisma.vendor.findMany({ where: { companyId, isActive: true }, select: { id: true, code: true, registeredName: true, lastName: true, firstName: true } }),
     prisma.customer.findMany({ where: { companyId, isActive: true }, select: { id: true, code: true, registeredName: true, lastName: true, firstName: true } }),
     prisma.employee.findMany({ where: { companyId, isActive: true }, select: { id: true, code: true, lastName: true, firstName: true } }),
     prisma.contact.findMany({ where: { companyId, isActive: true }, select: { id: true, code: true, registeredName: true, lastName: true, firstName: true } }),
+    prisma.agent.findMany({ where: { companyId, isActive: true }, select: { id: true, code: true, registeredName: true, lastName: true, firstName: true } }),
     prisma.location.findMany({ where: { companyId }, select: { id: true, name: true, branchCode: true } }),
   ]);
 
   const acctByCode = new Map(accounts.map((a) => [ci(a.code), a]));
   const atcByCode = new Map(atcCodes.map((a) => [ci(a.code), a]));
-  const partyLists: Record<CounterpartyType, PartyRow[]> = { VENDOR: vendors, CUSTOMER: customers, EMPLOYEE: employees, CONTACT: contacts };
+  const partyLists: Record<CounterpartyType, PartyRow[]> = { VENDOR: vendors, CUSTOMER: customers, EMPLOYEE: employees, CONTACT: contacts, AGENT: agents };
 
   function findParty(type: CounterpartyType, text: string) {
     const needle = ci(text);
