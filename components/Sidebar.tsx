@@ -34,7 +34,6 @@ import {
   Ticket,
   Wallet,
   Sparkles,
-  Percent,
   type LucideIcon,
 } from "lucide-react";
 import type { SubscriberSubtype } from "@prisma/client";
@@ -125,7 +124,6 @@ const LINK_ICONS: Record<NavIcon, LucideIcon> = {
   vendors: Truck,
   employees: Briefcase,
   contacts: Contact,
-  agents: Percent,
 };
 
 function SidebarBrand() {

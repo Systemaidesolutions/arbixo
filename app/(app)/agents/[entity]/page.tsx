@@ -9,7 +9,6 @@ const SLUG_TO_TYPE: Record<string, PartyEntityType> = {
   vendors: "vendor",
   employees: "employee",
   contacts: "contact",
-  agents: "agent",
 };
 
 export default async function PartyPage({ params }: { params: { entity: string } }) {
@@ -35,8 +34,7 @@ export default async function PartyPage({ params }: { params: { entity: string }
   if (type === "customer") items = await prisma.customer.findMany({ where, ...order });
   else if (type === "vendor") items = await prisma.vendor.findMany({ where, ...order });
   else if (type === "employee") items = await prisma.employee.findMany({ where, ...order });
-  else if (type === "contact") items = await prisma.contact.findMany({ where, ...order });
-  else items = await prisma.agent.findMany({ where, ...order });
+  else items = await prisma.contact.findMany({ where, ...order });
 
   return (
     <main className="mx-auto max-w-6xl p-4 sm:p-8">

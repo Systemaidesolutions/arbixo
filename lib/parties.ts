@@ -10,7 +10,7 @@ export const VENDOR_TYPE_LABELS: Record<VendorType, string> = {
   GOVERNMENT_AGENCY: "Government agency",
 };
 
-export type PartyEntityType = "customer" | "vendor" | "employee" | "contact" | "agent";
+export type PartyEntityType = "customer" | "vendor" | "employee" | "contact";
 
 export const PARTY_LABELS: Record<
   PartyEntityType,
@@ -20,5 +20,4 @@ export const PARTY_LABELS: Record<
   vendor: { singular: "Vendor", plural: "Vendors", apiBase: "/api/vendors", responseKey: "vendors" },
   employee: { singular: "Employee", plural: "Employees", apiBase: "/api/employees", responseKey: "employees" },
   contact: { singular: "Contact", plural: "Contacts", apiBase: "/api/contacts", responseKey: "contacts" },
-  agent: { singular: "Agent", plural: "Agents", apiBase: "/api/agents", responseKey: "agents" },
 };

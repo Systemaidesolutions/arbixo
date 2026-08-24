@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Agent, Contact, CounterpartyType, Customer, Employee, Vendor } from "@prisma/client";
+import type { Contact, CounterpartyType, Customer, Employee, Vendor } from "@prisma/client";
 import { QuickCreateModal, NewPartyForm } from "@/components/QuickCreate";
 
-type AnyParty = Customer | Vendor | Employee | Contact | Agent;
+type AnyParty = Customer | Vendor | Employee | Contact;
 
 // A native <select> can only render plain text per option, so the columns are
 // aligned with padding + a monospace font, and the header is an <optgroup>
@@ -44,7 +44,6 @@ const TYPE_LABELS: Record<CounterpartyType, string> = {
   EMPLOYEE: "Employee",
   CONTACT: "Contact",
   CUSTOMER: "Customer",
-  AGENT: "Agent",
 };
 
 const NEW = "__new__";
@@ -58,8 +57,7 @@ export function CounterpartyPicker({
   employees,
   contacts,
   customers,
-  agents = [],
-  types = ["VENDOR", "EMPLOYEE", "CONTACT", "CUSTOMER", "AGENT"],
+  types = ["VENDOR", "EMPLOYEE", "CONTACT", "CUSTOMER"],
   label = "Payee",
   companyId,
   onCreated,
@@ -73,7 +71,6 @@ export function CounterpartyPicker({
   employees: Employee[];
   contacts: Contact[];
   customers: Customer[];
-  agents?: Agent[];
   types?: CounterpartyType[];
   label?: string;
   // When provided, the party dropdown offers "＋ New …" which opens a modal
@@ -94,9 +91,7 @@ export function CounterpartyPicker({
           ? contacts
           : counterpartyType === "CUSTOMER"
             ? customers
-            : counterpartyType === "AGENT"
-              ? agents
-              : [];
+            : [];
 
   const canCreate = !!companyId && !!onCreated && !!counterpartyType;
 

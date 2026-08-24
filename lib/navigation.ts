@@ -31,8 +31,7 @@ export type NavIcon =
   | "customers"
   | "vendors"
   | "employees"
-  | "contacts"
-  | "agents";
+  | "contacts";
 
 export type NavLink = { href: string; label: string; icon: NavIcon };
 // A collapsible sub-group of links nested inside a section (e.g. "Relief Files"
@@ -113,7 +112,6 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/agents/vendors", label: "Vendors", icon: "vendors" },
       { href: "/agents/employees", label: "Employees", icon: "employees" },
       { href: "/agents/contacts", label: "Contacts", icon: "contacts" },
-      { href: "/agents/agents", label: "Agents", icon: "agents" },
       { href: "/items", label: "Items", icon: "purchases" },
     ],
   },

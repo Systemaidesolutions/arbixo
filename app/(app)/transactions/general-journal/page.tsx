@@ -16,14 +16,13 @@ export default async function GeneralJournalPage() {
     );
   }
 
-  const [accounts, vendors, employees, contacts, customers, agents, atcCodes, locations, suggestedDocumentNo] =
+  const [accounts, vendors, employees, contacts, customers, atcCodes, locations, suggestedDocumentNo] =
     await Promise.all([
       prisma.account.findMany({ where: { companyId: company.id, isActive: true, accountType: "POSTING" }, orderBy: { code: "asc" } }),
       prisma.vendor.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
       prisma.employee.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
       prisma.contact.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
       prisma.customer.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
-      prisma.agent.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" } }),
       prisma.atcCode.findMany({ where: { isActive: true }, orderBy: { code: "asc" } }),
       prisma.location.findMany({ where: { companyId: company.id }, orderBy: { name: "asc" } }),
       suggestNextDocumentNo(company.id, "GENERAL_JOURNAL"),
@@ -37,7 +36,6 @@ export default async function GeneralJournalPage() {
       employees={employees}
       contacts={contacts}
       customers={customers}
-      agents={agents}
       atcCodes={toPlain(atcCodes)}
       locations={locations}
       suggestedDocumentNo={suggestedDocumentNo}
