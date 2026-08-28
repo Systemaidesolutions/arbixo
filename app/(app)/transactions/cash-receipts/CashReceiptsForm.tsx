@@ -45,7 +45,6 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [posted, setPosted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [vendorList, setVendorList] = useState(vendors);
@@ -224,10 +223,13 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
     setDocumentNo(nextData.documentNo);
     setCheckNo(""); setCounterpartyId(null); setLines([newLine()]); setAttachments([]); setAttachError(null);
     setOpenInvoices([]);
-    setPosted(false); setError(null); setSuccess(null);
+    setError(null);
+    // Success message is left alone here — the form is ready for the next
+    // entry, but the "Posted OR ..." confirmation stays visible until the
+    // next post (or edit) so it doesn't read as if nothing happened.
   }
 
-  async function post(retain: boolean) {
+  async function post() {
     setError(null); setSuccess(null);
     for (const l of lines) {
       if (l.applications.length === 0) continue;
@@ -254,10 +256,9 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
     if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error ?? "Something went wrong posting this entry."); return; }
     const data = await res.json().catch(() => ({}));
     setSuccess(data?.applicationError ? `Posted OR ${documentNo}. ${data.applicationError}` : `Posted OR ${documentNo}.`);
-    if (retain) { setPosted(true); return; }
     await resetForm();
   }
-  function handleSubmit(e: React.FormEvent) { e.preventDefault(); post(false); }
+  function handleSubmit(e: React.FormEvent) { e.preventDefault(); post(); }
 
   const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const label = "block text-xs text-neutral-500";
@@ -445,9 +446,7 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
         {success && <p className="text-sm text-green-600">{success}</p>}
 
         <div className="flex gap-2">
-          <button type="submit" disabled={saving || posted} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save & new"}</button>
-          <button type="button" onClick={() => post(true)} disabled={saving || posted} className="rounded border border-brand-blue px-4 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50">Save</button>
-          {posted && <button type="button" onClick={resetForm} className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">New</button>}
+          <button type="submit" disabled={saving} className="rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50">{saving ? "Posting…" : "Save"}</button>
         </div>
       </form>
     </main>
