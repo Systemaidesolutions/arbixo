@@ -338,6 +338,13 @@ export default async function LandingPage() {
               <a href="/login" className="hover:text-brand-navy">Log in</a>
             </p>
           </div>
+          <Image
+            src="/bir-registered-badge.jpg"
+            alt="BIR Registered — Bureau of Internal Revenue"
+            width={848}
+            height={318}
+            className="h-auto w-[200px] rounded-lg"
+          />
         </div>
       </footer>
     </>
