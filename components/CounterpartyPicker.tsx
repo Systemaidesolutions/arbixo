@@ -13,7 +13,7 @@ type PartyRow = {
   code?: string | null; registeredName?: string | null; tradeName?: string | null;
   lastName?: string | null; firstName?: string | null;
 };
-const COL_CODE = 8;
+const COL_CODE = 18; // fits the worst case: a 10-char custom prefix + 7-digit series number
 const COL_REG = 30;
 const COL_TRADE = 26;
 const pad = (s: string, w: number) => (s.length > w ? `${s.slice(0, w - 1)}…` : s.padEnd(w, " "));

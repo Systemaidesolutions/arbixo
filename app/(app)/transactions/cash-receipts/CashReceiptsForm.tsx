@@ -85,17 +85,20 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
     setLines((prev) => prev.map((l) => ({ ...l, applications: [] })));
   }
   function handleCounterpartyTypeChange(t: CounterpartyType | null) {
+    setError(null);
     setCounterpartyType(t);
     clearApplications();
     if (t === "CUSTOMER" && counterpartyId) loadOpenInvoices(counterpartyId);
     else setOpenInvoices([]);
   }
   function handleCounterpartyIdChange(id: string | null) {
+    setError(null);
     setCounterpartyId(id);
     clearApplications();
     if (counterpartyType === "CUSTOMER") loadOpenInvoices(id);
   }
   function setLineApplication(lineKey: string, invoiceDocumentNo: string, amount: number) {
+    setError(null);
     setLines((prev) =>
       prev.map((l) => {
         if (l.key !== lineKey) return l;
@@ -111,7 +114,10 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
     else setCustomerList((l) => [...l, record as Customer]);
     setCounterpartyId(record.id);
   }
-  const updateLine = (key: string, patch: Partial<LineState>) => setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  const updateLine = (key: string, patch: Partial<LineState>) => {
+    setError(null);
+    setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  };
   const addLine = () => setLines((prev) => [...prev, newLine()]);
   const removeLine = (key: string) => setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.key !== key) : prev));
   const clearLines = () => { if (window.confirm("Clear all lines? This removes every line you've entered.")) setLines([newLine()]); };
@@ -370,7 +376,7 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
                                         type="checkbox"
                                         checked={ownAmount > 0}
                                         disabled={availableForThisLine <= 0}
-                                        onChange={(e) => setLineApplication(r.key, inv.documentNo, e.target.checked ? Math.min(availableForThisLine, Math.max(0, r.amount - appliedOnLine + ownAmount)) : 0)}
+                                        onChange={(e) => setLineApplication(r.key, inv.documentNo, e.target.checked ? availableForThisLine : 0)}
                                       />
                                     </td>
                                     <td className="py-1 pr-2 font-mono">{inv.documentNo}</td>
