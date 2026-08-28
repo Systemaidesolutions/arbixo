@@ -103,7 +103,13 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
       prev.map((l) => {
         if (l.key !== lineKey) return l;
         const rest = l.applications.filter((a) => a.invoiceDocumentNo !== invoiceDocumentNo);
-        return { ...l, applications: amount > 0 ? [...rest, { invoiceDocumentNo, amount }] : rest };
+        const applications = amount > 0 ? [...rest, { invoiceDocumentNo, amount }] : rest;
+        // Keep the line's own Amount in sync with what's been applied, so a
+        // user who applies to invoices first (instead of typing an Amount)
+        // ends up with a line that already balances — whether they check a
+        // box or type directly into an invoice's Apply field.
+        const appliedSum = round2(applications.reduce((s, a) => s + a.amount, 0));
+        return { ...l, applications, amount: appliedSum };
       })
     );
   }
@@ -222,7 +228,19 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
   }
 
   async function post(retain: boolean) {
-    setSaving(true); setError(null); setSuccess(null);
+    setError(null); setSuccess(null);
+    for (const l of lines) {
+      if (l.applications.length === 0) continue;
+      const appliedSum = round2(l.applications.reduce((s, a) => s + a.amount, 0));
+      if (appliedSum !== round2(l.amount)) {
+        setError(
+          `The amount applied to invoices (${formatPeso(appliedSum)}) doesn't match this line's Amount (${formatPeso(l.amount)}). ` +
+            `Adjust the invoice applications or the line Amount so they're equal before saving.`
+        );
+        return;
+      }
+    }
+    setSaving(true);
     const applications = lines.flatMap((l) => l.applications);
     const payload = {
       companyId, locationId: locationId || null, documentNo, checkNo: checkNo || null, postingDate,

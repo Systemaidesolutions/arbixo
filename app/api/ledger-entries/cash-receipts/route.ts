@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { DuplicateDocumentError, UnbalancedEntryError } from "@/lib/ledgerPosting";
 import { resolvePoster } from "@/lib/currentUser";
 import { logAudit, getClientIp } from "@/lib/audit";
@@ -6,7 +7,13 @@ import { MissingPostingAccountError, type ExpandInputLine } from "@/lib/vatLineE
 import { postVatJournal, ZeroBalanceError } from "@/lib/vatJournals";
 import { saveAttachments, type AttachmentInput } from "@/lib/transactionAttachments";
 import { firstSpecialCharError } from "@/lib/textValidation";
-import { recordReceivableApplications, ApplicationOverLimitError, type ApplicationInput } from "@/lib/receivableApplications";
+import {
+  recordReceivableApplications,
+  assertApplicationsMatchArLines,
+  ApplicationOverLimitError,
+  ApplicationMismatchError,
+  type ApplicationInput,
+} from "@/lib/receivableApplications";
 import type { CounterpartyType } from "@prisma/client";
 
 type RequestBody = {
@@ -46,6 +53,21 @@ export async function POST(request: NextRequest) {
 
   const auth = await resolvePoster(companyId, "canPost");
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  if (body.counterpartyType === "CUSTOMER" && body.applications?.length) {
+    const arAccounts = await prisma.account.findMany({
+      where: { id: { in: lines.map((l) => l.accountId) }, classification: "ACCOUNTS_RECEIVABLE" },
+      select: { id: true },
+    });
+    const arAccountIds = new Set(arAccounts.map((a) => a.id));
+    const arLineTotal = lines.filter((l) => arAccountIds.has(l.accountId)).reduce((s, l) => s + l.amount, 0);
+    try {
+      await assertApplicationsMatchArLines(arLineTotal, body.applications);
+    } catch (err) {
+      if (err instanceof ApplicationMismatchError) return NextResponse.json({ error: err.message }, { status: 400 });
+      throw err;
+    }
+  }
 
   try {
     const created = await postVatJournal(

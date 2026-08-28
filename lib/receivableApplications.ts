@@ -59,8 +59,29 @@ export async function getOpenInvoicesForCustomer(companyId: string, customerId: 
 }
 
 export class ApplicationOverLimitError extends Error {}
+export class ApplicationMismatchError extends Error {}
 
 export type ApplicationInput = { invoiceDocumentNo: string; amount: number };
+
+/**
+ * Guards against applying more (or less) to invoices than the receipt's own
+ * Accounts Receivable line(s) actually total — e.g. a ₱5,000 payment can't
+ * settle ₱8,000 worth of invoices just because none of them individually
+ * exceeded its own open balance. Called before the document is posted, so a
+ * mismatch blocks the whole receipt rather than leaving a partial mess.
+ */
+export async function assertApplicationsMatchArLines(
+  arLineTotal: number,
+  applications: ApplicationInput[]
+): Promise<void> {
+  if (applications.length === 0) return;
+  const appliedTotal = round2(applications.reduce((s, a) => s + a.amount, 0));
+  if (appliedTotal !== round2(arLineTotal)) {
+    throw new ApplicationMismatchError(
+      `The amount applied to invoices (${appliedTotal}) doesn't match the Accounts Receivable line total (${arLineTotal}).`
+    );
+  }
+}
 
 /**
  * Records which invoices a just-posted Cash Receipt paid off. Re-checks each
