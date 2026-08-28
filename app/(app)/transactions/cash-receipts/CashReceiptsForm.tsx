@@ -296,7 +296,16 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
         </p>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        onKeyDown={(e) => {
+          // Enter inside any field (e.g. typing an invoice's Apply amount)
+          // submits the form by default — only the Save button itself
+          // should do that.
+          if (e.key === "Enter" && e.target instanceof HTMLElement && e.target.tagName !== "BUTTON") e.preventDefault();
+        }}
+        className="mt-6 space-y-6"
+      >
         <div className="grid grid-cols-1 gap-3 rounded-lg border border-neutral-200 p-4 sm:grid-cols-4">
           <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => setPostingDate(e.target.value)} className={field} /></label>
           <label className={label}>OR no.<input required value={documentNo} onChange={(e) => setDocumentNo(e.target.value)} className={`${field} font-mono`} /></label>
