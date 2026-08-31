@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
+import { formatDate } from "@/lib/format";
 import {
   ShoppingCart,
   ShoppingBag,
@@ -83,7 +84,7 @@ export default async function HomePage() {
 
   const sub = subscriptionStatus(company.subscriptionEndsAt);
   const subEndsOn = company.subscriptionEndsAt
-    ? new Date(company.subscriptionEndsAt).toISOString().slice(0, 10)
+    ? formatDate(new Date(company.subscriptionEndsAt))
     : null;
 
   return (

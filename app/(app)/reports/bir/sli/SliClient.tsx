@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
 
 type Row = {
@@ -39,7 +39,7 @@ function quarterRange(y: number, q: number) {
   return { from: `${y}-${p(sm)}-01`, to: `${y}-${p(em)}-${p(last)}` };
 }
 function fmtDate(iso: string | null) {
-  return iso ? new Date(iso).toISOString().slice(0, 10) : "—";
+  return iso ? formatDate(new Date(iso)) : "—";
 }
 
 export function SliClient({ tin, registeredName }: { tin: string; registeredName: string }) {

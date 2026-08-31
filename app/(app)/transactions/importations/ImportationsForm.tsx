@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { usePageStack } from "@/components/PageStack";
 
 type Importation = {
@@ -47,7 +47,7 @@ function emptyForm(): FormState {
 }
 
 function fmtDate(iso: string) {
-  return iso ? new Date(iso).toISOString().slice(0, 10) : "—";
+  return iso ? formatDate(new Date(iso)) : "—";
 }
 
 export function ImportationsForm({ companyId, canPost }: { companyId: string; canPost: boolean }) {

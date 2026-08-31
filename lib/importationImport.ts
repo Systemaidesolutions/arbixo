@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { formatDate } from "@/lib/format";
 import { getCurrentUserRecord, resolvePoster } from "@/lib/currentUser";
 import { logAudit, getClientIp } from "@/lib/audit";
 import { parseImportFile, pick, toAmount, toDateStr, type SheetRow } from "@/lib/transactionImportParse";
@@ -103,7 +104,7 @@ export async function handleImportationImport(request: NextRequest) {
 
   if (dryRun) {
     const preview = docs.map((d) => ({
-      ref: `${d.orNo} (row ${d.rowNo})`, date: d.importDate.toISOString().slice(0, 10),
+      ref: `${d.orNo} (row ${d.rowNo})`, date: formatDate(d.importDate),
       info: d.sellerName, detail: `${d.countryOrigin}${d.isVatExempt ? " · VAT-exempt" : ""}`,
       amount: d.dutiableValue + d.charges + d.vatAmount,
     }));

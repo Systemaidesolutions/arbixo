@@ -70,7 +70,7 @@ export default async function JournalBookPrintPage({
                     key={l.id}
                     className={`${docIdx % 2 === 1 ? "bg-neutral-50" : "bg-white"} ${newTxn && i > 0 ? "border-t-2 border-neutral-300" : ""}`}
                   >
-                    <td className="whitespace-nowrap px-1 py-1">{newTxn ? new Date(l.postingDate).toISOString().slice(0, 10) : ""}</td>
+                    <td className="whitespace-nowrap px-1 py-1">{newTxn ? formatDate(new Date(l.postingDate)) : ""}</td>
                     <td className="px-1 py-1 font-mono">{newTxn ? l.documentNo : ""}</td>
                     <td className="px-1 py-1 text-neutral-600">{newTxn ? l.counterparty ?? "—" : ""}</td>
                     <td className="px-1 py-1"><span className="font-mono text-neutral-400">{l.accountCode}</span> {l.accountTitle}</td>

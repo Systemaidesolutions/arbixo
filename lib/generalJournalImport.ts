@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { formatDate } from "@/lib/format";
 import { getCurrentUserRecord, resolvePoster } from "@/lib/currentUser";
 import { logAudit, getClientIp } from "@/lib/audit";
 import { parseImportFile, pick, toAmount, toDateStr, type SheetRow } from "@/lib/transactionImportParse";
@@ -145,7 +146,7 @@ export async function handleGeneralJournalImport(request: NextRequest) {
   const { docs, issues } = await buildDocs(companyId, rows);
 
   if (dryRun) {
-    const preview = docs.map((d) => ({ ref: d.documentNo, date: d.postingDate.toISOString().slice(0, 10), info: d.particulars, detail: `${d.lines.length} line(s)`, amount: d.debit }));
+    const preview = docs.map((d) => ({ ref: d.documentNo, date: formatDate(d.postingDate), info: d.particulars, detail: `${d.lines.length} line(s)`, amount: d.debit }));
     return NextResponse.json({ preview, issues, canImport: docs.length > 0 });
   }
 

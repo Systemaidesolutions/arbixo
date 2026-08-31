@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { searchLedgerDocuments } from "@/lib/ledgerSearch";
 import { listAttachments } from "@/lib/transactionAttachments";
+import { formatDate } from "@/lib/format";
 import type { JournalType } from "@prisma/client";
 
 const TITLES: Partial<Record<JournalType, string>> = {
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
   for (const d of documents) {
     ws.addRow({
       documentNo: d.documentNo,
-      date: new Date(d.postingDate).toISOString().slice(0, 10),
+      date: formatDate(new Date(d.postingDate)),
       party: d.counterpartyName ?? "",
       particulars: d.particulars ?? "",
       net: d.totalNet,

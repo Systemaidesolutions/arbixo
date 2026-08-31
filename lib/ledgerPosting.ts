@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { isPostingDateSubscriptionCovered } from "@/lib/subscriptionCoverage";
+import { formatDate } from "@/lib/format";
 import type { CounterpartyType, DocumentType, JournalType, TaxSource, VatType } from "@prisma/client";
 
 export type LedgerLineInput = {
@@ -82,7 +83,7 @@ export async function postDocument(input: PostDocumentInput) {
     const covered = await isPostingDateSubscriptionCovered(input.companyId, input.postingDate);
     if (!covered) {
       throw new OutOfSubscriptionPeriodError(
-        `${input.postingDate.toISOString().slice(0, 10)} isn't within a month your company has an active subscription for. Contact your administrator to check your subscription.`
+        `${formatDate(input.postingDate)} isn't within a month your company has an active subscription for. Contact your administrator to check your subscription.`
       );
     }
   }

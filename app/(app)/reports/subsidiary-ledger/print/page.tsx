@@ -66,7 +66,7 @@ export default async function SubsidiaryLedgerPrintPage({
           ) : (
             ledger.rows.map((r, i) => (
               <tr key={r.id} className={i % 2 === 1 ? "bg-neutral-50" : "bg-white"}>
-                <td className="whitespace-nowrap px-1 py-1">{new Date(r.postingDate).toISOString().slice(0, 10)}</td>
+                <td className="whitespace-nowrap px-1 py-1">{formatDate(new Date(r.postingDate))}</td>
                 <td className="px-1 py-1 text-neutral-500">{r.journalType.replaceAll("_", " ")}</td>
                 <td className="px-1 py-1 font-mono">{r.documentNo}</td>
                 <td className="px-1 py-1 text-neutral-600">{r.accountCode} — {r.accountTitle}</td>

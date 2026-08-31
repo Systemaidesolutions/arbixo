@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { formatDate } from "@/lib/format";
 import { getCurrentUserRecord, resolvePoster } from "@/lib/currentUser";
 import { logAudit, getClientIp } from "@/lib/audit";
 import { parseImportFile, pick, toAmount, toDateStr, toBoolGross, type SheetRow } from "@/lib/transactionImportParse";
@@ -209,7 +210,7 @@ export async function handleVatJournalImport(request: NextRequest, key: VatJourn
 
   if (dryRun) {
     const preview = docs.map((d) => ({
-      ref: d.documentNo, date: d.postingDate.toISOString().slice(0, 10), info: d.payeeLabel,
+      ref: d.documentNo, date: formatDate(d.postingDate), info: d.payeeLabel,
       detail: `${d.lines.length} line(s) · ${d.balancingLabel}${d.isReturn ? " · RETURN" : ""}`, amount: d.total,
     }));
     return NextResponse.json({ preview, issues, canImport: docs.length > 0 });

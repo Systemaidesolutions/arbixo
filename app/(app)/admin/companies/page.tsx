@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { formatDate } from "@/lib/format";
 import { requireAdmin } from "@/lib/currentUser";
 import { subscriptionStatus } from "@/lib/subscription";
 import { AccessCompanyButton } from "./AccessCompanyButton";
@@ -76,7 +77,7 @@ export default async function AdminCompaniesPage() {
                         {sub.state === "none" ? "none" : sub.state}
                       </span>
                       <span className="ml-2 text-xs text-neutral-400">
-                        {c.subscriptionEndsAt ? new Date(c.subscriptionEndsAt).toISOString().slice(0, 10) : ""}
+                        {c.subscriptionEndsAt ? formatDate(new Date(c.subscriptionEndsAt)) : ""}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-right">

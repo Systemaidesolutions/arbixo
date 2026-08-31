@@ -60,7 +60,7 @@ export default async function GeneralLedgerBookPrintPage({
                 <tbody>
                   {acc.entries.map((e, i) => (
                     <tr key={i} className={i % 2 === 1 ? "bg-neutral-50" : "bg-white"}>
-                      <td className="whitespace-nowrap px-1 py-[3px]">{new Date(e.postingDate).toISOString().slice(0, 10)}</td>
+                      <td className="whitespace-nowrap px-1 py-[3px]">{formatDate(new Date(e.postingDate))}</td>
                       <td className="px-1 py-[3px] font-mono">{e.documentNo}</td>
                       <td className="px-1 py-[3px] text-neutral-500">{JRNL[e.journalType]}</td>
                       <td className="max-w-[200px] truncate px-1 py-[3px] text-neutral-600">{e.counterparty ?? "—"}</td>

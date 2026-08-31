@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany, resolvePoster } from "@/lib/currentUser";
 import { firstSpecialCharError } from "@/lib/textValidation";
 import { isPostingDateSubscriptionCovered } from "@/lib/subscriptionCoverage";
+import { formatDate } from "@/lib/format";
 
 function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
   if (!(await isPostingDateSubscriptionCovered(companyId, importDate))) {
     return NextResponse.json(
       {
-        error: `${importDate.toISOString().slice(0, 10)} isn't within a month your company has an active subscription for. Contact your administrator to check your subscription.`,
+        error: `${formatDate(importDate)} isn't within a month your company has an active subscription for. Contact your administrator to check your subscription.`,
       },
       { status: 400 }
     );

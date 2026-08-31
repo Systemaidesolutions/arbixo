@@ -1,4 +1,5 @@
 import { getCurrentCompany, getCurrentCapability } from "@/lib/currentUser";
+import { formatDate } from "@/lib/format";
 import {
   MONTHS,
   PERIOD_TYPE_LABELS,
@@ -65,7 +66,7 @@ export default async function CompanyDetailsPage() {
     [
       "Subscription",
       company.subscriptionEndsAt
-        ? `Ends ${new Date(company.subscriptionEndsAt).toISOString().slice(0, 10)}`
+        ? `Ends ${formatDate(new Date(company.subscriptionEndsAt))}`
         : "—",
     ],
   ];
