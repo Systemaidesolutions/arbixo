@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { getJournalBook, JOURNAL_BOOKS } from "@/lib/booksOfAccounts";
 import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
 
@@ -30,7 +30,7 @@ export default async function JournalBookPrintPage({
   const branch = await resolveBranchScope(company.id, searchParams.locationId);
   const data = await getJournalBook(company.id, cfg.journalTypes, new Date(`${from}T00:00:00`), new Date(`${to}T23:59:59.999`), branch);
 
-  const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  const fmtDate = (d: string) => formatDate(new Date(`${d}T00:00:00`));
   let coverage = `For the period ${fmtDate(from)} to ${fmtDate(to)}`;
   if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
   const num = "px-1 py-1 text-right font-mono";

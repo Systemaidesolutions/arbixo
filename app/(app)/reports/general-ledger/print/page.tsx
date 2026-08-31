@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { getGeneralLedger } from "@/lib/reports";
 import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
 
@@ -21,7 +21,7 @@ export default async function GeneralLedgerPrintPage({
   const branch = await resolveBranchScope(company.id, searchParams.locationId);
   const g = await getGeneralLedger(company.id, searchParams.accountId, new Date(dateFrom), new Date(dateTo), branch);
 
-  const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  const fmtDate = (d: string) => formatDate(new Date(`${d}T00:00:00`));
   let coverage = `${g.account.code} — ${g.account.title}  ·  ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
   if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
   const num = "px-1 py-1 text-right font-mono";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import type { JournalType } from "@prisma/client";
 import type { DocumentSummary } from "@/app/api/ledger-entries/route";
 
@@ -120,7 +120,7 @@ export function TransactionSummary({
               documents.map((doc) => (
                 <tr key={doc.documentNo} className={doc.isCancelled ? "opacity-40" : ""}>
                   <td className="px-3 py-2 font-mono">{doc.documentNo}</td>
-                  <td className="px-3 py-2">{new Date(doc.postingDate).toLocaleDateString()}</td>
+                  <td className="px-3 py-2">{formatDate(new Date(doc.postingDate))}</td>
                   <td className="px-3 py-2">{doc.counterpartyName ?? "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">{formatPeso(doc.totalNet)}</td>
                   <td className="px-3 py-2 text-right font-mono">{formatPeso(doc.totalVat)}</td>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 
 type Doc = {
   documentNo: string;
@@ -76,7 +76,7 @@ export function TransactionSearch({
     window.open(`/api/ledger-entries/export?${params.toString()}`, "_blank");
   }
 
-  const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
+  const fmtDate = (d: string) => formatDate(new Date(d));
 
   return (
     <>

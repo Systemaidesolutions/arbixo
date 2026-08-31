@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { useLastBranch } from "@/lib/useLastBranch";
 import { branchOptionLabel } from "@/lib/branchLabel";
 import { computeVat, computeWithholding } from "@/lib/vat";
@@ -408,7 +408,7 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
                                       />
                                     </td>
                                     <td className="py-1 pr-2 font-mono">{inv.documentNo}</td>
-                                    <td className="py-1 pr-2">{new Date(inv.postingDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}</td>
+                                    <td className="py-1 pr-2">{formatDate(new Date(inv.postingDate))}</td>
                                     <td className="py-1 pr-2 text-right font-mono">{formatPeso(inv.openBalance)}</td>
                                     <td className="py-1 text-right">
                                       <input

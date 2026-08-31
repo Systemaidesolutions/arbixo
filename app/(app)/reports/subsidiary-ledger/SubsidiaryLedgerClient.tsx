@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
 import { BranchFilter, type Branch } from "@/components/BranchFilter";
 import type { Customer, Vendor } from "@prisma/client";
@@ -198,7 +198,7 @@ export function SubsidiaryLedgerClient({
             ) : (
               rows.map((row) => (
                 <tr key={row.id}>
-                  <td className="px-3 py-2">{new Date(row.postingDate).toLocaleDateString()}</td>
+                  <td className="px-3 py-2">{formatDate(new Date(row.postingDate))}</td>
                   <td className="px-3 py-2 text-neutral-500">{row.journalType.replaceAll("_", " ")}</td>
                   <td className="px-3 py-2 font-mono">{row.documentNo}</td>
                   <td className="px-3 py-2 text-neutral-500">

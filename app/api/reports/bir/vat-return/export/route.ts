@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
+import { formatDate } from "@/lib/format";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { getVatReturn } from "@/lib/bir";
 import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
   const company = await prisma.company.findUnique({ where: { id: companyId } });
   const companyName = company?.registeredName || company?.tradeName || "";
   const addr = [company?.businessAddress, company?.barangay, company?.district, company?.city, company?.province, company?.zipCode].filter(Boolean).join(", ");
-  const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  const fmtDate = (d: string) => formatDate(new Date(`${d}T00:00:00`));
   let coverage = params.get("label") ? `For ${params.get("label")}` : `For the period ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
   if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
 

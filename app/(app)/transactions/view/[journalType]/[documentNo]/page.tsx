@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requirePostingCompany, getCurrentCapability } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { branchOptionLabel } from "@/lib/branchLabel";
 import { TransactionActions } from "@/components/TransactionActions";
 import { listAttachments } from "@/lib/transactionAttachments";
@@ -69,13 +69,13 @@ export default async function TransactionViewPage({ params }: { params: { journa
 
   const info: [string, string][] = [
     [meta.docLabel, documentNo],
-    ["Date", new Date(first.postingDate).toLocaleDateString()],
+    ["Date", formatDate(new Date(first.postingDate))],
     [meta.partyLabel, partyName],
     ["Branch", first.location ? branchOptionLabel(first.location) : "—"],
   ];
   if (journalType === "CASH_DISBURSEMENT") info.push(["Check no.", checkNo || "—"]);
   if (paymentTerms) info.push(["Payment terms", paymentTerms]);
-  if (dueDate) info.push(["Due date", new Date(dueDate).toLocaleDateString()]);
+  if (dueDate) info.push(["Due date", formatDate(new Date(dueDate))]);
 
   return (
     <main className="mx-auto max-w-5xl p-4 sm:p-8">

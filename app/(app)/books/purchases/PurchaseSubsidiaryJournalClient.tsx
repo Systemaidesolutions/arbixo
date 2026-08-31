@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { BranchFilter, type Branch } from "@/components/BranchFilter";
 import type { PurchaseSubsidiaryJournal } from "@/lib/purchaseSubsidiaryJournal";
 
@@ -45,7 +45,7 @@ export function PurchaseSubsidiaryJournalClient({
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const num = (v: number) => (v ? formatPeso(v) : "");
-  const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
+  const fmtDate = (d: string) => formatDate(new Date(d));
 
   const cashTotal = data?.rows ? data.rows.filter((r) => r.terms === "Cash").reduce((s, r) => s + r.totalInvoice, 0) : 0;
   const acctTotal = data?.rows ? data.rows.filter((r) => r.terms === "Account").reduce((s, r) => s + r.totalInvoice, 0) : 0;

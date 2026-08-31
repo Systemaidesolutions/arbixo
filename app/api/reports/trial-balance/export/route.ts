@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
+import { formatDate } from "@/lib/format";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { getTrialBalance } from "@/lib/reports";
 import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  const fmtDate = (d: string) => formatDate(new Date(`${d}T00:00:00`));
   const branch = await resolveBranchScope(companyId, params.get("locationId"));
 
   let result;

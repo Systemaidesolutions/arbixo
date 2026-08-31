@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { getSalesSubsidiaryJournal } from "@/lib/salesSubsidiaryJournal";
 import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
 
@@ -19,10 +19,10 @@ export default async function SalesSubsidiaryJournalPrintPage({
   const branch = await resolveBranchScope(company.id, searchParams.locationId);
   const data = await getSalesSubsidiaryJournal(company.id, new Date(`${from}T00:00:00`), new Date(`${to}T23:59:59.999`), branch);
 
-  const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  const fmt = (d: string) => formatDate(new Date(`${d}T00:00:00`));
   let coverage = `For the period ${fmt(from)} to ${fmt(to)}`;
   if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
-  const rowDate = (d: string) => new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
+  const rowDate = (d: string) => formatDate(new Date(d));
   const num = (v: number) => (v ? formatPeso(v) : "");
   const cashTotal = data.rows.filter((r) => r.terms === "Cash").reduce((s, r) => s + r.totalInvoice, 0);
   const acctTotal = data.rows.filter((r) => r.terms === "Account").reduce((s, r) => s + r.totalInvoice, 0);

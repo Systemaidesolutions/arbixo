@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
+import { formatDate } from "@/lib/format";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { getPurchaseSubsidiaryJournal } from "@/lib/purchaseSubsidiaryJournal";
 import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
@@ -25,10 +26,10 @@ export async function GET(request: NextRequest) {
   const company = await prisma.company.findUnique({ where: { id: companyId } });
   const companyName = company?.registeredName || company?.tradeName || "";
   const addr = [company?.businessAddress, company?.barangay, company?.district, company?.city, company?.province, company?.zipCode].filter(Boolean).join(", ");
-  const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  const fmt = (d: string) => formatDate(new Date(`${d}T00:00:00`));
   let coverage = `For the period ${fmt(from)} to ${fmt(to)}`;
   if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
-  const rowDate = (d: string) => new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
+  const rowDate = (d: string) => formatDate(new Date(d));
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Purchase Subsidiary Journal", {

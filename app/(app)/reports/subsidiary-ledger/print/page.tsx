@@ -3,7 +3,7 @@ import { requirePostingCompany } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { getSubsidiaryLedger } from "@/lib/reports";
 import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
 
@@ -31,7 +31,7 @@ export default async function SubsidiaryLedgerPrintPage({
   ]);
 
   const partyName = party ? party.tradeName || `${party.firstName ?? ""} ${party.lastName ?? ""}`.trim() : "";
-  const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  const fmtDate = (d: string) => formatDate(new Date(`${d}T00:00:00`));
   const title = partyType === "CUSTOMER" ? "Debtors' Ledger" : "Creditors' Ledger";
   let coverage = `${party ? `${party.code} — ${partyName}  ·  ` : ""}${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
   if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;

@@ -4,7 +4,7 @@ import { requirePostingCompany } from "@/lib/currentUser";
 import { getVatReturn } from "@/lib/bir";
 import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
 import { computeVat2550Q, emptyVat2550QManual, VAT_2550Q_LABELS, VAT_2550Q_SECTIONS, type Vat2550QManual } from "@/lib/vat2550q";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
 
@@ -42,7 +42,7 @@ export default async function VatReturnPrintPage({
   const base = await getVatReturn(company.id, new Date(`${dateFrom}T00:00:00`), new Date(`${dateTo}T23:59:59.999`), branch);
   const L = computeVat2550Q(base, manual);
 
-  const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  const fmtDate = (d: string) => formatDate(new Date(`${d}T00:00:00`));
   let coverage = searchParams.label ? `For ${searchParams.label}` : `For the period ${fmtDate(dateFrom)} to ${fmtDate(dateTo)}`;
   if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
 

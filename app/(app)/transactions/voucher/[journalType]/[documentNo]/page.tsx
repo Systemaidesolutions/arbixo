@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requirePostingCompany, getCurrentUserRecord } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { pesosInWords } from "@/lib/amountInWords";
 import { PrintControls } from "@/components/PrintControls";
 import type { JournalType } from "@prisma/client";
@@ -108,7 +108,7 @@ export default async function VoucherPage({ params }: { params: { journalType: s
           <tr>
             <td className={`w-2/3 border-b border-r border-neutral-800 px-2 py-1`}><span className="font-semibold">{meta.partyLabel}</span> &nbsp;: {partyName}</td>
             <td className={`border-b border-neutral-800 px-2 py-1`}>
-              <span className="font-semibold">Date:</span> {new Date(entries[0].postingDate).toLocaleDateString()}
+              <span className="font-semibold">Date:</span> {formatDate(new Date(entries[0].postingDate))}
               <span className="ml-3 font-semibold">Check No:</span> {checkNo || "—"}
             </td>
           </tr>

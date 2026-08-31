@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { getCashFlowStatement } from "@/lib/reports";
 import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
 import type { CashFlowLine } from "@/lib/reports";
@@ -22,7 +22,7 @@ export default async function CashFlowStatementPrintPage({
   const branch = await resolveBranchScope(company.id, searchParams.locationId);
   const data = await getCashFlowStatement(company.id, new Date(dateFrom), new Date(dateTo), branch);
 
-  const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+  const fmt = (d: string) => formatDate(new Date(`${d}T00:00:00`));
   let coverage = `For the period ${fmt(dateFrom)} to ${fmt(dateTo)}`;
   if (branch) coverage = `${coverage} · Branch: ${await branchScopeLabel(branch)}`;
 

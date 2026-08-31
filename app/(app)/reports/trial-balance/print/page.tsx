@@ -4,7 +4,7 @@ import { requirePostingCompany } from "@/lib/currentUser";
 import { getTrialBalance, type TrialBalanceRow } from "@/lib/reports";
 import { resolveBranchScope, branchScopeLabel } from "@/lib/branchScope";
 import { CLASSIFICATION_LABELS } from "@/lib/accounts";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
 import type { AccountClassification } from "@prisma/client";
@@ -21,7 +21,7 @@ export default async function TrialBalancePrintPage({
   if (!company) notFound();
 
   const mode = searchParams.mode === "NET_CHANGE" ? "NET_CHANGE" : "YEAR_TO_DATE";
-  const fmtDate = (d?: string) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" }) : "");
+  const fmtDate = (d?: string) => (d ? formatDate(new Date(`${d}T00:00:00`)) : "");
   const branch = await resolveBranchScope(company.id, searchParams.locationId);
 
   let result: { rows: TrialBalanceRow[]; totalDebit: number; totalCredit: number };

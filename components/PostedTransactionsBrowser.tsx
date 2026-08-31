@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { usePageStack } from "@/components/PageStack";
 
 type Doc = {
@@ -94,7 +94,7 @@ export function PostedTransactionsBrowser({
       window.parent.postMessage({ type: "stack:open", href, title: docNo }, window.location.origin);
     else router.push(href);
   };
-  const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
+  const fmtDate = (d: string) => formatDate(new Date(d));
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const isCashDisbursement = journalType === "CASH_DISBURSEMENT";
   const printCheck = (docNo: string) => window.open(`/transactions/check/${encodeURIComponent(docNo)}?_embed=1`, "_blank");

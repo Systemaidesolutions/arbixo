@@ -3,7 +3,7 @@ import { getTrialBalance, getIncomeStatement, getCashFlowStatement, getEquitySta
 import { getVatReturn } from "@/lib/bir";
 import { computeVat2550Q, emptyVat2550QManual } from "@/lib/vat2550q";
 import { getExpandedWithholding } from "@/lib/ewt";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import type { JournalType } from "@prisma/client";
 
 export type AskTable = {
@@ -35,7 +35,7 @@ export async function runAskReport(companyId: string, reportId: string, from: st
   if (JOURNAL_TYPES[reportId]) {
     const book = await getJournalBook(companyId, JOURNAL_TYPES[reportId], start(from), end(to));
     const rows = book.lines.slice(0, ROW_CAP).map((l) => [
-      new Date(l.postingDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" }),
+      formatDate(new Date(l.postingDate)),
       l.documentNo,
       `${l.accountCode} ${l.accountTitle}`,
       l.counterparty ?? "",
