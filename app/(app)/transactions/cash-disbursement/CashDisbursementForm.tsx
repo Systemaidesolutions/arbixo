@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { formatPeso } from "@/lib/format";
+import { formatPeso, formatDate } from "@/lib/format";
 import { useLastBranch } from "@/lib/useLastBranch";
 import { branchOptionLabel } from "@/lib/branchLabel";
 import { computeVat, computeWithholding } from "@/lib/vat";
@@ -9,15 +9,18 @@ import type { Account, AtcCode, Contact, CounterpartyType, Customer, Employee, L
 import { CounterpartyPicker } from "@/components/CounterpartyPicker";
 import { TransactionSearch } from "@/components/TransactionSearch";
 
-type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; taxSource: TaxSource; referenceNo: string; lineDescription: string; expanded: boolean; showParty: boolean; counterpartyType: CounterpartyType | null; counterpartyId: string | null };
+type Application = { invoiceDocumentNo: string; amount: number };
+type OpenBill = { documentNo: string; postingDate: string; referenceNo: string | null; amount: number; applied: number; openBalance: number };
+type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; taxSource: TaxSource; referenceNo: string; lineDescription: string; expanded: boolean; showParty: boolean; counterpartyType: CounterpartyType | null; counterpartyId: string | null; applyExpanded: boolean; applications: Application[] };
 type Attachment = { fileName: string; contentType: string; sizeBytes: number; data: string };
 
 const VAT_LABEL: Partial<Record<VatType, string>> = { VAT_12: "12% VAT", ZERO_RATED: "Zero-Rated", VAT_EXEMPT: "VAT Exempt", NON_VAT: "Non-VAT" };
 const NATURE_LABEL: Record<TaxSource, string> = { GOODS: "Goods", SERVICE: "Services", CAPITAL_GOODS: "Capital Goods" };
 const uid = () => crypto.randomUUID();
-const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT", amount: 0, amountIsGross: true, atcCodeId: null, taxSource: "GOODS", referenceNo: "", lineDescription: "", expanded: false, showParty: false, counterpartyType: null, counterpartyId: null });
+const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT", amount: 0, amountIsGross: true, atcCodeId: null, taxSource: "GOODS", referenceNo: "", lineDescription: "", expanded: false, showParty: false, counterpartyType: null, counterpartyId: null, applyExpanded: false, applications: [] });
 const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const MAX_FILE = 3_000_000;
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendors, employees, contacts, customers, atcCodes, locations, suggestedDocumentNo }: {
   companyId: string; accounts: Account[]; cashAccounts: Account[]; vendors: Vendor[]; employees: Employee[]; contacts: Contact[]; customers: Customer[]; atcCodes: AtcCode[]; locations: Location[]; suggestedDocumentNo: string;
@@ -40,8 +43,61 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
   const [employeeList, setEmployeeList] = useState(employees);
   const [contactList, setContactList] = useState(contacts);
   const [customerList, setCustomerList] = useState(customers);
+  const [openBills, setOpenBills] = useState<OpenBill[]>([]);
+  const [loadingBills, setLoadingBills] = useState(false);
 
   const atcById = useMemo(() => new Map(atcCodes.map((a) => [a.id, a])), [atcCodes]);
+  const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
+  // How much of each open bill this disbursement has allocated so far,
+  // across every line — a bill's balance is shared, so applying part of it
+  // on one line reduces what's left to apply on another. Mirrors AR.
+  const allocatedByInvoice = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of lines) for (const a of l.applications) m.set(a.invoiceDocumentNo, (m.get(a.invoiceDocumentNo) ?? 0) + a.amount);
+    return m;
+  }, [lines]);
+
+  async function loadOpenBills(vendorId: string | null) {
+    if (!vendorId) { setOpenBills([]); return; }
+    setLoadingBills(true);
+    try {
+      const res = await fetch(`/api/payables/open-bills?vendorId=${encodeURIComponent(vendorId)}`);
+      const data = await res.json().catch(() => ({ bills: [] }));
+      setOpenBills(data.bills ?? []);
+    } finally {
+      setLoadingBills(false);
+    }
+  }
+  function clearApplications() {
+    setLines((prev) => prev.map((l) => ({ ...l, applications: [] })));
+  }
+  function handleCounterpartyTypeChange(t: CounterpartyType | null) {
+    setError(null);
+    setCounterpartyType(t);
+    clearApplications();
+    if (t === "VENDOR" && counterpartyId) loadOpenBills(counterpartyId);
+    else setOpenBills([]);
+  }
+  function handleCounterpartyIdChange(id: string | null) {
+    setError(null);
+    setCounterpartyId(id);
+    clearApplications();
+    if (counterpartyType === "VENDOR") loadOpenBills(id);
+  }
+  function setLineApplication(lineKey: string, invoiceDocumentNo: string, amount: number) {
+    setError(null);
+    setLines((prev) =>
+      prev.map((l) => {
+        if (l.key !== lineKey) return l;
+        const rest = l.applications.filter((a) => a.invoiceDocumentNo !== invoiceDocumentNo);
+        const applications = amount > 0 ? [...rest, { invoiceDocumentNo, amount }] : rest;
+        // Keep the line's own Amount in sync with what's been applied — same
+        // behavior as Cash Receipts' AR application.
+        const appliedSum = round2(applications.reduce((s, a) => s + a.amount, 0));
+        return { ...l, applications, amount: appliedSum };
+      })
+    );
+  }
   function appendParty(type: CounterpartyType, record: Vendor | Employee | Contact | Customer) {
     if (type === "VENDOR") setVendorList((l) => [...l, record as Vendor]);
     else if (type === "EMPLOYEE") setEmployeeList((l) => [...l, record as Employee]);
@@ -52,7 +108,10 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
     appendParty(type, record);
     setCounterpartyId(record.id);
   }
-  const updateLine = (key: string, patch: Partial<LineState>) => setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  const updateLine = (key: string, patch: Partial<LineState>) => {
+    setError(null);
+    setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  };
   const addLine = () => setLines((prev) => [...prev, newLine()]);
   const removeLine = (key: string) => setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.key !== key) : prev));
   const clearLines = () => { if (window.confirm("Clear all lines? This removes every line you've entered.")) setLines([newLine()]); };
@@ -95,21 +154,37 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
     const nextData = await nextRes.json();
     setDocumentNo(nextData.documentNo);
     setCheckNo(""); setCounterpartyId(null); setLines([newLine()]); setAttachments([]); setAttachError(null);
+    setOpenBills([]);
     setPosted(false); setError(null); setSuccess(null);
   }
 
   async function post(retain: boolean) {
-    setSaving(true); setError(null); setSuccess(null);
+    setError(null); setSuccess(null);
+    for (const l of lines) {
+      if (l.applications.length === 0) continue;
+      const appliedSum = round2(l.applications.reduce((s, a) => s + a.amount, 0));
+      if (appliedSum !== round2(l.amount)) {
+        setError(
+          `The amount applied to bills (${formatPeso(appliedSum)}) doesn't match this line's Amount (${formatPeso(l.amount)}). ` +
+            `Adjust the bill applications or the line Amount so they're equal before saving.`
+        );
+        return;
+      }
+    }
+    setSaving(true);
+    const applications = lines.flatMap((l) => l.applications);
     const payload = {
       companyId, locationId: locationId || null, documentNo, checkNo: checkNo || null, postingDate,
       counterpartyType, counterpartyId, cashAccountId, particulars: "",
       lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, taxSource: l.taxSource, referenceNo: l.referenceNo || null, lineDescription: l.lineDescription || null, counterpartyType: l.showParty ? l.counterpartyType : null, counterpartyId: l.showParty ? l.counterpartyId : null })),
       attachments,
+      applications,
     };
     const res = await fetch("/api/ledger-entries/cash-disbursement", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSaving(false);
     if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error ?? "Something went wrong posting this entry."); return; }
-    setSuccess(`Posted CV ${documentNo}.`);
+    const data = await res.json().catch(() => ({}));
+    setSuccess(data?.applicationError ? `Posted CV ${documentNo}. ${data.applicationError}` : `Posted CV ${documentNo}.`);
     if (retain) { setPosted(true); return; }
     await resetForm();
   }
@@ -134,7 +209,15 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
       </div>
       <p className="mt-1 text-sm text-neutral-500">Every peso paid out — check disbursements, cash purchases, expense payments.</p>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        onKeyDown={(e) => {
+          // Enter inside any field (e.g. typing a bill's Apply amount)
+          // submits the form by default — only the Save buttons should.
+          if (e.key === "Enter" && e.target instanceof HTMLElement && e.target.tagName !== "BUTTON") e.preventDefault();
+        }}
+        className="mt-6 space-y-6"
+      >
         <div className="grid grid-cols-1 gap-3 rounded-lg border border-neutral-200 p-4 sm:grid-cols-4">
           <label className={label}>Date<input type="date" required value={postingDate} onChange={(e) => setPostingDate(e.target.value)} className={field} /></label>
           <label className={label}>CV no.<input required value={documentNo} onChange={(e) => setDocumentNo(e.target.value)} className={`${field} font-mono`} /></label>
@@ -142,7 +225,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
           <label className={label}>Branch<select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={field}><option value="">—</option>{locations.map((l) => <option key={l.id} value={l.id}>{branchOptionLabel(l)}</option>)}</select></label>
 
           <div className="sm:col-span-4">
-            <CounterpartyPicker counterpartyType={counterpartyType} counterpartyId={counterpartyId} onTypeChange={setCounterpartyType} onIdChange={setCounterpartyId} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} label="Payee" companyId={companyId} onCreated={onPartyCreated} showDetails />
+            <CounterpartyPicker counterpartyType={counterpartyType} counterpartyId={counterpartyId} onTypeChange={handleCounterpartyTypeChange} onIdChange={handleCounterpartyIdChange} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} label="Payee" companyId={companyId} onCreated={onPartyCreated} showDetails />
           </div>
           <label className={label}>Cash account<select required value={cashAccountId} onChange={(e) => setCashAccountId(e.target.value)} className={field}>{cashAccounts.length === 0 && <option value="">No Cash accounts yet</option>}{cashAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
 
@@ -172,11 +255,15 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
               <thead>
                 <tr className="bg-neutral-50 text-left text-neutral-500">
                   <th className={cell}>Account</th><th className={cell}>Ref No.</th><th className={cell}>Description</th><th className={cell}>Nature</th><th className={cell}>VAT</th><th className={cell}>Amount</th><th className={cell}>Gross/Net</th><th className={cell}>ATC</th>
-                  <th className={`${cell} text-right`}>Net</th><th className={`${cell} text-right`}>VAT</th><th className={`${cell} text-right`}>W/tax</th><th className={cell}>Details</th><th className={`${cell} text-right`}><button type="button" onClick={clearLines} className="font-medium text-red-600 hover:underline">Clear</button></th>
+                  <th className={`${cell} text-right`}>Net</th><th className={`${cell} text-right`}>VAT</th><th className={`${cell} text-right`}>W/tax</th><th className={cell}>Apply to</th><th className={cell}>Details</th><th className={`${cell} text-right`}><button type="button" onClick={clearLines} className="font-medium text-red-600 hover:underline">Clear</button></th>
                 </tr>
               </thead>
               <tbody>
-                {computed.rows.map((r) => (
+                {computed.rows.map((r) => {
+                  const isPayableLine = accountById.get(r.accountId)?.classification === "ACCOUNTS_PAYABLE";
+                  const canApply = isPayableLine && counterpartyType === "VENDOR" && !!counterpartyId;
+                  const appliedOnLine = r.applications.reduce((s, a) => s + a.amount, 0);
+                  return (
                   <Fragment key={r.key}>
                   <tr>
                     <td className={cell}><select required value={r.accountId} onChange={(e) => updateLine(r.key, { accountId: e.target.value })} className="w-44 rounded border border-neutral-300 px-1 py-1"><option value="">Select…</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></td>
@@ -190,12 +277,79 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.net)}</td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.vat)}</td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.withholdingAmt)}</td>
+                    <td className={cell}>
+                      {canApply && (
+                        <button type="button" onClick={() => updateLine(r.key, { applyExpanded: !r.applyExpanded })} className="rounded border border-neutral-300 px-2 py-0.5 text-neutral-600 hover:bg-neutral-50">
+                          {r.applyExpanded ? "Hide" : "⋯"}{appliedOnLine > 0 && !r.applyExpanded ? ` (${formatPeso(appliedOnLine)})` : ""}
+                        </button>
+                      )}
+                    </td>
                     <td className={cell}><button type="button" onClick={() => updateLine(r.key, { expanded: !r.expanded })} className="rounded border border-neutral-300 px-2 py-0.5 text-neutral-600 hover:bg-neutral-50">{r.expanded ? "Hide" : "⋯"}{r.showParty && r.counterpartyId && !r.expanded ? " •" : ""}</button></td>
                     <td className={cell}>{lines.length > 1 && <button type="button" onClick={() => removeLine(r.key)} className="text-red-500 hover:text-red-700">✕</button>}</td>
                   </tr>
+                  {canApply && r.applyExpanded && (
+                    <tr>
+                      <td className="border-b border-neutral-100 bg-neutral-50/60 px-3 py-3" colSpan={14}>
+                        <div className="text-xs font-medium text-neutral-700">Apply this line to bill(s)</div>
+                        {loadingBills ? (
+                          <p className="mt-1 text-xs text-neutral-400">Loading open bills…</p>
+                        ) : openBills.length === 0 ? (
+                          <p className="mt-1 text-xs text-neutral-400">This vendor has no open (unpaid) bills.</p>
+                        ) : (
+                          <table className="mt-2 w-full max-w-xl text-xs">
+                            <thead>
+                              <tr className="text-left text-neutral-400">
+                                <th className="py-1 pr-2 font-normal"></th>
+                                <th className="py-1 pr-2 font-normal">Bill</th>
+                                <th className="py-1 pr-2 font-normal">Date</th>
+                                <th className="py-1 pr-2 text-right font-normal">Open balance</th>
+                                <th className="py-1 text-right font-normal">Apply</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {openBills.map((bill) => {
+                                const ownAmount = r.applications.find((a) => a.invoiceDocumentNo === bill.documentNo)?.amount ?? 0;
+                                const claimedByOthers = (allocatedByInvoice.get(bill.documentNo) ?? 0) - ownAmount;
+                                const availableForThisLine = Math.max(0, round2(bill.openBalance - claimedByOthers));
+                                return (
+                                  <tr key={bill.documentNo} className="border-t border-neutral-100">
+                                    <td className="py-1 pr-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={ownAmount > 0}
+                                        disabled={availableForThisLine <= 0}
+                                        onChange={(e) => setLineApplication(r.key, bill.documentNo, e.target.checked ? availableForThisLine : 0)}
+                                      />
+                                    </td>
+                                    <td className="py-1 pr-2 font-mono">{bill.documentNo}</td>
+                                    <td className="py-1 pr-2">{formatDate(new Date(bill.postingDate))}</td>
+                                    <td className="py-1 pr-2 text-right font-mono">{formatPeso(bill.openBalance)}</td>
+                                    <td className="py-1 text-right">
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min={0}
+                                        max={availableForThisLine}
+                                        value={ownAmount || ""}
+                                        onChange={(e) => setLineApplication(r.key, bill.documentNo, Math.min(availableForThisLine, Math.max(0, Number(e.target.value))))}
+                                        className="w-24 rounded border border-neutral-300 px-1 py-0.5 text-right"
+                                      />
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        )}
+                        <p className="mt-2 text-[11px] text-neutral-500">
+                          Applied on this line: {formatPeso(appliedOnLine)} of {formatPeso(r.amount || 0)}
+                        </p>
+                      </td>
+                    </tr>
+                  )}
                   {r.expanded && (
                     <tr>
-                      <td className="border-b border-neutral-100 bg-neutral-50/60 px-3 py-3" colSpan={13}>
+                      <td className="border-b border-neutral-100 bg-neutral-50/60 px-3 py-3" colSpan={14}>
                         <button type="button" onClick={() => updateLine(r.key, { showParty: !r.showParty, ...(r.showParty ? { counterpartyType: null, counterpartyId: null } : {}) })} className="text-xs text-neutral-600 hover:text-neutral-900">{r.showParty ? "− remove party" : "+ attach party"}</button>
                         {r.showParty && (
                           <div className="mt-3">
@@ -206,10 +360,11 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                     </tr>
                   )}
                   </Fragment>
-                ))}
+                  );
+                })}
               </tbody>
               <tfoot>
-                <tr className="bg-neutral-50 font-medium"><td className={cell} colSpan={8}>Totals</td><td className={`${cell} text-right font-mono`} colSpan={2}>Debit {formatPeso(computed.totalDebit)}</td><td className={`${cell} text-right font-mono`}>{formatPeso(computed.totalWithholding)}</td><td className={cell} colSpan={2}></td></tr>
+                <tr className="bg-neutral-50 font-medium"><td className={cell} colSpan={8}>Totals</td><td className={`${cell} text-right font-mono`} colSpan={2}>Debit {formatPeso(computed.totalDebit)}</td><td className={`${cell} text-right font-mono`}>{formatPeso(computed.totalWithholding)}</td><td className={cell} colSpan={3}></td></tr>
               </tfoot>
             </table>
           </div>

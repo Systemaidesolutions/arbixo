@@ -259,6 +259,7 @@ model Company {
   contacts      Contact[]
   ledgerEntries LedgerEntry[]
   receivableApplications ReceivableApplication[]
+  payableApplications PayableApplication[]
   auditLogs     AuditLog[]
   taxPostingSetup TaxPostingSetup?
   users         User[]
@@ -543,6 +544,29 @@ model ReceivableApplication {
   @@index([companyId, paymentDocumentNo])
 }
 
+// Accounts-payable mirror of ReceivableApplication — which posted Purchase on
+// Account bill(s) a Cash Disbursement paid off.
+model PayableApplication {
+  id        String  @id @default(cuid())
+  company   Company @relation(fields: [companyId], references: [id])
+  companyId String
+
+  vendor   Vendor @relation(fields: [vendorId], references: [id])
+  vendorId String
+
+  paymentDocumentNo String // Cash Disbursement CV no.
+  invoiceDocumentNo String // Purchase on Account PV no. being settled
+
+  amountApplied Decimal @db.Decimal(18, 2)
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  @@index([companyId, vendorId])
+  @@index([companyId, invoiceDocumentNo])
+  @@index([companyId, paymentDocumentNo])
+}
+
 model Vendor {
   id                String   @id @default(cuid())
   company           Company  @relation(fields: [companyId], references: [id])
@@ -575,6 +599,7 @@ model Vendor {
   updatedAt         DateTime @updatedAt
 
   ledgerEntries LedgerEntry[]
+  payableApplications PayableApplication[]
 
   @@unique([companyId, code])
 }
