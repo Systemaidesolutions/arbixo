@@ -1,32 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Contact, CounterpartyType, Customer, Employee, Vendor } from "@prisma/client";
 import { QuickCreateModal, NewPartyForm } from "@/components/QuickCreate";
 
 type AnyParty = Customer | Vendor | Employee | Contact;
 
-// A native <select> can only render plain text per option, so the columns are
-// aligned with padding + a monospace font, and the header is an <optgroup>
-// label (non-selectable) above the rows.
 type PartyRow = {
   code?: string | null; registeredName?: string | null; tradeName?: string | null;
   lastName?: string | null; firstName?: string | null;
 };
-const COL_CODE = 18; // fits the worst case: a 10-char custom prefix + 7-digit series number
-const COL_REG = 30;
-const COL_TRADE = 26;
-const pad = (s: string, w: number) => (s.length > w ? `${s.slice(0, w - 1)}…` : s.padEnd(w, " "));
 
 function registeredOf(p: PartyRow): string {
   const person = [p.lastName, p.firstName].filter(Boolean).join(", ");
   return (p.registeredName || person || "").trim();
 }
-function optionRow(party: AnyParty): string {
+// Text a user might type to find this party by — code, registered name, or
+// trade name, all lower-cased into one blob for a simple substring filter.
+function searchBlob(party: AnyParty): string {
   const p = party as unknown as PartyRow;
-  return `${pad(p.code ?? "", COL_CODE)} ${pad(registeredOf(p), COL_REG)} ${pad(p.tradeName ?? "", COL_TRADE)}`.trimEnd();
+  return [p.code, registeredOf(p), p.tradeName].filter(Boolean).join(" ").toLowerCase();
 }
-const OPTION_HEADER = `${pad("Code", COL_CODE)} ${pad("Registered Name", COL_REG)} ${pad("Trade Name", COL_TRADE)}`;
+// What the field shows once something's selected (not actively being edited).
+function displayLabel(party: AnyParty): string {
+  const p = party as unknown as PartyRow;
+  const name = registeredOf(p) || p.tradeName || "";
+  return p.code ? `${p.code} — ${name}` : name;
+}
 
 function partyDetails(party: AnyParty): { tin: string; address: string } {
   const p = party as unknown as {
@@ -46,7 +46,150 @@ const TYPE_LABELS: Record<CounterpartyType, string> = {
   CUSTOMER: "Customer",
 };
 
-const NEW = "__new__";
+// A type-to-filter combobox (Business Central style): typing narrows the
+// list by code / registered name / trade name; clicking a row (or Enter)
+// selects it. Replaces a plain <select>, which can't be searched.
+function PartyCombobox({
+  options,
+  selectedId,
+  onSelect,
+  disabled,
+  canCreate,
+  onNew,
+  newLabel,
+}: {
+  options: AnyParty[];
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  disabled?: boolean;
+  canCreate?: boolean;
+  onNew?: () => void;
+  newLabel?: string;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(0);
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const selected = selectedId ? options.find((o) => o.id === selectedId) : undefined;
+
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return options;
+    return options.filter((o) => searchBlob(o).includes(needle));
+  }, [options, query]);
+
+  useEffect(() => {
+    setHighlight(0);
+  }, [query, open]);
+
+  useEffect(() => () => { if (blurTimer.current) clearTimeout(blurTimer.current); }, []);
+
+  function selectOption(o: AnyParty) {
+    onSelect(o.id);
+    setQuery("");
+    setOpen(false);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open) {
+      if (e.key === "ArrowDown" || e.key === "Enter") {
+        setOpen(true);
+        e.preventDefault();
+      }
+      return;
+    }
+    const maxIndex = filtered.length - 1 + (canCreate ? 1 : 0);
+    if (e.key === "ArrowDown") {
+      setHighlight((h) => Math.min(h + 1, maxIndex));
+      e.preventDefault();
+    } else if (e.key === "ArrowUp") {
+      setHighlight((h) => Math.max(h - 1, 0));
+      e.preventDefault();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (canCreate && highlight === filtered.length) {
+        onNew?.();
+        setOpen(false);
+        return;
+      }
+      const o = filtered[highlight];
+      if (o) selectOption(o);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setQuery("");
+      (e.target as HTMLInputElement).blur();
+    }
+  }
+
+  const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
+  const rowBase = "flex w-full items-center gap-3 px-2 py-1.5 text-left text-xs hover:bg-neutral-50";
+
+  return (
+    <div className="relative">
+      <input
+        disabled={disabled}
+        value={open ? query : selected ? displayLabel(selected) : ""}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => {
+          setQuery("");
+          setOpen(true);
+        }}
+        onBlur={() => {
+          // Delay so a click on a dropdown row (which also blurs the input)
+          // still registers before the list disappears.
+          blurTimer.current = setTimeout(() => setOpen(false), 150);
+        }}
+        onKeyDown={handleKeyDown}
+        placeholder="Type to search…"
+        className={`${field} disabled:bg-neutral-100`}
+        autoComplete="off"
+      />
+      {open && (
+        <div className="absolute z-20 mt-1 max-h-64 w-full min-w-[420px] overflow-auto rounded border border-neutral-300 bg-white shadow-lg">
+          {canCreate && (
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onNew?.();
+                setOpen(false);
+              }}
+              className={`${rowBase} font-medium text-brand-navy ${highlight === filtered.length ? "bg-blue-50" : ""}`}
+            >
+              ＋ {newLabel ?? "New…"}
+            </button>
+          )}
+          {filtered.length === 0 ? (
+            <div className="px-2 py-2 text-xs text-neutral-400">No matches</div>
+          ) : (
+            filtered.map((o, i) => {
+              const p = o as unknown as PartyRow;
+              return (
+                <button
+                  type="button"
+                  key={o.id}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    selectOption(o);
+                  }}
+                  className={`${rowBase} ${i === highlight ? "bg-blue-50" : ""}`}
+                >
+                  <span className="w-24 shrink-0 truncate font-mono text-neutral-500">{p.code}</span>
+                  <span className="w-40 shrink-0 truncate text-neutral-900">{registeredOf(p)}</span>
+                  <span className="truncate text-neutral-500">{p.tradeName}</span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function CounterpartyPicker({
   counterpartyType,
@@ -115,31 +258,16 @@ export function CounterpartyPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [singleType, counterpartyType]);
 
-  function handleSelect(value: string) {
-    if (value === NEW) {
-      setShowNew(true);
-      return;
-    }
-    onIdChange(value || null);
-  }
-
-  const partySelect = (disabled = false) => (
-    <select
-      value={counterpartyId ?? ""}
-      onChange={(e) => handleSelect(e.target.value)}
+  const partyCombobox = (disabled = false) => (
+    <PartyCombobox
+      options={options}
+      selectedId={counterpartyId}
+      onSelect={(id) => onIdChange(id)}
       disabled={disabled}
-      className={`${field} font-mono text-xs disabled:bg-neutral-100`}
-    >
-      <option value="">Select…</option>
-      {canCreate && <option value={NEW}>＋ New {TYPE_LABELS[counterpartyType!].toLowerCase()}…</option>}
-      <optgroup label={OPTION_HEADER}>
-        {options.map((o) => (
-          <option key={o.id} value={o.id}>
-            {optionRow(o)}
-          </option>
-        ))}
-      </optgroup>
-    </select>
+      canCreate={canCreate}
+      onNew={() => setShowNew(true)}
+      newLabel={counterpartyType ? `New ${TYPE_LABELS[counterpartyType].toLowerCase()}…` : undefined}
+    />
   );
 
   const modal =
@@ -161,7 +289,7 @@ export function CounterpartyPicker({
     return (
       <label className={label_}>
         {label}
-        {partySelect(false)}
+        {partyCombobox(false)}
         {detailBlock}
         {modal}
       </label>
@@ -191,7 +319,7 @@ export function CounterpartyPicker({
 
       <label className={label_}>
         {label}
-        {partySelect(!counterpartyType)}
+        {partyCombobox(!counterpartyType)}
         {detailBlock}
       </label>
       {modal}
