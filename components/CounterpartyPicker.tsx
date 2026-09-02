@@ -21,10 +21,14 @@ function searchBlob(party: AnyParty): string {
   const p = party as unknown as PartyRow;
   return [p.code, registeredOf(p), p.tradeName].filter(Boolean).join(" ").toLowerCase();
 }
-// What the field shows once something's selected (not actively being edited).
+// What the field shows once something's selected (not actively being
+// edited) — trade name only (falls back to the registered/person name for
+// employees, who have no trade name). Search still matches on registered
+// name too; this only changes what's displayed. Reports are unaffected —
+// they keep showing the registered name via lib/ledgerSearch.ts etc.
 function displayLabel(party: AnyParty): string {
   const p = party as unknown as PartyRow;
-  const name = registeredOf(p) || p.tradeName || "";
+  const name = p.tradeName || registeredOf(p) || "";
   return p.code ? `${p.code} — ${name}` : name;
 }
 
@@ -179,8 +183,7 @@ function PartyCombobox({
                   className={`${rowBase} ${i === highlight ? "bg-blue-50" : ""}`}
                 >
                   <span className="w-24 shrink-0 truncate font-mono text-neutral-500">{p.code}</span>
-                  <span className="w-40 shrink-0 truncate text-neutral-900">{registeredOf(p)}</span>
-                  <span className="truncate text-neutral-500">{p.tradeName}</span>
+                  <span className="truncate text-neutral-900">{p.tradeName || registeredOf(p)}</span>
                 </button>
               );
             })
