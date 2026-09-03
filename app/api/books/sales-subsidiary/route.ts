@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUserRecord } from "@/lib/currentUser";
+import { effectiveCompanyId } from "@/lib/currentUser";
 import { getSalesSubsidiaryJournal } from "@/lib/salesSubsidiaryJournal";
 import { resolveBranchScope } from "@/lib/branchScope";
 
@@ -13,15 +13,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "from and to are required" }, { status: 400 });
   }
 
-  const user = await getCurrentUserRecord();
-  if (!user?.companyId) {
+  // effectiveCompanyId (not a raw user.companyId check) so this also works
+  // for an admin currently acting inside a company — a plain ADMIN account
+  // has no companyId of its own and would otherwise always get Forbidden.
+  const companyId = await effectiveCompanyId();
+  if (!companyId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const branch = await resolveBranchScope(user.companyId, params.get("locationId"));
+  const branch = await resolveBranchScope(companyId, params.get("locationId"));
 
   const result = await getSalesSubsidiaryJournal(
-    user.companyId,
+    companyId,
     new Date(`${from}T00:00:00`),
     new Date(`${to}T23:59:59.999`),
     branch
