@@ -6,6 +6,8 @@ import { formatPeso, formatDate } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
 
+export const maxDuration = 60;
+
 export default async function PurchaseSubsidiaryJournalPrintPage({
   searchParams,
 }: {

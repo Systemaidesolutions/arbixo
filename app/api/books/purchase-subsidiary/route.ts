@@ -3,6 +3,8 @@ import { getCurrentUserRecord } from "@/lib/currentUser";
 import { getPurchaseSubsidiaryJournal } from "@/lib/purchaseSubsidiaryJournal";
 import { resolveBranchScope } from "@/lib/branchScope";
 
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const from = params.get("from");

@@ -24,15 +24,27 @@ export function SalesSubsidiaryJournalClient({
   const [to, setTo] = useState(def.to);
   const [data, setData] = useState<SalesSubsidiaryJournal | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!from || !to) return; // a date field is mid-edit / cleared — don't fetch
     let active = true;
     setLoading(true);
+    setLoadError(null);
     const qs = `from=${from}&to=${to}${locationId ? `&locationId=${locationId}` : ""}`;
     fetch(`/api/books/sales-subsidiary?${qs}`)
-      .then((r) => r.json())
-      .then((j) => active && j && Array.isArray(j.rows) && setData(j))
+      .then(async (r) => {
+        const j = await r.json().catch(() => null);
+        if (!active) return;
+        if (!r.ok || !j || !Array.isArray(j.rows)) {
+          setLoadError(j?.error ?? "Couldn't load this report. Try again.");
+          return;
+        }
+        setData(j);
+      })
+      .catch(() => {
+        if (active) setLoadError("Couldn't reach the server. Check your connection and try again.");
+      })
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
@@ -77,7 +89,9 @@ export function SalesSubsidiaryJournalClient({
         </label>
       </div>
 
-      {loading || !data?.rows ? (
+      {loadError ? (
+        <p className="mt-6 text-sm text-red-600">{loadError}</p>
+      ) : loading || !data?.rows ? (
         <p className="mt-6 text-sm text-neutral-400">Loading…</p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-lg border border-neutral-200">
