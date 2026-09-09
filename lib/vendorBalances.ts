@@ -35,6 +35,8 @@ type OpenApItem = {
   openBalance: number;
 };
 
+export type DateRange = { from?: Date; to?: Date };
+
 /**
  * AP mirror of getOpenArItems (lib/customerBalances.ts) — every Purchase on
  * Account bill and credit note (not cancelled) with a non-zero open
@@ -43,8 +45,12 @@ type OpenApItem = {
  * "Apply to bill(s)" feature on Cash Disbursement writes to). A credit note
  * has no application tracking of its own, so it always shows at its full
  * net amount.
+ *
+ * `range` narrows to bills/credit notes posted within [from, to]
+ * (inclusive) — it filters which documents appear, not the applied
+ * amounts, so a shown document's open balance is still its current balance.
  */
-async function getOpenApItems(companyId: string, vendorId?: string): Promise<OpenApItem[]> {
+async function getOpenApItems(companyId: string, vendorId?: string, range?: DateRange): Promise<OpenApItem[]> {
   const [lines, applied] = await Promise.all([
     prisma.ledgerEntry.findMany({
       where: {
@@ -54,6 +60,9 @@ async function getOpenApItems(companyId: string, vendorId?: string): Promise<Ope
         documentType: { in: ["PURCHASE", "CREDIT_MEMO"] },
         isCancelled: false,
         account: { classification: "ACCOUNTS_PAYABLE" },
+        ...(range?.from || range?.to
+          ? { postingDate: { ...(range.from ? { gte: range.from } : {}), ...(range.to ? { lte: range.to } : {}) } }
+          : {}),
       },
       include: { vendor: true, location: true },
       orderBy: [{ postingDate: "asc" }, { documentNo: "asc" }],
@@ -98,8 +107,8 @@ async function getOpenApItems(companyId: string, vendorId?: string): Promise<Ope
   return [...byDoc.values()].filter((r) => Math.abs(r.openBalance) > 0.005);
 }
 
-export async function getVendorBalanceSummary(companyId: string): Promise<VendorBalanceSummaryRow[]> {
-  const items = await getOpenApItems(companyId);
+export async function getVendorBalanceSummary(companyId: string, range?: DateRange): Promise<VendorBalanceSummaryRow[]> {
+  const items = await getOpenApItems(companyId, undefined, range);
   const byVendor = new Map<string, VendorBalanceSummaryRow>();
   for (const item of items) {
     let row = byVendor.get(item.vendorId);
@@ -128,9 +137,10 @@ export type VendorBalanceDetailGroup = {
  * one-vendor-at-a-time drill-down.
  */
 export async function getVendorBalanceDetailAll(
-  companyId: string
+  companyId: string,
+  range?: DateRange
 ): Promise<{ groups: VendorBalanceDetailGroup[]; grandTotal: number }> {
-  const items = await getOpenApItems(companyId);
+  const items = await getOpenApItems(companyId, undefined, range);
   const byVendor = new Map<string, { vendorName: string; items: OpenApItem[] }>();
   for (const item of items) {
     let g = byVendor.get(item.vendorId);
@@ -168,10 +178,11 @@ export async function getVendorBalanceDetailAll(
 
 export async function getVendorBalanceDetail(
   companyId: string,
-  vendorId: string
+  vendorId: string,
+  range?: DateRange
 ): Promise<{ vendorName: string; rows: VendorBalanceDetailRow[]; totalBalance: number }> {
   const [items, vendor] = await Promise.all([
-    getOpenApItems(companyId, vendorId),
+    getOpenApItems(companyId, vendorId, range),
     prisma.vendor.findUnique({ where: { id: vendorId }, select: { tradeName: true, registeredName: true } }),
   ]);
   let running = 0;

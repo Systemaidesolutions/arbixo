@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { getVendorBalanceSummary, getVendorBalanceDetail } from "@/lib/vendorBalances";
-import { formatPeso, formatDate } from "@/lib/format";
+import { formatPeso, formatDate, formatDateRangeCoverage } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
 
@@ -10,7 +10,7 @@ export const maxDuration = 60;
 export default async function VendorBalancePrintPage({
   searchParams,
 }: {
-  searchParams: { vendorId?: string };
+  searchParams: { vendorId?: string; dateFrom?: string; dateTo?: string };
 }) {
   const company = await requirePostingCompany();
   if (!company) notFound();
@@ -18,14 +18,19 @@ export default async function VendorBalancePrintPage({
   const th = "border border-neutral-400 px-1 py-0.5 text-center align-middle font-semibold";
   const td = "border border-neutral-300 px-1 py-0.5 align-top";
   const tdNum = `${td} text-right font-mono whitespace-nowrap`;
+  const range = {
+    from: searchParams.dateFrom ? new Date(searchParams.dateFrom) : undefined,
+    to: searchParams.dateTo ? new Date(searchParams.dateTo) : undefined,
+  };
+  const coverage = formatDateRangeCoverage(searchParams.dateFrom, searchParams.dateTo);
 
   if (searchParams.vendorId) {
-    const detail = await getVendorBalanceDetail(company.id, searchParams.vendorId);
+    const detail = await getVendorBalanceDetail(company.id, searchParams.vendorId, range);
     return (
       <main className="mx-auto max-w-[8.5in] bg-white p-6 text-neutral-900 print:p-0">
         <style>{`@media print { @page { size: A4; margin: 0.4in } html, body { height: auto !important; overflow: visible !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}</style>
         <PrintControls auto={false} />
-        <ReportHeader company={company} title={`${detail.vendorName} — Vendor Balance Detail Report`} coverage="All Dates" />
+        <ReportHeader company={company} title={`${detail.vendorName} — Vendor Balance Detail Report`} coverage={coverage} />
         <table className="mt-4 w-full border-collapse text-[9px]" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
           <thead>
             <tr>
@@ -69,13 +74,13 @@ export default async function VendorBalancePrintPage({
     );
   }
 
-  const summary = await getVendorBalanceSummary(company.id);
+  const summary = await getVendorBalanceSummary(company.id, range);
   const total = summary.reduce((s, r) => s + r.balance, 0);
   return (
     <main className="mx-auto max-w-[8.5in] bg-white p-6 text-neutral-900 print:p-0">
       <style>{`@media print { @page { size: A4; margin: 0.4in } html, body { height: auto !important; overflow: visible !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}</style>
       <PrintControls auto={false} />
-      <ReportHeader company={company} title="Vendor Balance Summary" coverage="All Dates" />
+      <ReportHeader company={company} title="Vendor Balance Summary" coverage={coverage} />
       <table className="mt-4 w-full border-collapse text-xs" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
         <thead>
           <tr>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatPeso, formatDate } from "@/lib/format";
+import { formatPeso, formatDate, formatDateRangeCoverage } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
 
 type SummaryRow = { vendorId: string; code: string; name: string; balance: number };
@@ -17,6 +17,16 @@ type DetailRow = {
 };
 
 export function VendorBalanceClient({ companyId, registeredName }: { companyId: string; registeredName: string }) {
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const coverage = formatDateRangeCoverage(dateFrom, dateTo);
+  function rangeParams(extra?: Record<string, string>) {
+    const p = new URLSearchParams(extra);
+    if (dateFrom) p.set("dateFrom", dateFrom);
+    if (dateTo) p.set("dateTo", dateTo);
+    return p;
+  }
+
   const [summary, setSummary] = useState<SummaryRow[] | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -31,7 +41,7 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
     let active = true;
     setLoadingSummary(true);
     setSummaryError(null);
-    fetch("/api/reports/vendor-balance")
+    fetch(`/api/reports/vendor-balance?${rangeParams()}`)
       .then(async (r) => {
         const j = await r.json().catch(() => null);
         if (!active) return;
@@ -46,14 +56,20 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
     return () => {
       active = false;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo]);
 
-  function openDetail(vendorId: string, name: string) {
-    setSelected({ id: vendorId, name });
+  useEffect(() => {
+    if (!selected) return;
+    loadDetail(selected.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo]);
+
+  function loadDetail(vendorId: string) {
     setDetail(null);
     setDetailError(null);
     setLoadingDetail(true);
-    fetch(`/api/reports/vendor-balance?vendorId=${encodeURIComponent(vendorId)}`)
+    fetch(`/api/reports/vendor-balance?${rangeParams({ vendorId })}`)
       .then(async (r) => {
         const j = await r.json().catch(() => null);
         if (!r.ok || !j || !Array.isArray(j.rows)) {
@@ -67,10 +83,15 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
       .finally(() => setLoadingDetail(false));
   }
 
+  function openDetail(vendorId: string, name: string) {
+    setSelected({ id: vendorId, name });
+    loadDetail(vendorId);
+  }
+
   function exportSummary() {
     if (!summary) return;
     const out: (string | number)[][] = [
-      ["Vendor Balance Summary", registeredName, "All Dates"],
+      ["Vendor Balance Summary", registeredName, coverage],
       [],
       ["Vendor", "Total"],
       ...summary.map((r) => [r.name, r.balance.toFixed(2)]),
@@ -82,7 +103,7 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
   function exportDetail() {
     if (!detail || !selected) return;
     const out: (string | number)[][] = [
-      [selected.name, "Vendor Balance Detail Report", "All Dates"],
+      [selected.name, "Vendor Balance Detail Report", coverage],
       [],
       ["Date", "Transaction type", "Number", "Location", "Due date", "Amount", "Open balance", "Balance"],
       ...detail.map((r) => [
@@ -101,6 +122,30 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
 
   const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
 
+  const dateFilter = (
+    <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-3 print:hidden">
+      <label className="text-xs text-neutral-500">
+        From
+        <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={`mt-1 block ${field}`} />
+      </label>
+      <label className="text-xs text-neutral-500">
+        To
+        <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={`mt-1 block ${field}`} />
+      </label>
+      {(dateFrom || dateTo) && (
+        <button
+          onClick={() => {
+            setDateFrom("");
+            setDateTo("");
+          }}
+          className="text-xs text-brand-blue hover:underline"
+        >
+          Clear
+        </button>
+      )}
+    </div>
+  );
+
   if (selected) {
     return (
       <main className="mx-auto max-w-4xl p-4 sm:p-8">
@@ -110,11 +155,11 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
         <div className="mt-2 flex items-start justify-between gap-3">
           <div>
             <h1 className="text-xl font-medium text-neutral-900">{selected.name}</h1>
-            <p className="mt-1 text-sm text-neutral-500">Vendor Balance Detail Report — All Dates</p>
+            <p className="mt-1 text-sm text-neutral-500">Vendor Balance Detail Report — {coverage}</p>
           </div>
           <div className="flex shrink-0 gap-2 print:hidden">
             <button
-              onClick={() => window.open(`/reports/vendor-balance/print?vendorId=${encodeURIComponent(selected.id)}&_embed=1`, "_blank")}
+              onClick={() => window.open(`/reports/vendor-balance/print?${rangeParams({ vendorId: selected.id, _embed: "1" })}`, "_blank")}
               disabled={!detail}
               className={`${field} text-neutral-700 hover:bg-neutral-50 disabled:opacity-40`}
             >
@@ -125,6 +170,8 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
             </button>
           </div>
         </div>
+
+        {dateFilter}
 
         {detailError && <p className="mt-4 text-sm text-red-600">{detailError}</p>}
 
@@ -185,13 +232,13 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-medium text-neutral-900">Vendor Balance Summary</h1>
-          <p className="mt-1 text-sm text-neutral-500">{registeredName} — All Dates</p>
+          <p className="mt-1 text-sm text-neutral-500">{registeredName} — {coverage}</p>
         </div>
         <div className="flex shrink-0 gap-2 print:hidden">
-          <a href="/reports/vendor-balance/detail" className={`${field} text-neutral-700 hover:bg-neutral-50`}>
+          <a href={`/reports/vendor-balance/detail?${rangeParams()}`} className={`${field} text-neutral-700 hover:bg-neutral-50`}>
             Detail report
           </a>
-          <button onClick={() => window.open(`/reports/vendor-balance/print?_embed=1`, "_blank")} disabled={!summary} className={`${field} text-neutral-700 hover:bg-neutral-50 disabled:opacity-40`}>
+          <button onClick={() => window.open(`/reports/vendor-balance/print?${rangeParams({ _embed: "1" })}`, "_blank")} disabled={!summary} className={`${field} text-neutral-700 hover:bg-neutral-50 disabled:opacity-40`}>
             Print
           </button>
           <button onClick={exportSummary} disabled={!summary} className={`${field} text-neutral-700 hover:bg-neutral-50 disabled:opacity-40`}>
@@ -199,6 +246,8 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
           </button>
         </div>
       </div>
+
+      {dateFilter}
 
       {summaryError && <p className="mt-4 text-sm text-red-600">{summaryError}</p>}
 

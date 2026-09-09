@@ -1,27 +1,36 @@
 import { notFound } from "next/navigation";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { getVendorBalanceDetailAll } from "@/lib/vendorBalances";
-import { formatPeso, formatDate } from "@/lib/format";
+import { formatPeso, formatDate, formatDateRangeCoverage } from "@/lib/format";
 import { PrintControls } from "@/components/PrintControls";
 import { ReportHeader, ReportFooter } from "@/components/ReportHeader";
 
 export const maxDuration = 60;
 
-export default async function VendorBalanceDetailAllPrintPage() {
+export default async function VendorBalanceDetailAllPrintPage({
+  searchParams,
+}: {
+  searchParams: { dateFrom?: string; dateTo?: string };
+}) {
   const company = await requirePostingCompany();
   if (!company) notFound();
 
   const th = "border border-neutral-400 px-1 py-0.5 text-center align-middle font-semibold";
   const td = "border border-neutral-300 px-1 py-0.5 align-top";
   const tdNum = `${td} text-right font-mono whitespace-nowrap`;
+  const range = {
+    from: searchParams.dateFrom ? new Date(searchParams.dateFrom) : undefined,
+    to: searchParams.dateTo ? new Date(searchParams.dateTo) : undefined,
+  };
+  const coverage = formatDateRangeCoverage(searchParams.dateFrom, searchParams.dateTo);
 
-  const { groups, grandTotal } = await getVendorBalanceDetailAll(company.id);
+  const { groups, grandTotal } = await getVendorBalanceDetailAll(company.id, range);
 
   return (
     <main className="mx-auto max-w-[8.5in] bg-white p-6 text-neutral-900 print:p-0">
       <style>{`@media print { @page { size: A4; margin: 0.4in } html, body { height: auto !important; overflow: visible !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}</style>
       <PrintControls auto={false} />
-      <ReportHeader company={company} title="Vendor Balance Detail Report" coverage="All Dates" />
+      <ReportHeader company={company} title="Vendor Balance Detail Report" coverage={coverage} />
       {groups.length === 0 ? (
         <p className="mt-6 text-center text-sm text-neutral-400">No open balances</p>
       ) : (

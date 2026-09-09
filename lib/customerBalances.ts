@@ -35,6 +35,8 @@ type OpenArItem = {
   openBalance: number;
 };
 
+export type DateRange = { from?: Date; to?: Date };
+
 /**
  * Every Sales on Account invoice and credit note (not cancelled) with a
  * non-zero open balance, across every customer — the shared source for both
@@ -44,8 +46,12 @@ type OpenArItem = {
  * to). A credit note has no application tracking of its own — ARbixo has no
  * "apply credit note to invoice" workflow yet — so it always shows at its
  * full net amount.
+ *
+ * `range` narrows to invoices/credit notes posted within [from, to]
+ * (inclusive) — it filters which documents appear, not the applied amounts,
+ * so a shown document's open balance is still its current balance.
  */
-async function getOpenArItems(companyId: string, customerId?: string): Promise<OpenArItem[]> {
+async function getOpenArItems(companyId: string, customerId?: string, range?: DateRange): Promise<OpenArItem[]> {
   const [lines, applied] = await Promise.all([
     prisma.ledgerEntry.findMany({
       where: {
@@ -55,6 +61,9 @@ async function getOpenArItems(companyId: string, customerId?: string): Promise<O
         documentType: { in: ["INVOICE", "CREDIT_MEMO"] },
         isCancelled: false,
         account: { classification: "ACCOUNTS_RECEIVABLE" },
+        ...(range?.from || range?.to
+          ? { postingDate: { ...(range.from ? { gte: range.from } : {}), ...(range.to ? { lte: range.to } : {}) } }
+          : {}),
       },
       include: { customer: true, location: true },
       orderBy: [{ postingDate: "asc" }, { documentNo: "asc" }],
@@ -99,8 +108,8 @@ async function getOpenArItems(companyId: string, customerId?: string): Promise<O
   return [...byDoc.values()].filter((r) => Math.abs(r.openBalance) > 0.005);
 }
 
-export async function getCustomerBalanceSummary(companyId: string): Promise<CustomerBalanceSummaryRow[]> {
-  const items = await getOpenArItems(companyId);
+export async function getCustomerBalanceSummary(companyId: string, range?: DateRange): Promise<CustomerBalanceSummaryRow[]> {
+  const items = await getOpenArItems(companyId, undefined, range);
   const byCustomer = new Map<string, CustomerBalanceSummaryRow>();
   for (const item of items) {
     let row = byCustomer.get(item.customerId);
@@ -129,9 +138,10 @@ export type CustomerBalanceDetailGroup = {
  * one-customer-at-a-time drill-down.
  */
 export async function getCustomerBalanceDetailAll(
-  companyId: string
+  companyId: string,
+  range?: DateRange
 ): Promise<{ groups: CustomerBalanceDetailGroup[]; grandTotal: number }> {
-  const items = await getOpenArItems(companyId);
+  const items = await getOpenArItems(companyId, undefined, range);
   const byCustomer = new Map<string, { customerName: string; items: OpenArItem[] }>();
   for (const item of items) {
     let g = byCustomer.get(item.customerId);
@@ -169,10 +179,11 @@ export async function getCustomerBalanceDetailAll(
 
 export async function getCustomerBalanceDetail(
   companyId: string,
-  customerId: string
+  customerId: string,
+  range?: DateRange
 ): Promise<{ customerName: string; rows: CustomerBalanceDetailRow[]; totalBalance: number }> {
   const [items, customer] = await Promise.all([
-    getOpenArItems(companyId, customerId),
+    getOpenArItems(companyId, customerId, range),
     prisma.customer.findUnique({ where: { id: customerId }, select: { tradeName: true, registeredName: true } }),
   ]);
   let running = 0;

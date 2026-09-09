@@ -1,7 +1,11 @@
 import { getCurrentCompany } from "@/lib/currentUser";
 import { CustomerBalanceDetailAllClient } from "./CustomerBalanceDetailAllClient";
 
-export default async function CustomerBalanceDetailAllPage() {
+export default async function CustomerBalanceDetailAllPage({
+  searchParams,
+}: {
+  searchParams: { dateFrom?: string; dateTo?: string };
+}) {
   const company = await getCurrentCompany();
 
   if (!company) {
@@ -13,5 +17,11 @@ export default async function CustomerBalanceDetailAllPage() {
     );
   }
 
-  return <CustomerBalanceDetailAllClient registeredName={company.registeredName || company.tradeName} />;
+  return (
+    <CustomerBalanceDetailAllClient
+      registeredName={company.registeredName || company.tradeName}
+      initialDateFrom={searchParams.dateFrom ?? ""}
+      initialDateTo={searchParams.dateTo ?? ""}
+    />
+  );
 }

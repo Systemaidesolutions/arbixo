@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatPeso, formatDate } from "@/lib/format";
+import { formatPeso, formatDate, formatDateRangeCoverage } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
 
 type DetailRow = {
@@ -16,7 +16,25 @@ type DetailRow = {
 };
 type Group = { customerId: string; customerName: string; rows: DetailRow[]; subtotal: number };
 
-export function CustomerBalanceDetailAllClient({ registeredName }: { registeredName: string }) {
+export function CustomerBalanceDetailAllClient({
+  registeredName,
+  initialDateFrom = "",
+  initialDateTo = "",
+}: {
+  registeredName: string;
+  initialDateFrom?: string;
+  initialDateTo?: string;
+}) {
+  const [dateFrom, setDateFrom] = useState(initialDateFrom);
+  const [dateTo, setDateTo] = useState(initialDateTo);
+  const coverage = formatDateRangeCoverage(dateFrom, dateTo);
+  function rangeParams(extra?: Record<string, string>) {
+    const p = new URLSearchParams(extra);
+    if (dateFrom) p.set("dateFrom", dateFrom);
+    if (dateTo) p.set("dateTo", dateTo);
+    return p;
+  }
+
   const [groups, setGroups] = useState<Group[] | null>(null);
   const [grandTotal, setGrandTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -26,7 +44,7 @@ export function CustomerBalanceDetailAllClient({ registeredName }: { registeredN
     let active = true;
     setLoading(true);
     setError(null);
-    fetch("/api/reports/customer-balance?detail=all")
+    fetch(`/api/reports/customer-balance?${rangeParams({ detail: "all" })}`)
       .then(async (r) => {
         const j = await r.json().catch(() => null);
         if (!active) return;
@@ -42,12 +60,13 @@ export function CustomerBalanceDetailAllClient({ registeredName }: { registeredN
     return () => {
       active = false;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo]);
 
   function exportAll() {
     if (!groups) return;
     const out: (string | number)[][] = [
-      ["Customer Balance Detail Report", registeredName, "All Dates"],
+      ["Customer Balance Detail Report", registeredName, coverage],
       [],
     ];
     for (const g of groups) {
@@ -84,16 +103,38 @@ export function CustomerBalanceDetailAllClient({ registeredName }: { registeredN
       <div className="mt-2 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-medium text-neutral-900">Customer Balance Detail Report</h1>
-          <p className="mt-1 text-sm text-neutral-500">{registeredName} — All Dates</p>
+          <p className="mt-1 text-sm text-neutral-500">{registeredName} — {coverage}</p>
         </div>
         <div className="flex shrink-0 gap-2 print:hidden">
-          <button onClick={() => window.open(`/reports/customer-balance/detail/print?_embed=1`, "_blank")} disabled={!groups} className={`${field} text-neutral-700 hover:bg-neutral-50 disabled:opacity-40`}>
+          <button onClick={() => window.open(`/reports/customer-balance/detail/print?${rangeParams({ _embed: "1" })}`, "_blank")} disabled={!groups} className={`${field} text-neutral-700 hover:bg-neutral-50 disabled:opacity-40`}>
             Print
           </button>
           <button onClick={exportAll} disabled={!groups} className={`${field} text-neutral-700 hover:bg-neutral-50 disabled:opacity-40`}>
             Export to Excel
           </button>
         </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 p-3 print:hidden">
+        <label className="text-xs text-neutral-500">
+          From
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={`mt-1 block ${field}`} />
+        </label>
+        <label className="text-xs text-neutral-500">
+          To
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={`mt-1 block ${field}`} />
+        </label>
+        {(dateFrom || dateTo) && (
+          <button
+            onClick={() => {
+              setDateFrom("");
+              setDateTo("");
+            }}
+            className="text-xs text-brand-blue hover:underline"
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
