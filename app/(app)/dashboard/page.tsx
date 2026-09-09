@@ -181,12 +181,12 @@ export default async function HomePage() {
                     <img
                       src={`/api/related-links/${l.id}/logo`}
                       alt=""
-                      className="h-8 w-8 object-contain"
+                      className="h-auto w-[80%] object-contain"
                     />
                   ) : (
                     <Link2 size={22} className="text-brand-blue" />
                   )}
-                  <span className="w-full truncate text-xs font-medium text-neutral-600">
+                  <span className="w-full truncate text-[7px] font-medium text-neutral-600">
                     {l.name}
                   </span>
                 </a>
