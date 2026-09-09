@@ -1,0 +1,244 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { formatPeso, formatDate } from "@/lib/format";
+import { downloadXlsx } from "@/lib/exportXlsx";
+
+type SummaryRow = { vendorId: string; code: string; name: string; balance: number };
+type DetailRow = {
+  documentNo: string;
+  postingDate: string;
+  transactionType: "Bill" | "Credit Note";
+  locationName: string | null;
+  dueDate: string | null;
+  amount: number;
+  openBalance: number;
+  balance: number;
+};
+
+export function VendorBalanceClient({ companyId, registeredName }: { companyId: string; registeredName: string }) {
+  const [summary, setSummary] = useState<SummaryRow[] | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(true);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  const [selected, setSelected] = useState<{ id: string; name: string } | null>(null);
+  const [detail, setDetail] = useState<DetailRow[] | null>(null);
+  const [detailTotal, setDetailTotal] = useState(0);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoadingSummary(true);
+    setSummaryError(null);
+    fetch("/api/reports/vendor-balance")
+      .then(async (r) => {
+        const j = await r.json().catch(() => null);
+        if (!active) return;
+        if (!r.ok || !j || !Array.isArray(j.rows)) {
+          setSummaryError(j?.error ?? "Couldn't load this report. Try again.");
+          return;
+        }
+        setSummary(j.rows);
+      })
+      .catch(() => active && setSummaryError("Couldn't reach the server. Check your connection and try again."))
+      .finally(() => active && setLoadingSummary(false));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function openDetail(vendorId: string, name: string) {
+    setSelected({ id: vendorId, name });
+    setDetail(null);
+    setDetailError(null);
+    setLoadingDetail(true);
+    fetch(`/api/reports/vendor-balance?vendorId=${encodeURIComponent(vendorId)}`)
+      .then(async (r) => {
+        const j = await r.json().catch(() => null);
+        if (!r.ok || !j || !Array.isArray(j.rows)) {
+          setDetailError(j?.error ?? "Couldn't load this vendor's balance. Try again.");
+          return;
+        }
+        setDetail(j.rows);
+        setDetailTotal(j.totalBalance ?? 0);
+      })
+      .catch(() => setDetailError("Couldn't reach the server. Check your connection and try again."))
+      .finally(() => setLoadingDetail(false));
+  }
+
+  function exportSummary() {
+    if (!summary) return;
+    const out: (string | number)[][] = [
+      ["Vendor Balance Summary", registeredName, "All Dates"],
+      [],
+      ["Vendor", "Total"],
+      ...summary.map((r) => [r.name, r.balance.toFixed(2)]),
+      ["TOTAL", summary.reduce((s, r) => s + r.balance, 0).toFixed(2)],
+    ];
+    downloadXlsx("vendor-balance-summary", "Vendor Balance Summary", out);
+  }
+
+  function exportDetail() {
+    if (!detail || !selected) return;
+    const out: (string | number)[][] = [
+      [selected.name, "Vendor Balance Detail Report", "All Dates"],
+      [],
+      ["Date", "Transaction type", "Number", "Location", "Due date", "Amount", "Open balance", "Balance"],
+      ...detail.map((r) => [
+        r.postingDate.slice(0, 10),
+        r.transactionType,
+        r.documentNo,
+        r.locationName ?? "",
+        r.dueDate ? r.dueDate.slice(0, 10) : "",
+        r.amount.toFixed(2),
+        r.openBalance.toFixed(2),
+        r.balance.toFixed(2),
+      ]),
+    ];
+    downloadXlsx(`vendor-balance-detail_${selected.name}`, "Vendor Balance Detail", out);
+  }
+
+  const field = "rounded border border-neutral-300 px-2 py-1.5 text-sm";
+
+  if (selected) {
+    return (
+      <main className="mx-auto max-w-4xl p-4 sm:p-8">
+        <button onClick={() => setSelected(null)} className="text-sm text-brand-blue hover:underline">
+          ‹ Back to summary
+        </button>
+        <div className="mt-2 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-medium text-neutral-900">{selected.name}</h1>
+            <p className="mt-1 text-sm text-neutral-500">Vendor Balance Detail Report — All Dates</p>
+          </div>
+          <div className="flex shrink-0 gap-2 print:hidden">
+            <button
+              onClick={() => window.open(`/reports/vendor-balance/print?vendorId=${encodeURIComponent(selected.id)}&_embed=1`, "_blank")}
+              disabled={!detail}
+              className={`${field} text-neutral-700 hover:bg-neutral-50 disabled:opacity-40`}
+            >
+              Print
+            </button>
+            <button onClick={exportDetail} disabled={!detail} className={`${field} text-neutral-700 hover:bg-neutral-50 disabled:opacity-40`}>
+              Export to Excel
+            </button>
+          </div>
+        </div>
+
+        {detailError && <p className="mt-4 text-sm text-red-600">{detailError}</p>}
+
+        <div className="mt-6 overflow-x-auto rounded-lg border border-neutral-200">
+          <table className="w-full text-sm">
+            <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+              <tr>
+                <th className="px-3 py-2 text-left">Date</th>
+                <th className="px-3 py-2 text-left">Transaction type</th>
+                <th className="px-3 py-2 text-left">Number</th>
+                <th className="px-3 py-2 text-left">Location</th>
+                <th className="px-3 py-2 text-left">Due date</th>
+                <th className="px-3 py-2 text-right">Amount</th>
+                <th className="px-3 py-2 text-right">Open balance</th>
+                <th className="px-3 py-2 text-right">Balance</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {loadingDetail ? (
+                <tr>
+                  <td colSpan={8} className="px-3 py-4 text-center text-neutral-400">Loading…</td>
+                </tr>
+              ) : !detail || detail.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-3 py-4 text-center text-neutral-400">No open balance</td>
+                </tr>
+              ) : (
+                detail.map((r) => (
+                  <tr key={r.documentNo}>
+                    <td className="px-3 py-2">{formatDate(new Date(r.postingDate))}</td>
+                    <td className="px-3 py-2 text-neutral-500">{r.transactionType}</td>
+                    <td className="px-3 py-2 font-mono">{r.documentNo}</td>
+                    <td className="px-3 py-2 text-neutral-500">{r.locationName ?? "—"}</td>
+                    <td className="px-3 py-2">{r.dueDate ? formatDate(new Date(r.dueDate)) : "—"}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPeso(r.amount)}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPeso(r.openBalance)}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPeso(r.balance)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            {detail && detail.length > 0 && (
+              <tfoot className="border-t-2 border-neutral-300 bg-neutral-50 font-medium">
+                <tr>
+                  <td colSpan={7} className="px-3 py-2">Total</td>
+                  <td className="px-3 py-2 text-right font-mono">{formatPeso(detailTotal)}</td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="mx-auto max-w-3xl p-4 sm:p-8">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-medium text-neutral-900">Vendor Balance Summary</h1>
+          <p className="mt-1 text-sm text-neutral-500">{registeredName} — All Dates</p>
+        </div>
+        <div className="flex shrink-0 gap-2 print:hidden">
+          <button onClick={() => window.open(`/reports/vendor-balance/print?_embed=1`, "_blank")} disabled={!summary} className={`${field} text-neutral-700 hover:bg-neutral-50 disabled:opacity-40`}>
+            Print
+          </button>
+          <button onClick={exportSummary} disabled={!summary} className={`${field} text-neutral-700 hover:bg-neutral-50 disabled:opacity-40`}>
+            Export to Excel
+          </button>
+        </div>
+      </div>
+
+      {summaryError && <p className="mt-4 text-sm text-red-600">{summaryError}</p>}
+
+      <div className="mt-6 overflow-hidden rounded-lg border border-neutral-200">
+        <table className="w-full text-sm">
+          <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+            <tr>
+              <th className="px-3 py-2 text-left">Vendor</th>
+              <th className="px-3 py-2 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-100">
+            {loadingSummary ? (
+              <tr>
+                <td colSpan={2} className="px-3 py-4 text-center text-neutral-400">Loading…</td>
+              </tr>
+            ) : !summary || summary.length === 0 ? (
+              <tr>
+                <td colSpan={2} className="px-3 py-4 text-center text-neutral-400">No open balances</td>
+              </tr>
+            ) : (
+              summary.map((r) => (
+                <tr key={r.vendorId}>
+                  <td className="px-3 py-2">{r.name}</td>
+                  <td className="px-3 py-2 text-right">
+                    <button onClick={() => openDetail(r.vendorId, r.name)} className="font-mono text-brand-blue hover:underline">
+                      {formatPeso(r.balance)}
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+          {summary && summary.length > 0 && (
+            <tfoot className="border-t-2 border-neutral-300 bg-neutral-50 font-medium">
+              <tr>
+                <td className="px-3 py-2">TOTAL</td>
+                <td className="px-3 py-2 text-right font-mono">{formatPeso(summary.reduce((s, r) => s + r.balance, 0))}</td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+    </main>
+  );
+}
