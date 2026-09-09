@@ -114,6 +114,58 @@ export async function getVendorBalanceSummary(companyId: string): Promise<Vendor
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+export type VendorBalanceDetailGroup = {
+  vendorId: string;
+  vendorName: string;
+  rows: VendorBalanceDetailRow[];
+  subtotal: number;
+};
+
+/**
+ * Full company-wide detail report: every vendor with an open balance, each
+ * with their own open bills/credit notes and a running subtotal — the
+ * "print everything at once" counterpart to getVendorBalanceDetail's
+ * one-vendor-at-a-time drill-down.
+ */
+export async function getVendorBalanceDetailAll(
+  companyId: string
+): Promise<{ groups: VendorBalanceDetailGroup[]; grandTotal: number }> {
+  const items = await getOpenApItems(companyId);
+  const byVendor = new Map<string, { vendorName: string; items: OpenApItem[] }>();
+  for (const item of items) {
+    let g = byVendor.get(item.vendorId);
+    if (!g) {
+      g = { vendorName: item.vendorName, items: [] };
+      byVendor.set(item.vendorId, g);
+    }
+    g.items.push(item);
+  }
+
+  const groups: VendorBalanceDetailGroup[] = [...byVendor.entries()]
+    .map(([vendorId, g]) => {
+      let running = 0;
+      const rows = g.items.map((item) => {
+        running = round2(running + item.openBalance);
+        return {
+          documentNo: item.documentNo,
+          postingDate: item.postingDate,
+          transactionType: item.documentType === "PURCHASE" ? ("Bill" as const) : ("Credit Note" as const),
+          locationName: item.locationName,
+          dueDate: item.dueDate,
+          amount: item.amount,
+          openBalance: item.openBalance,
+          balance: running,
+        };
+      });
+      return { vendorId, vendorName: g.vendorName, rows, subtotal: running };
+    })
+    .filter((g) => Math.abs(g.subtotal) > 0.005)
+    .sort((a, b) => a.vendorName.localeCompare(b.vendorName));
+
+  const grandTotal = round2(groups.reduce((s, g) => s + g.subtotal, 0));
+  return { groups, grandTotal };
+}
+
 export async function getVendorBalanceDetail(
   companyId: string,
   vendorId: string

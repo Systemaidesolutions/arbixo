@@ -188,6 +188,9 @@ export function CustomerBalanceClient({ companyId, registeredName }: { companyId
           <p className="mt-1 text-sm text-neutral-500">{registeredName} — All Dates</p>
         </div>
         <div className="flex shrink-0 gap-2 print:hidden">
+          <a href="/reports/customer-balance/detail" className={`${field} text-neutral-700 hover:bg-neutral-50`}>
+            Detail report
+          </a>
           <button onClick={() => window.open(`/reports/customer-balance/print?_embed=1`, "_blank")} disabled={!summary} className={`${field} text-neutral-700 hover:bg-neutral-50 disabled:opacity-40`}>
             Print
           </button>

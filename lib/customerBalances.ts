@@ -115,6 +115,58 @@ export async function getCustomerBalanceSummary(companyId: string): Promise<Cust
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+export type CustomerBalanceDetailGroup = {
+  customerId: string;
+  customerName: string;
+  rows: CustomerBalanceDetailRow[];
+  subtotal: number;
+};
+
+/**
+ * Full company-wide detail report: every customer with an open balance,
+ * each with their own open invoices/credit notes and a running subtotal —
+ * the "print everything at once" counterpart to getCustomerBalanceDetail's
+ * one-customer-at-a-time drill-down.
+ */
+export async function getCustomerBalanceDetailAll(
+  companyId: string
+): Promise<{ groups: CustomerBalanceDetailGroup[]; grandTotal: number }> {
+  const items = await getOpenArItems(companyId);
+  const byCustomer = new Map<string, { customerName: string; items: OpenArItem[] }>();
+  for (const item of items) {
+    let g = byCustomer.get(item.customerId);
+    if (!g) {
+      g = { customerName: item.customerName, items: [] };
+      byCustomer.set(item.customerId, g);
+    }
+    g.items.push(item);
+  }
+
+  const groups: CustomerBalanceDetailGroup[] = [...byCustomer.entries()]
+    .map(([customerId, g]) => {
+      let running = 0;
+      const rows = g.items.map((item) => {
+        running = round2(running + item.openBalance);
+        return {
+          documentNo: item.documentNo,
+          postingDate: item.postingDate,
+          transactionType: item.documentType === "INVOICE" ? ("Invoice" as const) : ("Credit Note" as const),
+          locationName: item.locationName,
+          dueDate: item.dueDate,
+          amount: item.amount,
+          openBalance: item.openBalance,
+          balance: running,
+        };
+      });
+      return { customerId, customerName: g.customerName, rows, subtotal: running };
+    })
+    .filter((g) => Math.abs(g.subtotal) > 0.005)
+    .sort((a, b) => a.customerName.localeCompare(b.customerName));
+
+  const grandTotal = round2(groups.reduce((s, g) => s + g.subtotal, 0));
+  return { groups, grandTotal };
+}
+
 export async function getCustomerBalanceDetail(
   companyId: string,
   customerId: string
