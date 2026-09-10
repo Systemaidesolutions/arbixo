@@ -49,6 +49,24 @@ export function ArbiHelpWidget() {
     }
   }, []);
 
+  // The app's compact footer and the marketing site's tall footer are very
+  // different heights, so a fixed offset can't clear both — track whichever
+  // <footer> is on the current page and sit just above it instead.
+  const [bottomOffset, setBottomOffset] = useState(16);
+  useEffect(() => {
+    const footer = document.querySelector("footer");
+    if (!footer) return;
+    const update = () => setBottomOffset(footer.getBoundingClientRect().height + 16);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(footer);
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     function onPointerDown(e: MouseEvent) {
@@ -70,7 +88,7 @@ export function ArbiHelpWidget() {
   const linkClass = "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50";
 
   return (
-    <div ref={panelRef} className="fixed bottom-4 right-4 z-50 print:hidden">
+    <div ref={panelRef} style={{ bottom: bottomOffset }} className="fixed right-4 z-50 print:hidden">
       {open && (
         <div className="mb-3 w-72 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xl">
           <div className="flex items-center gap-3 bg-brand-navy px-4 py-3">
