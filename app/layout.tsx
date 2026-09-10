@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ArbiHelpWidget } from "@/components/ArbiHelpWidget";
 
 // Every page in this app reads live database state (accounts, ledger
 // entries, reports) — none of it should ever be statically generated at
@@ -18,7 +19,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <ArbiHelpWidget />
+      </body>
     </html>
   );
 }
