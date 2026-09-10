@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 const CONTACT_EMAIL = "info@arbixo.net";
 
@@ -29,9 +30,24 @@ function ArbiAvatar({ size }: { size: number }) {
 // small panel; it never intercepts print output since printed reports
 // only ever render their own page content, but we hide it defensively
 // anyway in case a page's print styles don't scope tightly.
+//
+// Stacked/modal app pages (components/PageStack.tsx) render inside an
+// iframe that loads the SAME root layout, so without a check this widget
+// would render a second time inside every open panel. Mirrors AppShell's
+// own embedded-detection so it bows out there and only the outer page's
+// copy shows.
 export function ArbiHelpWidget() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const embedParam = useSearchParams().get("_embed") === "1";
+  const [inFrame, setInFrame] = useState(false);
+  useEffect(() => {
+    try {
+      setInFrame(window.self !== window.top);
+    } catch {
+      setInFrame(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -48,6 +64,8 @@ export function ArbiHelpWidget() {
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
+
+  if (embedParam || inFrame) return null;
 
   const linkClass = "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50";
 
