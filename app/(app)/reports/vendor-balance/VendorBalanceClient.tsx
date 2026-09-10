@@ -91,13 +91,13 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
   function exportSummary() {
     if (!summary) return;
     const out: (string | number)[][] = [
-      ["Vendor Balance Summary", registeredName, coverage],
+      ["Vendor Balance", registeredName, coverage],
       [],
       ["Vendor", "Total"],
       ...summary.map((r) => [r.name, r.balance.toFixed(2)]),
       ["TOTAL", summary.reduce((s, r) => s + r.balance, 0).toFixed(2)],
     ];
-    downloadXlsx("vendor-balance-summary", "Vendor Balance Summary", out);
+    downloadXlsx("vendor-balance-summary", "Vendor Balance", out);
   }
 
   function exportDetail() {
@@ -231,7 +231,7 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
     <main className="mx-auto max-w-3xl p-4 sm:p-8">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-medium text-neutral-900">Vendor Balance Summary</h1>
+          <h1 className="text-xl font-medium text-neutral-900">Vendor Balance</h1>
           <p className="mt-1 text-sm text-neutral-500">{registeredName} — {coverage}</p>
         </div>
         <div className="flex shrink-0 gap-2 print:hidden">
