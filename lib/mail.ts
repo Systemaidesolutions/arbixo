@@ -167,6 +167,44 @@ export async function sendSubscriptionReminderEmail(
 }
 
 /**
+ * Best-effort internal alert for when a welcome email (company or user)
+ * couldn't be delivered, so the admin who triggered it knows to follow up
+ * manually — e.g. relay the temp password themselves. Deliberately silent
+ * (no console noise, no thrown error) when RESEND_API_KEY isn't set at all,
+ * since in that case this send would fail for the exact same reason as the
+ * one it's reporting on, and the original failure is already logged.
+ */
+export async function sendAdminFailureAlert(adminEmail: string, subject: string, detail: string): Promise<{ sent: boolean }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM ?? "Arbixo <onboarding@resend.dev>";
+  if (!apiKey) return { sent: false };
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from,
+      to: adminEmail,
+      subject: `[Arbixo] ${subject}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 460px; margin: 0 auto;">
+          <h2 style="color: #B91C1C;">Email delivery failed</h2>
+          <p>${detail}</p>
+          <p style="color: #666; font-size: 13px;">Check Vercel's function logs (search "[mail]") for the full error from Resend.</p>
+        </div>
+      `,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error(`[mail] Resend rejected the admin failure alert too (${res.status}): ${body}`);
+    return { sent: false };
+  }
+  return { sent: true };
+}
+
+/**
  * Sent when an admin creates a new company, to the company's own contact
  * email (Company.email) if one was given — that field is optional, so the
  * caller should skip this entirely when it's blank rather than call in with

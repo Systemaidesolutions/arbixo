@@ -5,7 +5,7 @@ import { validateCompanyPayload, type CompanyFormPayload } from "@/lib/company";
 import { seedDefaultChart } from "@/lib/seedChart";
 import { createTicketProjectForCompany } from "@/lib/ticketingSync";
 import { grantLaunchTrialIfEligible } from "@/lib/subscriptionCoverage";
-import { sendCompanyWelcomeEmail } from "@/lib/mail";
+import { sendCompanyWelcomeEmail, sendAdminFailureAlert } from "@/lib/mail";
 
 // Admin creates a company. It's created unassigned — assigning it to one or
 // more subscriber users is a separate step (PATCH /api/admin/users/[id]),
@@ -40,8 +40,17 @@ export async function POST(request: NextRequest) {
 
   // Best-effort: welcome email to the company's own contact address, if one
   // was given — it's an optional field, so there isn't always one to send to.
+  // If it fails to send, let the acting admin know so they can follow up
+  // by hand rather than assuming it went out.
   if (company.email) {
-    await sendCompanyWelcomeEmail(company.email, company.tradeName);
+    const { sent } = await sendCompanyWelcomeEmail(company.email, company.tradeName);
+    if (!sent) {
+      await sendAdminFailureAlert(
+        admin.email,
+        `Welcome email failed for ${company.tradeName}`,
+        `The welcome email to <strong>${company.email}</strong> for newly created company <strong>${company.tradeName}</strong> did not send.`
+      );
+    }
   }
 
   return NextResponse.json({ company }, { status: 201 });

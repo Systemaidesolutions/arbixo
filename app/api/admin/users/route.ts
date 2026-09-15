@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/currentUser";
 import { hashPassword } from "@/lib/password";
-import { sendUserWelcomeEmail } from "@/lib/mail";
+import { sendUserWelcomeEmail, sendAdminFailureAlert } from "@/lib/mail";
 import type { Company, SubscriberSubtype, UserRole } from "@prisma/client";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -76,10 +76,19 @@ export async function POST(request: NextRequest) {
 
   // Best-effort: welcome email with the temp password, to the new user and —
   // when they're assigned to a company with a contact email on file — also
-  // to that company, as a heads-up that a new account now has access.
+  // to that company, as a heads-up that a new account now has access. If it
+  // fails to send, let the acting admin know so they can relay the
+  // credentials by hand rather than assuming the user got them.
   const recipients = [user.email, ...(company?.email ? [company.email] : [])];
   const loginUrl = `${new URL(request.url).origin}/login`;
-  await sendUserWelcomeEmail(recipients, user.email, password, loginUrl, company?.tradeName);
+  const { sent } = await sendUserWelcomeEmail(recipients, user.email, password, loginUrl, company?.tradeName);
+  if (!sent) {
+    await sendAdminFailureAlert(
+      admin.email,
+      `Welcome email failed for ${user.email}`,
+      `The welcome email to <strong>${recipients.join(", ")}</strong> for newly created user <strong>${user.email}</strong> did not send. Temp password: <strong>${password}</strong>`
+    );
+  }
 
   return NextResponse.json(
     { user: { id: user.id, email: user.email, role: user.role, subscriberSubtype: user.subscriberSubtype } },
