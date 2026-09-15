@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/currentUser";
 import { hashPassword } from "@/lib/password";
-import type { SubscriberSubtype, UserRole } from "@prisma/client";
+import { sendUserWelcomeEmail } from "@/lib/mail";
+import type { Company, SubscriberSubtype, UserRole } from "@prisma/client";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SUBTYPES: SubscriberSubtype[] = ["MANAGER", "USER", "REPORT_CREATOR"];
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
 
   let subscriberSubtype: SubscriberSubtype | null = null;
   let companyId: string | null = null;
+  let company: Company | null = null;
 
   if (role === "USER") {
     if (!body.subscriberSubtype || !SUBTYPES.includes(body.subscriberSubtype)) {
@@ -49,7 +51,7 @@ export async function POST(request: NextRequest) {
     subscriberSubtype = body.subscriberSubtype;
 
     if (body.companyId) {
-      const company = await prisma.company.findUnique({ where: { id: body.companyId } });
+      company = await prisma.company.findUnique({ where: { id: body.companyId } });
       if (!company) return NextResponse.json({ error: "Company not found." }, { status: 404 });
       companyId = company.id;
     }
@@ -71,6 +73,13 @@ export async function POST(request: NextRequest) {
       isVerified: true, // admin-created accounts skip email verification
     },
   });
+
+  // Best-effort: welcome email with the temp password, to the new user and —
+  // when they're assigned to a company with a contact email on file — also
+  // to that company, as a heads-up that a new account now has access.
+  const recipients = [user.email, ...(company?.email ? [company.email] : [])];
+  const loginUrl = `${new URL(request.url).origin}/login`;
+  await sendUserWelcomeEmail(recipients, user.email, password, loginUrl, company?.tradeName);
 
   return NextResponse.json(
     { user: { id: user.id, email: user.email, role: user.role, subscriberSubtype: user.subscriberSubtype } },

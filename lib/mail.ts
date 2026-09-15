@@ -167,6 +167,107 @@ export async function sendSubscriptionReminderEmail(
 }
 
 /**
+ * Sent when an admin creates a new company, to the company's own contact
+ * email (Company.email) if one was given — that field is optional, so the
+ * caller should skip this entirely when it's blank rather than call in with
+ * an empty string. Always logged; sent via Resend when configured.
+ */
+export async function sendCompanyWelcomeEmail(
+  companyEmail: string,
+  companyName: string
+): Promise<{ sent: boolean }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM ?? "Arbixo <onboarding@resend.dev>";
+
+  console.log(`[mail] Company welcome email for "${companyName}" -> ${companyEmail}`);
+
+  if (!apiKey) {
+    console.warn("[mail] RESEND_API_KEY not set — company welcome email not sent, only logged.");
+    return { sent: false };
+  }
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from,
+      to: companyEmail,
+      subject: `Welcome to Arbixo, ${companyName}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 460px; margin: 0 auto;">
+          <h2 style="color: #0B2A5E;">Welcome to Arbixo</h2>
+          <p><strong>${companyName}</strong> has been set up on Arbixo, your cloud accounting platform for Philippine businesses.</p>
+          <p>An administrator will be in touch to finish setting up your users and get your books started. In the meantime, you can reach us any time at
+          <a href="mailto:info@arbixo.net">info@arbixo.net</a>.</p>
+          <p style="color: #666; font-size: 13px;">Accounting Intelligence. Business Excellence. — Systemaide Solutions Inc.</p>
+        </div>
+      `,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error(`[mail] Resend rejected the company welcome email (${res.status}): ${body}`);
+    return { sent: false };
+  }
+  return { sent: true };
+}
+
+/**
+ * Sent when an admin creates a new user account, to the user's own email and
+ * — when the user is assigned to a company with a contact email on file —
+ * also to that company's email, as a heads-up that a new account now has
+ * access. `to` is the combined recipient list; the caller decides who's on
+ * it. Includes the temporary password so the admin doesn't have to relay it
+ * by hand. Always logged; sent via Resend when configured.
+ */
+export async function sendUserWelcomeEmail(
+  to: string[],
+  userEmail: string,
+  tempPassword: string,
+  loginUrl: string,
+  companyName?: string | null
+): Promise<{ sent: boolean }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM ?? "Arbixo <onboarding@resend.dev>";
+
+  console.log(`[mail] User welcome email for ${userEmail} (temp password included) -> ${to.join(", ")}`);
+
+  if (!apiKey || to.length === 0) {
+    if (!apiKey) console.warn("[mail] RESEND_API_KEY not set — user welcome email not sent, only logged.");
+    return { sent: false };
+  }
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from,
+      to,
+      subject: "Welcome to Arbixo — your account is ready",
+      html: `
+        <div style="font-family: sans-serif; max-width: 460px; margin: 0 auto;">
+          <h2 style="color: #0B2A5E;">Welcome to Arbixo</h2>
+          <p>An account has been created for <strong>${userEmail}</strong>${companyName ? ` on <strong>${companyName}</strong>'s Arbixo` : ""}.</p>
+          <p>Sign in with:</p>
+          <p style="margin: 4px 0;">Email: <strong>${userEmail}</strong></p>
+          <p style="margin: 4px 0;">Temporary password: <strong style="letter-spacing: 1px;">${tempPassword}</strong></p>
+          <p><a href="${loginUrl}" style="display:inline-block; background:#0B2A5E; color:#fff; padding:10px 16px; border-radius:6px; text-decoration:none;">Log in to Arbixo</a></p>
+          <p style="color: #666; font-size: 13px;">You can change this password any time from your Profile page after logging in.</p>
+        </div>
+      `,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error(`[mail] Resend rejected the user welcome email (${res.status}): ${body}`);
+    return { sent: false };
+  }
+  return { sent: true };
+}
+
+/**
  * Emails one or more voucher codes to a recipient (admin-initiated from the
  * Vouchers page). Always logged so it's recoverable from Vercel's function logs
  * if Resend isn't configured; returns whether it actually sent.

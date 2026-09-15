@@ -5,6 +5,7 @@ import { validateCompanyPayload, type CompanyFormPayload } from "@/lib/company";
 import { seedDefaultChart } from "@/lib/seedChart";
 import { createTicketProjectForCompany } from "@/lib/ticketingSync";
 import { grantLaunchTrialIfEligible } from "@/lib/subscriptionCoverage";
+import { sendCompanyWelcomeEmail } from "@/lib/mail";
 
 // Admin creates a company. It's created unassigned — assigning it to one or
 // more subscriber users is a separate step (PATCH /api/admin/users/[id]),
@@ -35,6 +36,12 @@ export async function POST(request: NextRequest) {
   if (ticketProjectKey) {
     await prisma.company.update({ where: { id: company.id }, data: { ticketProjectKey } });
     company.ticketProjectKey = ticketProjectKey;
+  }
+
+  // Best-effort: welcome email to the company's own contact address, if one
+  // was given — it's an optional field, so there isn't always one to send to.
+  if (company.email) {
+    await sendCompanyWelcomeEmail(company.email, company.tradeName);
   }
 
   return NextResponse.json({ company }, { status: 201 });
