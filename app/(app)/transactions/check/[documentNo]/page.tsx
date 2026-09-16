@@ -3,7 +3,7 @@ import { requirePostingCompany } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { formatPeso } from "@/lib/format";
 import { pesosInWords } from "@/lib/amountInWords";
-import { PrintControls } from "@/components/PrintControls";
+import { CheckPrintClient } from "./CheckPrintClient";
 
 // Printable check for a posted Cash Disbursement — meant to be fed through
 // the printer directly onto the company's own pre-printed check stock
@@ -14,10 +14,13 @@ import { PrintControls } from "@/components/PrintControls";
 // or labels of its own — those would double up with what's already on the
 // paper. Open with ?_embed=1 so the app chrome is hidden (see AppShell).
 //
-// Position is a best-effort default (roughly where those fields sit on a
-// typical PH business check) — it will very likely need nudging to align
-// with this company's actual check stock. Adjust the offsets below once
-// you've done a test print and can see how far off each field is.
+// Field positions (and the check's own width/height) are a best-effort
+// default — exact placement inherently depends on this company's specific
+// check stock AND printer margins, neither of which can be known ahead of
+// time. Rather than hardcode a guess, CheckPrintClient exposes an on-screen
+// "Adjust alignment" panel (with a printable ruler grid) so whoever has the
+// actual paper can calibrate it themselves in one test print; the result is
+// saved per-device and reused for every check after that.
 export default async function CheckPage({ params }: { params: { documentNo: string } }) {
   const company = await requirePostingCompany();
   if (!company) notFound();
@@ -45,28 +48,12 @@ export default async function CheckPage({ params }: { params: { documentNo: stri
   const dateStr = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
 
   return (
-    <div className="mx-auto max-w-[820px] bg-white p-6 text-neutral-900 print:p-0">
-      <style>{`@media print { @page { size: 8.5in 3.5in; margin: 0 } }`}</style>
-      <PrintControls />
-
-      <div className="relative h-[3.5in] w-[8.5in] max-w-full text-[13px] leading-tight">
-        {/* Date — top-right, where the date field sits on most PH business checks. */}
-        <div className="absolute right-[0.6in] top-[0.5in] font-mono text-sm">{dateStr}</div>
-
-        {/* Payee — "Pay to the order of" line. */}
-        <div className="absolute left-[0.6in] top-[1.35in] text-base font-medium">{payeeName}</div>
-
-        {/* Amount in figures — the boxed ₱ amount, upper right. */}
-        <div className="absolute right-[0.4in] top-[1.35in] text-right font-mono text-base font-semibold">{formatPeso(amount)}</div>
-
-        {/* Amount in words — the "Pesos" line. */}
-        <div className="absolute left-[0.6in] top-[1.75in] text-sm">
-          {pesosInWords(amount)} Only {"*".repeat(20)}
-        </div>
-
-        {/* Memo. */}
-        {memo && <div className="absolute left-[0.6in] top-[2.9in] text-[11px]">{memo}</div>}
-      </div>
-    </div>
+    <CheckPrintClient
+      dateStr={dateStr}
+      payeeName={payeeName}
+      amountFormatted={formatPeso(amount)}
+      amountWords={pesosInWords(amount)}
+      memo={memo}
+    />
   );
 }
