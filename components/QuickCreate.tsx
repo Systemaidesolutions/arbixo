@@ -135,6 +135,14 @@ export function NewPartyForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    // React re-dispatches portaled events along the REACT tree, not the DOM
+    // tree — this <form> is portaled to <body> so it's never a DOM descendant
+    // of the transaction's own <form>, but it's still a REACT descendant of
+    // it (via CounterpartyPicker), so without stopPropagation this submit
+    // event bubbles up and fires the transaction form's own onSubmit too,
+    // silently posting an unfinished transaction the moment a party is
+    // quick-created. See https://react.dev/reference/react-dom/createPortal#rendering-into-a-different-part-of-the-dom
+    e.stopPropagation();
     setError(null);
     setBusy(true);
 
@@ -364,6 +372,10 @@ export function NewAccountForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    // See the identical comment in NewPartyForm's submit above — this form
+    // is portaled to <body> too, so it needs its own stopPropagation for the
+    // same reason.
+    e.stopPropagation();
     setError(null);
     setBusy(true);
     const res = await fetch("/api/accounts", {
