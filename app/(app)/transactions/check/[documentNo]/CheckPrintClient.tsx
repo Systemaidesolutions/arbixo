@@ -17,9 +17,9 @@ type Layout = {
 const DEFAULT_LAYOUT: Layout = {
   width: 8.5,
   height: 3.5,
-  date: { top: 0.5, left: 7.9 }, // left is measured from the right edge
+  date: { top: 0.5, left: 0.6 }, // left is measured from the right edge
   payee: { top: 1.35, left: 0.6 },
-  amountFigures: { top: 1.35, left: 8.1 }, // left is measured from the right edge
+  amountFigures: { top: 1.35, left: 0.4 }, // left is measured from the right edge
   amountWords: { top: 1.75, left: 0.6 },
   memo: { top: 2.9, left: 0.6 },
 };
