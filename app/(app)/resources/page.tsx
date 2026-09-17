@@ -4,25 +4,30 @@ import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
 import { SUBTYPE_LABELS } from "@/lib/permissions";
 
 type DocLink = { href: string; title: string; description: string };
+// Which manual to flag "Your account" — exactly one of these three is true
+// for any signed-in user: a plain admin (console mode), an admin currently
+// acting as a company (reads as that company's Manager), or a subscriber
+// with their own subtype.
+type Access = { plainAdmin: boolean; actingAsManager: boolean; subtype: string | null };
 
-const MANUALS: (DocLink & { matches: (isAdmin: boolean, subtype: string | null) => boolean })[] = [
+const MANUALS: (DocLink & { matches: (a: Access) => boolean })[] = [
   {
     href: "/manuals/ARbixo-User-Manual.docx",
     title: "User Manual",
     description: "Recording transactions, reviewing history, and generating reports.",
-    matches: (isAdmin, subtype) => !isAdmin && (subtype === "USER" || subtype === "REPORT_CREATOR" || !subtype),
+    matches: (a) => !a.plainAdmin && !a.actingAsManager && (a.subtype === "USER" || a.subtype === "REPORT_CREATOR" || !a.subtype),
   },
   {
     href: "/manuals/ARbixo-Manager-Manual.docx",
     title: "Manager Manual",
     description: "Everything in the User Manual, plus branches, the audit trail, backups, and subscription payments.",
-    matches: (isAdmin, subtype) => (!isAdmin && subtype === "MANAGER") || isAdmin,
+    matches: (a) => a.actingAsManager || a.subtype === "MANAGER",
   },
   {
     href: "/manuals/ARbixo-Admin-Manual.docx",
     title: "Administrator Manual",
     description: "Running the platform: companies, users, subscriptions, and platform-wide settings.",
-    matches: (isAdmin) => isAdmin,
+    matches: (a) => a.plainAdmin,
   },
 ];
 
@@ -67,7 +72,13 @@ export default async function ResourcesPage() {
   const user = await getCurrentUserRecord();
   if (!user) redirect("/login");
 
-  const isAdmin = user.role === "ADMIN" && !getAdminActingAsCompanyId();
+  const actingAsCompanyId = getAdminActingAsCompanyId();
+  const access: Access = {
+    plainAdmin: user.role === "ADMIN" && !actingAsCompanyId,
+    actingAsManager: user.role === "ADMIN" && !!actingAsCompanyId,
+    subtype: user.subscriberSubtype,
+  };
+  const isAdmin = access.plainAdmin;
 
   return (
     <main className="mx-auto max-w-3xl p-4 sm:p-8">
@@ -78,7 +89,7 @@ export default async function ResourcesPage() {
         <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Manuals</h2>
         <div className="mt-3 space-y-2">
           {MANUALS.map((m) => (
-            <DocCard key={m.href} {...m} highlight={m.matches(isAdmin, user.subscriberSubtype)} />
+            <DocCard key={m.href} {...m} highlight={m.matches(access)} />
           ))}
         </div>
       </section>
