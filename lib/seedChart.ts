@@ -131,16 +131,6 @@ export async function syncStandardChartForCompany(companyId: string, companyName
   return { companyId, companyName, created, conflicts };
 }
 
-/** Runs syncStandardChartForCompany across every company. Non-destructive — see that function's notes. */
-export async function syncStandardChartForAllCompanies(): Promise<ChartSyncResult[]> {
-  const companies = await prisma.company.findMany({ select: { id: true, tradeName: true } });
-  const results: ChartSyncResult[] = [];
-  for (const c of companies) {
-    results.push(await syncStandardChartForCompany(c.id, c.tradeName));
-  }
-  return results;
-}
-
 export type ChartResetResult = ChartSyncResult & {
   deletedCount: number;
   keptAccounts: { code: string; title: string }[];
@@ -176,14 +166,4 @@ export async function resetCompanyToStandardChart(companyId: string, companyName
 
   const syncResult = await syncStandardChartForCompany(companyId, companyName);
   return { ...syncResult, deletedCount, keptAccounts };
-}
-
-/** Runs resetCompanyToStandardChart across every company. */
-export async function resetAllCompaniesToStandardChart(): Promise<ChartResetResult[]> {
-  const companies = await prisma.company.findMany({ select: { id: true, tradeName: true } });
-  const results: ChartResetResult[] = [];
-  for (const c of companies) {
-    results.push(await resetCompanyToStandardChart(c.id, c.tradeName));
-  }
-  return results;
 }
