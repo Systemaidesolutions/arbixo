@@ -113,11 +113,11 @@ export function ArbiHelpWidget() {
                 <span className="block text-xs text-neutral-500">Get a report by just asking</span>
               </span>
             </a>
-            <a href="/api/manual" className={linkClass}>
+            <a href="/resources" className={linkClass}>
               <span className="text-lg">📘</span>
               <span>
-                <span className="block font-medium text-neutral-900">User manual</span>
-                <span className="block text-xs text-neutral-500">Download the guide for your account</span>
+                <span className="block font-medium text-neutral-900">Documents</span>
+                <span className="block text-xs text-neutral-500">Manuals and reference documents</span>
               </span>
             </a>
             <a href="/#faq" className={linkClass}>
