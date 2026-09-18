@@ -1,3 +1,11 @@
+// The branded cover banner used on the manuals/NDA/Subscription Agreement
+// title pages, reused here as an email header — hosted at a fixed,
+// permanent URL (not attached inline) since most email clients block
+// inline/base64 images. Always the production domain, even when a UAT
+// deploy sends the email, since the banner itself isn't environment-specific.
+const EMAIL_BANNER_HTML =
+  '<img src="https://www.arbixo.net/email-banner.jpg" alt="ARbixo — Accounting Intelligence. Business Excellence." width="600" style="display:block; width:100%; max-width:600px; height:auto; border-radius:8px 8px 0 0;" />';
+
 /**
  * Uses Resend (resend.com) if RESEND_API_KEY is set. The code is ALWAYS
  * logged to the server console too, regardless of whether sending
@@ -232,12 +240,15 @@ export async function sendCompanyWelcomeEmail(
       to: companyEmail,
       subject: `Welcome to Arbixo, ${companyName}`,
       html: `
-        <div style="font-family: sans-serif; max-width: 460px; margin: 0 auto;">
-          <h2 style="color: #0B2A5E;">Welcome to Arbixo</h2>
-          <p><strong>${companyName}</strong> has been set up on Arbixo, your cloud accounting platform for Philippine businesses.</p>
-          <p>An administrator will be in touch to finish setting up your users and get your books started. In the meantime, you can reach us any time at
-          <a href="mailto:info@arbixo.net">info@arbixo.net</a>.</p>
-          <p style="color: #666; font-size: 13px;">Accounting Intelligence. Business Excellence. — Systemaide Solutions Inc.</p>
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          ${EMAIL_BANNER_HTML}
+          <div style="padding: 24px 8px 8px;">
+            <h2 style="color: #0B2A5E; margin-top: 0;">Welcome to Arbixo</h2>
+            <p><strong>${companyName}</strong> has been set up on Arbixo, your cloud accounting platform for Philippine businesses.</p>
+            <p>An administrator will be in touch to finish setting up your users and get your books started. In the meantime, you can reach us any time at
+            <a href="mailto:info@arbixo.net">info@arbixo.net</a>.</p>
+            <p style="color: #666; font-size: 13px;">Accounting Intelligence. Business Excellence. — Systemaide Solutions Inc.</p>
+          </div>
         </div>
       `,
     }),
@@ -284,14 +295,17 @@ export async function sendUserWelcomeEmail(
       to,
       subject: "Welcome to Arbixo — your account is ready",
       html: `
-        <div style="font-family: sans-serif; max-width: 460px; margin: 0 auto;">
-          <h2 style="color: #0B2A5E;">Welcome to Arbixo</h2>
-          <p>An account has been created for <strong>${userEmail}</strong>${companyName ? ` on <strong>${companyName}</strong>'s Arbixo` : ""}.</p>
-          <p>Sign in with:</p>
-          <p style="margin: 4px 0;">Email: <strong>${userEmail}</strong></p>
-          <p style="margin: 4px 0;">Temporary password: <strong style="letter-spacing: 1px;">${tempPassword}</strong></p>
-          <p><a href="${loginUrl}" style="display:inline-block; background:#0B2A5E; color:#fff; padding:10px 16px; border-radius:6px; text-decoration:none;">Log in to Arbixo</a></p>
-          <p style="color: #666; font-size: 13px;">You can change this password any time from your Profile page after logging in.</p>
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          ${EMAIL_BANNER_HTML}
+          <div style="padding: 24px 8px 8px;">
+            <h2 style="color: #0B2A5E; margin-top: 0;">Welcome to Arbixo</h2>
+            <p>An account has been created for <strong>${userEmail}</strong>${companyName ? ` on <strong>${companyName}</strong>'s Arbixo` : ""}.</p>
+            <p>Sign in with:</p>
+            <p style="margin: 4px 0;">Email: <strong>${userEmail}</strong></p>
+            <p style="margin: 4px 0;">Temporary password: <strong style="letter-spacing: 1px;">${tempPassword}</strong></p>
+            <p><a href="${loginUrl}" style="display:inline-block; background:#0B2A5E; color:#fff; padding:10px 16px; border-radius:6px; text-decoration:none;">Log in to Arbixo</a></p>
+            <p style="color: #666; font-size: 13px;">You can change this password any time from your Profile page after logging in.</p>
+          </div>
         </div>
       `,
     }),
