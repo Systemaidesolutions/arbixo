@@ -1,10 +1,13 @@
 // The branded cover banner used on the manuals/NDA/Subscription Agreement
-// title pages, reused here as an email header — hosted at a fixed,
-// permanent URL (not attached inline) since most email clients block
-// inline/base64 images. Always the production domain, even when a UAT
-// deploy sends the email, since the banner itself isn't environment-specific.
-const EMAIL_BANNER_HTML =
-  '<img src="https://www.arbixo.net/email-banner.jpg" alt="ARbixo — Accounting Intelligence. Business Excellence." width="600" style="display:block; width:100%; max-width:600px; height:auto; border-radius:8px 8px 0 0;" />';
+// title pages, reused here as an email header — hosted at a fixed URL (not
+// attached inline) since most email clients block inline/base64 images.
+// UAT and production are separate Vercel projects, each with its own
+// custom domain, so this reads the CURRENT project's own production
+// domain (Vercel sets this automatically on every deployment) rather than
+// hardcoding www.arbixo.net — otherwise a welcome email sent while testing
+// on UAT would reference an image that only exists once merged to prod.
+const EMAIL_BANNER_URL = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL ?? "www.arbixo.net"}/email-banner.jpg`;
+const EMAIL_BANNER_HTML = `<img src="${EMAIL_BANNER_URL}" alt="ARbixo — Accounting Intelligence. Business Excellence." width="600" style="display:block; width:100%; max-width:600px; height:auto; border-radius:8px 8px 0 0;" />`;
 
 /**
  * Uses Resend (resend.com) if RESEND_API_KEY is set. The code is ALWAYS
