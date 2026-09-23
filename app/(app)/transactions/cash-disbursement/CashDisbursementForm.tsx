@@ -11,13 +11,13 @@ import { TransactionSearch } from "@/components/TransactionSearch";
 
 type Application = { invoiceDocumentNo: string; amount: number };
 type OpenBill = { documentNo: string; postingDate: string; referenceNo: string | null; amount: number; applied: number; openBalance: number };
-type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; taxSource: TaxSource; referenceNo: string; lineDescription: string; expanded: boolean; showParty: boolean; counterpartyType: CounterpartyType | null; counterpartyId: string | null; applyExpanded: boolean; applications: Application[] };
+type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; taxSource: TaxSource; referenceNo: string; lineDescription: string; expanded: boolean; showParty: boolean; counterpartyType: CounterpartyType | null; counterpartyId: string | null; showVatInfo: boolean; applyExpanded: boolean; applications: Application[] };
 type Attachment = { fileName: string; contentType: string; sizeBytes: number; data: string };
 
 const VAT_LABEL: Partial<Record<VatType, string>> = { VAT_12: "12% VAT", ZERO_RATED: "Zero-Rated", VAT_EXEMPT: "VAT Exempt", NON_VAT: "Non-VAT" };
 const NATURE_LABEL: Record<TaxSource, string> = { GOODS: "Goods", SERVICE: "Services", CAPITAL_GOODS: "Capital Goods" };
 const uid = () => crypto.randomUUID();
-const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT", amount: 0, amountIsGross: true, atcCodeId: null, taxSource: "GOODS", referenceNo: "", lineDescription: "", expanded: false, showParty: false, counterpartyType: null, counterpartyId: null, applyExpanded: false, applications: [] });
+const newLine = (): LineState => ({ key: uid(), accountId: "", vatType: "NON_VAT", amount: 0, amountIsGross: true, atcCodeId: null, taxSource: "GOODS", referenceNo: "", lineDescription: "", expanded: false, showParty: false, counterpartyType: null, counterpartyId: null, showVatInfo: false, applyExpanded: false, applications: [] });
 const fileSize = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const MAX_FILE = 3_000_000;
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -254,7 +254,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
             <table className="w-full min-w-[900px] text-xs">
               <thead>
                 <tr className="bg-neutral-50 text-left text-neutral-500">
-                  <th className={cell}>Account</th><th className={cell}>Ref No.</th><th className={cell}>Description</th><th className={cell}>Nature</th><th className={cell}>VAT</th><th className={cell}>Amount</th><th className={cell}>Gross/Net</th><th className={cell}>ATC</th>
+                  <th className={cell}>Account</th><th className={cell}>Ref No.</th><th className={cell}>Description</th><th className={cell}>Amount</th>
                   <th className={`${cell} text-right`}>Net</th><th className={`${cell} text-right`}>VAT</th><th className={`${cell} text-right`}>W/tax</th><th className={cell}>Apply to</th><th className={cell}>Details</th><th className={`${cell} text-right`}><button type="button" onClick={clearLines} className="font-medium text-red-600 hover:underline">Clear</button></th>
                 </tr>
               </thead>
@@ -269,11 +269,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                     <td className={cell}><select required value={r.accountId} onChange={(e) => updateLine(r.key, { accountId: e.target.value })} className="w-44 rounded border border-neutral-300 px-1 py-1"><option value="">Select…</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></td>
                     <td className={cell}><input value={r.referenceNo} onChange={(e) => updateLine(r.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><input value={r.lineDescription} onChange={(e) => updateLine(r.key, { lineDescription: e.target.value })} className="w-40 rounded border border-neutral-300 px-1 py-1" /></td>
-                    <td className={cell}><select value={r.taxSource} onChange={(e) => updateLine(r.key, { taxSource: e.target.value as TaxSource })} className="w-28 rounded border border-neutral-300 px-1 py-1">{Object.entries(NATURE_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td>
-                    <td className={cell}><select value={r.vatType} onChange={(e) => updateLine(r.key, { vatType: e.target.value as VatType })} className="w-24 rounded border border-neutral-300 px-1 py-1">{Object.entries(VAT_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td>
                     <td className={cell}><input type="number" step="0.01" value={r.amount || ""} onChange={(e) => updateLine(r.key, { amount: Number(e.target.value) })} className="w-24 rounded border border-neutral-300 px-1 py-1" /></td>
-                    <td className={cell}><select value={r.amountIsGross ? "gross" : "net"} disabled={r.vatType !== "VAT_12"} onChange={(e) => updateLine(r.key, { amountIsGross: e.target.value === "gross" })} className="w-20 rounded border border-neutral-300 px-1 py-1 disabled:bg-neutral-100"><option value="gross">Gross</option><option value="net">Net</option></select></td>
-                    <td className={cell}><select value={r.atcCodeId ?? ""} onChange={(e) => updateLine(r.key, { atcCodeId: e.target.value || null })} className="w-36 rounded border border-neutral-300 px-1 py-1"><option value="">None</option>{visibleAtc(r.taxSource, r.atcCodeId).map((a) => <option key={a.id} value={a.id}>{a.code} ({Number(a.ratePercent)}%)</option>)}</select></td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.net)}</td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.vat)}</td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.withholdingAmt)}</td>
@@ -284,12 +280,12 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                         </button>
                       )}
                     </td>
-                    <td className={cell}><button type="button" onClick={() => updateLine(r.key, { expanded: !r.expanded })} className="rounded border border-neutral-300 px-2 py-0.5 text-neutral-600 hover:bg-neutral-50">{r.expanded ? "Hide" : "⋯"}{r.showParty && r.counterpartyId && !r.expanded ? " •" : ""}</button></td>
+                    <td className={cell}><button type="button" onClick={() => updateLine(r.key, { expanded: !r.expanded })} className="rounded border border-neutral-300 px-2 py-0.5 text-neutral-600 hover:bg-neutral-50">{r.expanded ? "Hide" : "⋯"}{((r.showParty && r.counterpartyId) || r.showVatInfo) && !r.expanded ? " •" : ""}</button></td>
                     <td className={cell}>{lines.length > 1 && <button type="button" onClick={() => removeLine(r.key)} className="text-red-500 hover:text-red-700">✕</button>}</td>
                   </tr>
                   {canApply && r.applyExpanded && (
                     <tr>
-                      <td className="border-b border-neutral-100 bg-neutral-50/60 px-3 py-3" colSpan={14}>
+                      <td className="border-b border-neutral-100 bg-neutral-50/60 px-3 py-3" colSpan={10}>
                         <div className="text-xs font-medium text-neutral-700">Apply this line to bill(s)</div>
                         {loadingBills ? (
                           <p className="mt-1 text-xs text-neutral-400">Loading open bills…</p>
@@ -349,11 +345,22 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                   )}
                   {r.expanded && (
                     <tr>
-                      <td className="border-b border-neutral-100 bg-neutral-50/60 px-3 py-3" colSpan={14}>
-                        <button type="button" onClick={() => updateLine(r.key, { showParty: !r.showParty, ...(r.showParty ? { counterpartyType: null, counterpartyId: null } : {}) })} className="text-xs text-neutral-600 hover:text-neutral-900">{r.showParty ? "− remove party" : "+ attach party"}</button>
+                      <td className="border-b border-neutral-100 bg-neutral-50/60 px-3 py-3" colSpan={10}>
+                        <div className="flex gap-4 text-xs">
+                          <button type="button" onClick={() => updateLine(r.key, { showParty: !r.showParty, ...(r.showParty ? { counterpartyType: null, counterpartyId: null } : {}) })} className="text-neutral-600 hover:text-neutral-900">{r.showParty ? "− remove party" : "+ attach party"}</button>
+                          <button type="button" onClick={() => updateLine(r.key, { showVatInfo: !r.showVatInfo, ...(r.showVatInfo ? { vatType: "NON_VAT" as VatType, taxSource: "GOODS" as TaxSource, amountIsGross: true, atcCodeId: null } : {}) })} className="text-neutral-600 hover:text-neutral-900">{r.showVatInfo ? "− remove VAT info" : "+ VAT info (for BIR reports)"}</button>
+                        </div>
                         {r.showParty && (
                           <div className="mt-3">
                             <CounterpartyPicker counterpartyType={r.counterpartyType} counterpartyId={r.counterpartyId} onTypeChange={(t) => updateLine(r.key, { counterpartyType: t })} onIdChange={(id) => updateLine(r.key, { counterpartyId: id })} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} label="Line party" companyId={companyId} onCreated={(type, record) => { appendParty(type, record); updateLine(r.key, { counterpartyType: type, counterpartyId: record.id }); }} />
+                          </div>
+                        )}
+                        {r.showVatInfo && (
+                          <div className="mt-3 grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-4">
+                            <label className="text-xs text-neutral-500">Nature<select value={r.taxSource} onChange={(e) => updateLine(r.key, { taxSource: e.target.value as TaxSource })} className="mt-1 w-full rounded border border-neutral-300 px-1 py-1">{Object.entries(NATURE_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></label>
+                            <label className="text-xs text-neutral-500">VAT<select value={r.vatType} onChange={(e) => updateLine(r.key, { vatType: e.target.value as VatType })} className="mt-1 w-full rounded border border-neutral-300 px-1 py-1">{Object.entries(VAT_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></label>
+                            <label className="text-xs text-neutral-500">Gross/Net<select value={r.amountIsGross ? "gross" : "net"} disabled={r.vatType !== "VAT_12"} onChange={(e) => updateLine(r.key, { amountIsGross: e.target.value === "gross" })} className="mt-1 w-full rounded border border-neutral-300 px-1 py-1 disabled:bg-neutral-100"><option value="gross">Gross</option><option value="net">Net</option></select></label>
+                            <label className="text-xs text-neutral-500">ATC<select value={r.atcCodeId ?? ""} onChange={(e) => updateLine(r.key, { atcCodeId: e.target.value || null })} className="mt-1 w-full rounded border border-neutral-300 px-1 py-1"><option value="">None</option>{visibleAtc(r.taxSource, r.atcCodeId).map((a) => <option key={a.id} value={a.id}>{a.code} ({Number(a.ratePercent)}%)</option>)}</select></label>
                           </div>
                         )}
                       </td>
@@ -364,7 +371,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                 })}
               </tbody>
               <tfoot>
-                <tr className="bg-neutral-50 font-medium"><td className={cell} colSpan={8}>Totals</td><td className={`${cell} text-right font-mono`} colSpan={2}>Debit {formatPeso(computed.totalDebit)}</td><td className={`${cell} text-right font-mono`}>{formatPeso(computed.totalWithholding)}</td><td className={cell} colSpan={3}></td></tr>
+                <tr className="bg-neutral-50 font-medium"><td className={cell} colSpan={4}>Totals</td><td className={`${cell} text-right font-mono`} colSpan={2}>Debit {formatPeso(computed.totalDebit)}</td><td className={`${cell} text-right font-mono`}>{formatPeso(computed.totalWithholding)}</td><td className={cell} colSpan={3}></td></tr>
               </tfoot>
             </table>
           </div>
