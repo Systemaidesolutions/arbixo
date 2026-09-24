@@ -126,6 +126,7 @@ export function NewPartyForm({
 }) {
   const isEmployee = type === "EMPLOYEE";
   const [form, setForm] = useState<PartyForm>(emptyPartyForm());
+  const needsVatIdentity = (type === "VENDOR" || type === "CUSTOMER") && form.registrationType === "VAT";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -144,6 +145,20 @@ export function NewPartyForm({
     // quick-created. See https://react.dev/reference/react-dom/createPortal#rendering-into-a-different-part-of-the-dom
     e.stopPropagation();
     setError(null);
+
+    if (needsVatIdentity) {
+      const missing = [
+        !form.tin.trim() && "TIN",
+        !form.address.trim() && "Address",
+        !form.city.trim() && "City",
+        !form.province.trim() && "Province",
+        !form.zipCode.trim() && "ZIP Code",
+      ].filter(Boolean);
+      if (missing.length) {
+        setError(`A VAT-registered ${type.toLowerCase()} requires: ${missing.join(", ")}.`);
+        return;
+      }
+    }
     setBusy(true);
 
     const ep = PARTY_ENDPOINT[type];
@@ -209,7 +224,7 @@ export function NewPartyForm({
       </label>
 
       <label className={labelCls}>
-        TIN
+        TIN{needsVatIdentity && <span className="text-red-500"> *</span>}
         <TinInput value={form.tin} onChange={(v) => set("tin", v)} className={field} />
       </label>
 
@@ -305,6 +320,11 @@ export function NewPartyForm({
         </>
       )}
 
+      {needsVatIdentity && (
+        <p className="text-xs text-neutral-500">
+          <span className="text-red-500">*</span> VAT-registered: TIN, street address, city, province and ZIP code are required.
+        </p>
+      )}
       <AddressFields
         idPrefix={`qc-${type.toLowerCase()}`}
         value={{

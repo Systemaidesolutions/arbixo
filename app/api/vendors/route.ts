@@ -31,6 +31,20 @@ export async function POST(request: NextRequest) {
   const nameError = validateNameFields(body);
   if (nameError) return NextResponse.json({ error: nameError }, { status: 400 });
 
+  if (registrationType === "VAT") {
+    const blank = (v: unknown) => typeof v !== "string" || !v.trim();
+    const missing = [
+      blank(body.tin) && "TIN",
+      blank(body.address) && "Address",
+      blank(body.city) && "City",
+      blank(body.province) && "Province",
+      blank(body.zipCode) && "ZIP Code",
+    ].filter(Boolean);
+    if (missing.length) {
+      return NextResponse.json({ error: `A VAT-registered vendor requires: ${missing.join(", ")}.` }, { status: 400 });
+    }
+  }
+
   // Code is optional: when omitted, auto-assign from the company's No. Series.
   let code: string = typeof body.code === "string" ? body.code.trim() : "";
   if (code) {
