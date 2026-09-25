@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { formatPeso, formatDate } from "@/lib/format";
 import { pesosInWords } from "@/lib/amountInWords";
 import { PrintControls } from "@/components/PrintControls";
+import { pickHeaderPartyLine } from "@/lib/headerParty";
 import type { JournalType } from "@prisma/client";
 
 // Printable voucher for any posted transaction, styled after the client's Check
@@ -32,7 +33,7 @@ export default async function VoucherPage({ params }: { params: { journalType: s
   });
   if (entries.length === 0) notFound();
 
-  const withParty = entries.find((e) => e.customer || e.vendor || e.employee || e.contact);
+  const withParty = pickHeaderPartyLine(entries, journalType);
   const p = withParty?.customer || withParty?.vendor || withParty?.contact;
   const partyName =
     p?.registeredName || p?.tradeName ||

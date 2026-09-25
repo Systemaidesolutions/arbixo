@@ -1,3 +1,4 @@
+import { pickHeaderPartyLine } from "@/lib/headerParty";
 import { notFound } from "next/navigation";
 import { requirePostingCompany, getCurrentCapability } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
@@ -44,7 +45,7 @@ export default async function TransactionViewPage({ params }: { params: { journa
   if (entries.length === 0) notFound();
 
   const first = entries[0];
-  const withParty = entries.find((e) => e.customer || e.vendor || e.employee || e.contact);
+  const withParty = pickHeaderPartyLine(entries, journalType);
   const p = withParty?.customer || withParty?.vendor || withParty?.contact;
   const partyName =
     p?.registeredName || p?.tradeName ||

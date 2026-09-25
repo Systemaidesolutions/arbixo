@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { formatPeso } from "@/lib/format";
 import { pesosInWords } from "@/lib/amountInWords";
 import { CheckPrintClient } from "./CheckPrintClient";
+import { pickHeaderPartyLine } from "@/lib/headerParty";
 
 // Printable check for a posted Cash Disbursement — meant to be fed through
 // the printer directly onto the company's own pre-printed check stock
@@ -33,7 +34,7 @@ export default async function CheckPage({ params }: { params: { documentNo: stri
   });
   if (entries.length === 0) notFound();
 
-  const withParty = entries.find((e) => e.customer || e.vendor || e.employee || e.contact);
+  const withParty = pickHeaderPartyLine(entries, "CASH_DISBURSEMENT");
   const p = withParty?.customer || withParty?.vendor || withParty?.contact;
   const payeeName =
     p?.registeredName || p?.tradeName ||

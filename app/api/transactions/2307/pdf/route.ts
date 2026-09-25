@@ -1,3 +1,4 @@
+import { pickHeaderPartyLine } from "@/lib/headerParty";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePostingCompany } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
   });
   if (entries.length === 0) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  const withParty = entries.find((e) => e.customer || e.vendor || e.employee || e.contact);
+  const withParty = pickHeaderPartyLine(entries, journalType);
   const cp = withParty?.vendor || withParty?.customer || withParty?.contact;
   const payeeName =
     cp?.registeredName || cp?.tradeName ||
