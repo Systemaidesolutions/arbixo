@@ -53,7 +53,7 @@ export default async function CheckPage({ params }: { params: { documentNo: stri
       dateStr={dateStr}
       payeeName={payeeName}
       amountFormatted={formatPeso(amount)}
-      amountWords={pesosInWords(amount, { slash: false })}
+      amountWords={pesosInWords(amount, { centavos: true })}
       memo={memo}
     />
   );

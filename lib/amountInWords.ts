@@ -31,9 +31,11 @@ function toWords(n: number): string {
   return parts.join(" ");
 }
 
-export function pesosInWords(amount: number, opts: { slash?: boolean } = {}): string {
+export function pesosInWords(amount: number, opts: { centavos?: boolean } = {}): string {
   const pesos = Math.floor(Math.abs(amount) + 1e-9);
   const centavos = Math.round((Math.abs(amount) - pesos) * 100);
   const cents = String(centavos).padStart(2, "0");
-  return `${toWords(pesos)} Pesos and ${cents}${opts.slash === false ? " " : "/"}100`;
+  return opts.centavos
+    ? `${toWords(pesos)} Pesos and ${cents} Centavos`
+    : `${toWords(pesos)} Pesos and ${cents}/100`;
 }
