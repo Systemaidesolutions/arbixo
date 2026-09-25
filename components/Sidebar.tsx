@@ -131,9 +131,9 @@ function SidebarBrand() {
     <div className="mx-4 mb-4 mt-2 rounded-2xl bg-white p-2.5 text-center shadow-lg ring-1 ring-black/5">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/arbixo-logo.jpg"
-        alt="ARbixo — Accounting Intelligence. Business Excellence."
-        className="mx-auto w-full max-w-[130px]"
+        src="/arbixo-logo-nav.png"
+        alt="ARbixo"
+        className="mx-auto w-full max-w-[120px]"
       />
       <p className="mt-1 text-[9px] text-neutral-500">Powered by: Systemaide Solutions Inc.</p>
     </div>
