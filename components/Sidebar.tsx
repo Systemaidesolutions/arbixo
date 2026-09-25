@@ -135,7 +135,6 @@ function SidebarBrand() {
         alt="ARbixo"
         className="mx-auto w-full max-w-[120px]"
       />
-      <p className="mt-1 text-[9px] text-neutral-500">Powered by: Systemaide Solutions Inc.</p>
     </div>
   );
 }
