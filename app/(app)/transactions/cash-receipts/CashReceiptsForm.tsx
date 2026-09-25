@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountCombobox } from "@/components/AccountCombobox";
 import { Fragment, useMemo, useState } from "react";
 import { formatPeso, formatDate } from "@/lib/format";
 import { useLastBranch } from "@/lib/useLastBranch";
@@ -315,7 +316,7 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
           <div className="sm:col-span-3">
             <CounterpartyPicker counterpartyType={counterpartyType} counterpartyId={counterpartyId} onTypeChange={handleCounterpartyTypeChange} onIdChange={handleCounterpartyIdChange} vendors={vendorList} employees={employeeList} contacts={contactList} customers={customerList} types={["CUSTOMER", "VENDOR", "EMPLOYEE", "CONTACT"]} label="Payor" companyId={companyId} onCreated={onPartyCreated} showDetails />
           </div>
-          <label className={label}>Cash account<select required value={cashAccountId} onChange={(e) => setCashAccountId(e.target.value)} className={field}>{cashAccounts.length === 0 && <option value="">No Cash accounts yet</option>}{cashAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
+          <label className={label}>Cash account<AccountCombobox required accounts={cashAccounts} value={cashAccountId} onChange={setCashAccountId} className={field} placeholder={cashAccounts.length === 0 ? "No Cash accounts yet" : undefined} /></label>
 
           <div className="sm:col-span-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -354,7 +355,7 @@ export function CashReceiptsForm({ companyId, accounts, cashAccounts, vendors, e
                   return (
                   <Fragment key={r.key}>
                   <tr>
-                    <td className={cell}><select required value={r.accountId} onChange={(e) => updateLine(r.key, { accountId: e.target.value })} className="w-44 rounded border border-neutral-300 px-1 py-1"><option value="">Select…</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></td>
+                    <td className={cell}><AccountCombobox required accounts={accounts} value={r.accountId} onChange={(id) => updateLine(r.key, { accountId: id })} className="w-44 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><input value={r.referenceNo} onChange={(e) => updateLine(r.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><input value={r.lineDescription} onChange={(e) => updateLine(r.key, { lineDescription: e.target.value })} className="w-40 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><select value={r.vatType} onChange={(e) => updateLine(r.key, { vatType: e.target.value as VatType })} className="w-24 rounded border border-neutral-300 px-1 py-1">{Object.entries(VAT_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td>

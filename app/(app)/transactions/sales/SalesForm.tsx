@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountCombobox } from "@/components/AccountCombobox";
 import { useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { useLastBranch } from "@/lib/useLastBranch";
@@ -141,7 +142,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
           <div className="sm:col-span-2">
             <CounterpartyPicker counterpartyType="CUSTOMER" counterpartyId={customerId} onTypeChange={() => {}} onIdChange={onCustomerChange} vendors={[]} employees={[]} contacts={[]} customers={customerList} types={["CUSTOMER"]} label="Customer" companyId={companyId} onCreated={(_t, record) => { setCustomerList((l) => [...l, record as (typeof customerList)[number]]); onCustomerChange(record.id); }} showDetails />
           </div>
-          <label className={label}>Receivable account<select required value={receivableAccountId} onChange={(e) => setReceivableAccountId(e.target.value)} className={field}>{receivableAccounts.length === 0 && <option value="">No A/R accounts yet</option>}{receivableAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
+          <label className={label}>Receivable account<AccountCombobox required accounts={receivableAccounts} value={receivableAccountId} onChange={setReceivableAccountId} className={field} placeholder={receivableAccounts.length === 0 ? "No A/R accounts yet" : undefined} /></label>
           <label className={label}>Payment terms<input value={paymentTerms} onChange={(e) => onTermsChange(e.target.value)} placeholder="e.g. Net 30, COD" className={field} /></label>
           <label className={label}>Due date<input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} /></label>
 
@@ -186,7 +187,7 @@ export function SalesForm({ companyId, accounts, receivableAccounts, customers, 
               <tbody>
                 {computed.rows.map((r) => (
                   <tr key={r.key}>
-                    <td className={cell}><select required value={r.accountId} onChange={(e) => updateLine(r.key, { accountId: e.target.value })} className="w-44 rounded border border-neutral-300 px-1 py-1"><option value="">Select…</option>{incomeAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></td>
+                    <td className={cell}><AccountCombobox required accounts={incomeAccounts} value={r.accountId} onChange={(id) => updateLine(r.key, { accountId: id })} className="w-44 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><input value={r.referenceNo} onChange={(e) => updateLine(r.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><input value={r.lineDescription} onChange={(e) => updateLine(r.key, { lineDescription: e.target.value })} className="w-40 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><select value={r.vatType} onChange={(e) => updateLine(r.key, { vatType: e.target.value as VatType })} className="w-24 rounded border border-neutral-300 px-1 py-1">{Object.entries(VAT_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td>

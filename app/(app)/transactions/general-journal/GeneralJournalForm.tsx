@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountCombobox } from "@/components/AccountCombobox";
 import { Fragment, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { useLastBranch } from "@/lib/useLastBranch";
@@ -152,7 +153,7 @@ export function GeneralJournalForm({ companyId, accounts, vendors, employees, co
                 {lines.map((line) => (
                   <Fragment key={line.key}>
                     <tr>
-                      <td className={cell}><select required value={line.accountId} onChange={(e) => updateLine(line.key, { accountId: e.target.value })} className="w-48 rounded border border-neutral-300 px-1 py-1"><option value="">Select…</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></td>
+                      <td className={cell}><AccountCombobox required accounts={accounts} value={line.accountId} onChange={(id) => updateLine(line.key, { accountId: id })} className="w-48 rounded border border-neutral-300 px-1 py-1" /></td>
                       <td className={cell}><input value={line.referenceNo} onChange={(e) => updateLine(line.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                       <td className={cell}><input type="number" step="0.01" value={line.debitAmount || ""} onChange={(e) => updateLine(line.key, { debitAmount: Number(e.target.value), creditAmount: 0 })} className="w-24 rounded border border-neutral-300 px-1 py-1 text-right" /></td>
                       <td className={cell}><input type="number" step="0.01" value={line.creditAmount || ""} onChange={(e) => updateLine(line.key, { creditAmount: Number(e.target.value), debitAmount: 0 })} className="w-24 rounded border border-neutral-300 px-1 py-1 text-right" /></td>

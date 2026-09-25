@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountCombobox } from "@/components/AccountCombobox";
 import { Fragment, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { useLastBranch } from "@/lib/useLastBranch";
@@ -154,7 +155,7 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, e
           <div className="sm:col-span-2">
             <CounterpartyPicker counterpartyType="VENDOR" counterpartyId={vendorId} onTypeChange={() => {}} onIdChange={onVendorChange} vendors={vendorList} employees={[]} contacts={[]} customers={[]} types={["VENDOR"]} label="Supplier" companyId={companyId} onCreated={(_t, record) => { setVendorList((l) => [...l, record as (typeof vendorList)[number]]); onVendorChange(record.id); }} showDetails />
           </div>
-          <label className={label}>Payable account<select required value={payableAccountId} onChange={(e) => setPayableAccountId(e.target.value)} className={field}>{payableAccounts.length === 0 && <option value="">No A/P accounts yet</option>}{payableAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></label>
+          <label className={label}>Payable account<AccountCombobox required accounts={payableAccounts} value={payableAccountId} onChange={setPayableAccountId} className={field} placeholder={payableAccounts.length === 0 ? "No A/P accounts yet" : undefined} /></label>
           <label className={label}>Payment terms<input value={paymentTerms} onChange={(e) => onTermsChange(e.target.value)} placeholder="e.g. Net 30, COD" className={field} /></label>
           <label className={label}>Due date<input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} /></label>
 
@@ -200,7 +201,7 @@ export function PurchasesForm({ companyId, accounts, payableAccounts, vendors, e
                 {computed.rows.map((r) => (
                   <Fragment key={r.key}>
                   <tr>
-                    <td className={cell}><select required value={r.accountId} onChange={(e) => updateLine(r.key, { accountId: e.target.value })} className="w-44 rounded border border-neutral-300 px-1 py-1"><option value="">Select…</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}</select></td>
+                    <td className={cell}><AccountCombobox required accounts={accounts} value={r.accountId} onChange={(id) => updateLine(r.key, { accountId: id })} className="w-44 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><input value={r.referenceNo} onChange={(e) => updateLine(r.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><input value={r.lineDescription} onChange={(e) => updateLine(r.key, { lineDescription: e.target.value })} className="w-40 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><select value={r.taxSource} onChange={(e) => updateLine(r.key, { taxSource: e.target.value as TaxSource })} className="w-28 rounded border border-neutral-300 px-1 py-1">{Object.entries(NATURE_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td>
