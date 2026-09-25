@@ -5,19 +5,16 @@ import { useSearchParams } from "next/navigation";
 
 const CONTACT_EMAIL = "info@arbixo.net";
 
-// The source art has a lot of empty canvas above the character, so a plain
-// object-fit:cover (same aspect ratio in and out) wouldn't crop in on the
-// face at all — we zoom in via background-size/position instead, tuned by
-// eye against the actual image so the face + magnifying glass fill the circle.
+// The avatar art is pre-cropped to head and shoulders, so it just fills the circle.
 function ArbiAvatar({ size }: { size: number }) {
   return (
     <div
       style={{
         width: size,
         height: size,
-        backgroundImage: "url(/arbi-help-avatar.png)",
-        backgroundSize: "250% 250%",
-        backgroundPosition: "50% 35%",
+        backgroundImage: "url(/arbi-help-avatar-v2.png)",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
       }}
       className="shrink-0 rounded-full bg-white"
