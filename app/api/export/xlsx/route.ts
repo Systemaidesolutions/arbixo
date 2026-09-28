@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
-import { getCurrentUserRecord } from "@/lib/currentUser";
+import { getCurrentCompany } from "@/lib/currentUser";
 
 // Generic grid → .xlsx exporter. Clients POST the same rows they used to build
 // a CSV; this turns them into a real Excel file. A cell is treated as a money
@@ -11,8 +11,12 @@ const MONEY_STR = /^-?\d+\.\d{2}$/;
 const NUM_FMT = "#,##0.00";
 
 export async function POST(request: NextRequest) {
-  const user = await getCurrentUserRecord();
-  if (!user?.companyId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Must mirror how every report's own GET route resolves the company (see
+  // lib/currentUser.ts) — an admin acting inside a company for support has no
+  // companyId of their own, so gating on the raw user record 403'd every
+  // export for them even though the report itself rendered fine.
+  const company = await getCurrentCompany();
+  if (!company) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = (await request.json().catch(() => null)) as
     | { filename?: string; sheetName?: string; rows?: unknown[][] }

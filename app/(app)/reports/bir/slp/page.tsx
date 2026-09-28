@@ -22,6 +22,8 @@ export default async function SlpPage() {
       kind="slp"
       tin={company.tin}
       registeredName={company.registeredName ?? company.tradeName}
+      tradeName={company.tradeName}
+      address={[company.businessAddress, company.barangay, company.district, company.city, company.province, company.zipCode].filter(Boolean).join(", ")}
       locations={locations}
     />
   );

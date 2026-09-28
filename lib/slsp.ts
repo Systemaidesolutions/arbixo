@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { branchWhere, type BranchScope } from "@/lib/branchScope";
+import { digitsOnly, datText, datTin, tinWithDashes, datRdo, amt, mmddyyyy, monthEndOf, reliefDatFilename } from "@/lib/reliefFormat";
+
+export { digitsOnly, datText, datTin, tinWithDashes, datRdo, amt, mmddyyyy, monthEndOf, reliefDatFilename };
 
 // BIR Summary Lists of Sales (SLS) and Purchases (SLP) — one summarized line
 // per customer / supplier for a period, split by VAT treatment. Purchases
@@ -127,39 +130,6 @@ export type DatCompany = {
 // so it is emitted verbatim. Change here if BIR's RELIEF validator shows it is
 // dynamic (e.g. tax-month number).
 export const H_TRAILER = "12";
-
-export const digitsOnly = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
-// RELIEF files are positional and comma-delimited with NO quoting, so any comma
-// or line break inside a text field shifts every field after it. Strip those
-// (and collapse whitespace); other punctuation the validator accepts is kept.
-export const datText = (s: string | null | undefined) =>
-  (s ?? "").replace(/[\r\n]+/g, " ").replace(/,/g, " ").replace(/\s+/g, " ").trim();
-// BIR RELIEF identifies a taxpayer by the 9-digit base TIN — the export file is
-// itself named "<9-digit TIN>...". Branch codes are not part of the TIN field,
-// so use only the first 9 digits.
-export const datTin = (s: string | null | undefined) => digitsOnly(s).slice(0, 9);
-// RDO code for BIR files. RDO codes are ALPHANUMERIC (e.g. 037, 54A, 54B), so
-// take the leading alphanumeric token — not just digits — and uppercase it.
-// Handles bare codes ("54B"), lowercase ("54b" -> "54B") and "code — name"
-// strings ("54B — Kawit, West Cavite" -> "54B").
-export const datRdo = (s: string | null | undefined) =>
-  ((s ?? "").trim().match(/^[0-9A-Za-z]+/)?.[0] ?? "").toUpperCase();
-// Match the sample's number style: integers plain, otherwise 2 decimals.
-export const amt = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(2));
-export function mmddyyyy(d: Date): string {
-  const p = (x: number) => String(x).padStart(2, "0");
-  return `${p(d.getMonth() + 1)}/${p(d.getDate())}/${d.getFullYear()}`;
-}
-
-/**
- * BIR RELIEF upload filename, ready to submit: 9-digit TIN + type letter
- * (S = Sales, P = Purchases, I = Importation) + 2-digit month + 4-digit year
- * of the covered tax period. e.g. 123456789S012026.DAT
- */
-export function reliefDatFilename(tin: string, kind: "S" | "P" | "I", periodEnd: Date): string {
-  const mm = String(periodEnd.getMonth() + 1).padStart(2, "0");
-  return `${datTin(tin)}${kind}${mm}${periodEnd.getFullYear()}.DAT`;
-}
 
 /**
  * Generates the BIR RELIEF SLP file text: one H (taxpayer + grand totals)

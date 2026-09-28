@@ -4,9 +4,21 @@ import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
 import { BranchFilter, type Branch } from "@/components/BranchFilter";
+import { tinWithDashes, mmddyyyy, digitsOnly } from "@/lib/reliefFormat";
 
-type Row = Record<string, string | number> & { id: string; tin: string; name: string; address: string };
+type Row = Record<string, string | number> & {
+  id: string; tin: string; name: string; address: string;
+  reg: string; last: string; first: string; middle: string;
+};
 type Data = { rows: Row[]; totals: Record<string, number> };
+
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+// Blank (not "0") is how BIR's own RELIEF template shows a zero total.
+const orBlank = (n: number) => (n === 0 ? "" : n.toFixed(2));
+// Individual/sole-proprietor supplier or customer name as "Last, First Middle";
+// blank for a corporate party (whose name is already in the Registered Name column).
+const personName = (r: Row) =>
+  r.last || r.first || r.middle ? `${r.last ?? ""}, ${r.first ?? ""} ${r.middle ?? ""}`.replace(/\s+/g, " ").trim() : "";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -48,11 +60,15 @@ export function SlspClient({
   kind,
   tin,
   registeredName,
+  tradeName,
+  address,
   locations,
 }: {
   kind: "slp" | "sls";
   tin: string;
   registeredName: string;
+  tradeName: string;
+  address: string;
   locations: Branch[];
 }) {
   const now = new Date();
@@ -90,15 +106,75 @@ export function SlspClient({
     };
   }, [kind, range.from, range.to, locationId]);
 
+  // Matches BIR's own RELIEF SLP/SLS Excel template: a taxpayer header block,
+  // numbered columns (per BIR's own column numbering), one row per party, a
+  // Grand Total row, and an END OF REPORT footer.
   function exportCsv() {
     if (!data) return;
+    const taxableMonth = mmddyyyy(new Date(`${range.to}T00:00:00`));
+
     const out: (string | number)[][] = [
-      ["TIN", `${partyLabel} name`, "Address", ...cols.map((c) => c.label)],
+      [kind === "slp" ? "PURCHASE TRANSACTION" : "SALES TRANSACTION"],
+      ["RECONCILIATION OF LISTING FOR ENFORCEMENT"],
+      [],
+      [],
+      [],
+      [`TIN : ${digitsOnly(tin)}`],
+      [`OWNER'S NAME: ${registeredName}`],
+      [`OWNER'S TRADE NAME : ${tradeName}`],
+      [`OWNER'S ADDRESS: ${address}`],
+      [],
     ];
-    for (const r of data.rows) {
-      out.push([r.tin, r.name, r.address, ...cols.map((c) => Number(r[c.key]).toFixed(2))]);
+
+    if (kind === "slp") {
+      out.push(
+        ["TAXABLE", "TAXPAYER", "REGISTERED NAME", "NAME OF SUPPLIER", "SUPPLIER'S ADDRESS", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF"],
+        ["MONTH", "IDENTIFICATION", "", "(Last Name, First Name, Middle Name)", "", "GROSS PURCHASE", "EXEMPT PURCHASE", "ZERO-RATED PURCHASE", "TAXABLE PURCHASE", "PURCHASE OF SERVICES", "PURCHASE OF CAPITAL GOODS", "PURCHASE OF GOODS OTHER THAN CAPITAL GOODS", "INPUT TAX", "GROSS TAXABLE PURCHASE"],
+        ["", "NUMBER", "", "", "", "", "", "", "", "", "", "", "", ""],
+        ["(1)", "(2)", "(3)", "(4)", "(5)", "(6)", "(7)", "(8)", "(9)", "(10)", "(11)", "(12)", "(13)", "(14)"]
+      );
+      for (const r of data.rows) {
+        out.push([
+          taxableMonth, tinWithDashes(r.tin), r.reg, personName(r), r.address,
+          Number(r.gross).toFixed(2), Number(r.exempt).toFixed(2), Number(r.zeroRated).toFixed(2), Number(r.taxable).toFixed(2),
+          Number(r.services).toFixed(2), Number(r.capitalGoods).toFixed(2), Number(r.goods).toFixed(2), Number(r.inputTax).toFixed(2),
+          round2(Number(r.taxable) + Number(r.inputTax)).toFixed(2),
+        ]);
+      }
+      const t = data.totals;
+      out.push([]);
+      out.push([
+        "Grand Total :", "", "", "", "",
+        orBlank(Number(t.gross)), orBlank(Number(t.exempt)), orBlank(Number(t.zeroRated)), orBlank(Number(t.taxable)),
+        orBlank(Number(t.services)), orBlank(Number(t.capitalGoods)), orBlank(Number(t.goods)), orBlank(Number(t.inputTax)),
+        orBlank(round2(Number(t.taxable) + Number(t.inputTax))),
+      ]);
+    } else {
+      out.push(
+        ["TAXABLE", "TAXPAYER", "REGISTERED NAME", "NAME OF CUSTOMER", "CUSTOMER'S ADDRESS", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF"],
+        ["MONTH", "IDENTIFICATION", "", "(Last Name, First Name, Middle Name)", "", "GROSS SALES", "EXEMPT SALES", "ZERO RATED SALES", "TAXABLE SALES", "OUTPUT TAX", "GROSS TAXABLE SALES"],
+        ["", "NUMBER", "", "", "", "", "", "", "", "", ""],
+        ["(1)", "(2)", "(3)", "(4)", "(5)", "(6)", "(7)", "(8)", "(9)", "(10)", "(11)"]
+      );
+      for (const r of data.rows) {
+        out.push([
+          taxableMonth, tinWithDashes(r.tin), r.reg, personName(r), r.address,
+          Number(r.gross).toFixed(2), Number(r.exempt).toFixed(2), Number(r.zeroRated).toFixed(2), Number(r.taxable).toFixed(2),
+          Number(r.outputTax).toFixed(2), round2(Number(r.taxable) + Number(r.outputTax)).toFixed(2),
+        ]);
+      }
+      const t = data.totals;
+      out.push([]);
+      out.push([
+        "Grand Total :", "", "", "", "",
+        orBlank(Number(t.gross)), orBlank(Number(t.exempt)), orBlank(Number(t.zeroRated)), orBlank(Number(t.taxable)),
+        orBlank(Number(t.outputTax)), orBlank(round2(Number(t.taxable) + Number(t.outputTax))),
+      ]);
     }
-    out.push(["", "TOTAL", "", ...cols.map((c) => Number(data.totals[c.key]).toFixed(2))]);
+
+    out.push([]);
+    out.push(["END OF REPORT"]);
+
     downloadXlsx(`${kind.toUpperCase()}_${range.from}_to_${range.to}`, kind.toUpperCase(), out);
   }
 

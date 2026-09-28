@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatPeso, formatDate } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
+import { digitsOnly, mmddyyyy, monthEndOf } from "@/lib/reliefFormat";
+
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+const orBlank = (n: number) => (n === 0 ? "" : n.toFixed(2));
 
 type Row = {
   id: string;
@@ -42,7 +46,7 @@ function fmtDate(iso: string | null) {
   return iso ? formatDate(new Date(iso)) : "—";
 }
 
-export function SliClient({ tin, registeredName }: { tin: string; registeredName: string }) {
+export function SliClient({ tin, registeredName, address }: { tin: string; registeredName: string; address: string }) {
   const now = new Date();
 
   const [mode, setMode] = useState<"month" | "quarter" | "range">("quarter");
@@ -74,27 +78,44 @@ export function SliClient({ tin, registeredName }: { tin: string; registeredName
     };
   }, [range.from, range.to]);
 
+  // Matches BIR's own RELIEF SLI (Importations) Excel template. "Import Entry
+  // Number" isn't captured anywhere in the app today, so that column prints
+  // blank; "Total Landed Cost" is Dutiable Value + charges before release,
+  // which the app does track.
   function exportCsv() {
     if (!data) return;
     const out: (string | number)[][] = [
-      [
-        "Assessment/Release Date", "Name of Seller", "Date of Importation", "Country of Origin",
-        "Dutiable Value", "All Charges Before Release", "Exempt", "Taxable Goods", "VAT",
-        "OR No.", "Date of Payment",
-      ],
+      ["IMPORTS TRANSACTION"],
+      ["RECONCILIATION OF LISTING FOR ENFORCEMENT"],
+      [],
+      [],
+      [],
+      [`TIN : ${digitsOnly(tin)}`],
+      [`OWNER'S NAME: ${registeredName}`],
+      [`OWNER'S ADDRESS: ${address}`],
+      [],
+      ["TAXABLE", "IMPORT", "ASSESSMENT/", "REGISTERED NAME", "IMPORTATION DATE", "COUNTRY OF", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF", "AMOUNT OF", "OR NUMBER", "DATE OF"],
+      ["MONTH", "ENTRY", "RELEASE DATE", "", "", "ORIGIN", "TOTAL LANDED COST", "DUTIABLE VALUE", "CHARGES BEFORE", "TAXABLE IMPORTS", "EXEMPT IMPORTS", "VAT", "", "VAT PAYMENT"],
+      ["", "NUMBER", "", "", "", "", "", "", "RELEASE FROM CUSTOM", "", "", "", "", ""],
+      ["(1)", "(2)", "(3)", "(4)", "(5)", "(6)", "(7)", "(8)", "(9)", "(10)", "(11)", "(12)", "(13)", "(14)"],
     ];
     for (const r of data.rows) {
+      const landedCost = round2(r.dutiableValue + r.charges);
       out.push([
-        fmtDate(r.assessReleaseDate), r.sellerName, fmtDate(r.importDate), r.countryOrigin,
-        r.dutiableValue.toFixed(2), r.charges.toFixed(2), r.exempt.toFixed(2),
-        r.taxableGoods.toFixed(2), r.vat.toFixed(2), r.orNo, fmtDate(r.paymentDate),
+        mmddyyyy(monthEndOf(new Date(r.importDate))), "", fmtDate(r.assessReleaseDate), r.sellerName, fmtDate(r.importDate), r.countryOrigin,
+        landedCost.toFixed(2), r.dutiableValue.toFixed(2), r.charges.toFixed(2),
+        r.taxableGoods.toFixed(2), r.exempt.toFixed(2), r.vat.toFixed(2), r.orNo, fmtDate(r.paymentDate),
       ]);
     }
+    const t = data.totals;
+    out.push([]);
     out.push([
-      "", "", "", "TOTAL",
-      data.totals.dutiableValue.toFixed(2), data.totals.charges.toFixed(2), data.totals.exempt.toFixed(2),
-      data.totals.taxableGoods.toFixed(2), data.totals.vat.toFixed(2), "", "",
+      "Grand Total :", "", "", "", "", "",
+      orBlank(round2(t.dutiableValue + t.charges)), orBlank(t.dutiableValue), orBlank(t.charges),
+      orBlank(t.taxableGoods), orBlank(t.exempt), orBlank(t.vat), "", "",
     ]);
+    out.push([]);
+    out.push(["END OF REPORT"]);
     downloadXlsx(`SLI_${range.from}_to_${range.to}`, "SLI", out);
   }
 

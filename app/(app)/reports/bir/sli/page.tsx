@@ -11,5 +11,11 @@ export default async function SliPage() {
       </main>
     );
   }
-  return <SliClient tin={company.tin} registeredName={company.registeredName ?? company.tradeName} />;
+  return (
+    <SliClient
+      tin={company.tin}
+      registeredName={company.registeredName ?? company.tradeName}
+      address={[company.businessAddress, company.barangay, company.district, company.city, company.province, company.zipCode].filter(Boolean).join(", ")}
+    />
+  );
 }
