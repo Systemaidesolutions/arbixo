@@ -11,7 +11,7 @@ import { pickHeaderPartyLine } from "@/lib/headerParty";
 // (which already carries the bank's letterhead, "Pay to the order of" /
 // "Pesos" labels, boxes, MICR line, and check number). So this only prints
 // the variable details a person would otherwise write by hand: date,
-// payee, amount in figures and in words, and the memo. No borders, boxes,
+// payee, and amount in figures and in words. No borders, boxes,
 // or labels of its own — those would double up with what's already on the
 // paper. Open with ?_embed=1 so the app chrome is hidden (see AppShell).
 //
@@ -43,21 +43,17 @@ export default async function CheckPage({ params }: { params: { documentNo: stri
 
   const cashLine = entries.find((e) => e.account.classification === "CASH_IN_BANK" || e.account.classification === "CASH_ON_HAND");
   const amount = Number(cashLine?.creditAmount ?? entries.reduce((s, e) => s + Number(e.creditAmount), 0));
-  // Prefer the user-typed line description; the "description" field also
-  // carries auto-generated labels like "Input VAT — <doc no>" on the VAT
-  // posting line, which isn't a memo and shouldn't print as one.
-  const memo = entries.find((e) => e.lineDescription)?.lineDescription || entries.find((e) => e.description)?.description || "";
 
   const d = new Date(entries[0].postingDate);
-  const dateStr = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
 
   return (
     <CheckPrintClient
-      dateStr={dateStr}
+      dateMonth={String(d.getMonth() + 1).padStart(2, "0")}
+      dateDay={String(d.getDate()).padStart(2, "0")}
+      dateYear={String(d.getFullYear())}
       payeeName={payeeName}
       amountFormatted={formatPeso(amount)}
       amountWords={pesosInWords(amount, { centavos: true })}
-      memo={memo}
     />
   );
 }

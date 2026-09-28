@@ -7,21 +7,25 @@ type FieldPos = { top: number; left: number };
 type Layout = {
   width: number;
   height: number;
-  date: FieldPos;
+  dateMonth: FieldPos;
+  dateDay: FieldPos;
+  dateYear: FieldPos;
   payee: FieldPos;
   amountFigures: FieldPos;
   amountWords: FieldPos;
-  memo: FieldPos;
 };
 
 const DEFAULT_LAYOUT: Layout = {
   width: 8.5,
   height: 3.5,
-  date: { top: 0.5, left: 0.6 }, // left is measured from the right edge
+  // All three measured from the right edge, spread out so they land as
+  // separate MM / DD / YYYY boxes instead of one "MM/DD/YYYY" string.
+  dateMonth: { top: 0.5, left: 1.3 },
+  dateDay: { top: 0.5, left: 0.95 },
+  dateYear: { top: 0.5, left: 0.6 },
   payee: { top: 1.35, left: 0.6 },
   amountFigures: { top: 1.35, left: 0.4 }, // left is measured from the right edge
   amountWords: { top: 1.75, left: 0.6 },
-  memo: { top: 2.9, left: 0.6 },
 };
 
 const STORAGE_KEY = "arbixo-check-print-layout";
@@ -63,17 +67,19 @@ function NumberField({
 }
 
 export function CheckPrintClient({
-  dateStr,
+  dateMonth,
+  dateDay,
+  dateYear,
   payeeName,
   amountFormatted,
   amountWords,
-  memo,
 }: {
-  dateStr: string;
+  dateMonth: string;
+  dateDay: string;
+  dateYear: string;
   payeeName: string;
   amountFormatted: string;
   amountWords: string;
-  memo: string;
 }) {
   const [layout, setLayout] = useState<Layout>(DEFAULT_LAYOUT);
   const [adjusting, setAdjusting] = useState(false);
@@ -93,7 +99,7 @@ export function CheckPrintClient({
   function set<K extends keyof Layout>(key: K, value: Layout[K]) {
     setLayout((prev) => ({ ...prev, [key]: value }));
   }
-  function setField(key: "date" | "payee" | "amountFigures" | "amountWords" | "memo", axis: "top" | "left", value: number) {
+  function setField(key: "dateMonth" | "dateDay" | "dateYear" | "payee" | "amountFigures" | "amountWords", axis: "top" | "left", value: number) {
     setLayout((prev) => ({ ...prev, [key]: { ...prev[key], [axis]: value } }));
   }
   function reset() {
@@ -171,9 +177,19 @@ export function CheckPrintClient({
             <NumberField label="H" value={layout.height} onChange={(v) => set("height", v)} />
           </div>
           <div className="flex items-center gap-3">
-            <span className="w-24 shrink-0 text-xs font-medium text-neutral-700">Date</span>
-            <NumberField label="Top" value={layout.date.top} onChange={(v) => setField("date", "top", v)} />
-            <NumberField label="From right" value={layout.date.left} onChange={(v) => setField("date", "left", v)} />
+            <span className="w-24 shrink-0 text-xs font-medium text-neutral-700">Date — month</span>
+            <NumberField label="Top" value={layout.dateMonth.top} onChange={(v) => setField("dateMonth", "top", v)} />
+            <NumberField label="From right" value={layout.dateMonth.left} onChange={(v) => setField("dateMonth", "left", v)} />
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="w-24 shrink-0 text-xs font-medium text-neutral-700">Date — day</span>
+            <NumberField label="Top" value={layout.dateDay.top} onChange={(v) => setField("dateDay", "top", v)} />
+            <NumberField label="From right" value={layout.dateDay.left} onChange={(v) => setField("dateDay", "left", v)} />
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="w-24 shrink-0 text-xs font-medium text-neutral-700">Date — year</span>
+            <NumberField label="Top" value={layout.dateYear.top} onChange={(v) => setField("dateYear", "top", v)} />
+            <NumberField label="From right" value={layout.dateYear.left} onChange={(v) => setField("dateYear", "left", v)} />
           </div>
           <div className="flex items-center gap-3">
             <span className="w-24 shrink-0 text-xs font-medium text-neutral-700">Payee</span>
@@ -189,11 +205,6 @@ export function CheckPrintClient({
             <span className="w-24 shrink-0 text-xs font-medium text-neutral-700">Amount (words)</span>
             <NumberField label="Top" value={layout.amountWords.top} onChange={(v) => setField("amountWords", "top", v)} />
             <NumberField label="From left" value={layout.amountWords.left} onChange={(v) => setField("amountWords", "left", v)} />
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="w-24 shrink-0 text-xs font-medium text-neutral-700">Memo</span>
-            <NumberField label="Top" value={layout.memo.top} onChange={(v) => setField("memo", "top", v)} />
-            <NumberField label="From left" value={layout.memo.left} onChange={(v) => setField("memo", "left", v)} />
           </div>
           <p className="w-full text-xs text-neutral-500">
             Print a blank sheet with "Show ruler grid" on, hold it up to the light against a voided check from this
@@ -214,9 +225,16 @@ export function CheckPrintClient({
           </div>
         )}
 
-        {/* Date — top-right, where the date field sits on most PH business checks. */}
-        <div className="absolute font-mono text-sm" style={{ top: `${layout.date.top}in`, right: `${layout.date.left}in` }}>
-          {dateStr}
+        {/* Date — month / day / year printed as three independently positioned
+            fields, since check stock usually has them in separate boxes. */}
+        <div className="absolute font-mono text-sm" style={{ top: `${layout.dateMonth.top}in`, right: `${layout.dateMonth.left}in` }}>
+          {dateMonth}
+        </div>
+        <div className="absolute font-mono text-sm" style={{ top: `${layout.dateDay.top}in`, right: `${layout.dateDay.left}in` }}>
+          {dateDay}
+        </div>
+        <div className="absolute font-mono text-sm" style={{ top: `${layout.dateYear.top}in`, right: `${layout.dateYear.left}in` }}>
+          {dateYear}
         </div>
 
         {/* Payee — "Pay to the order of" line. */}
@@ -236,13 +254,6 @@ export function CheckPrintClient({
         <div className="absolute text-sm" style={{ top: `${layout.amountWords.top}in`, left: `${layout.amountWords.left}in` }}>
           {amountWords} Only {"*".repeat(20)}
         </div>
-
-        {/* Memo. */}
-        {memo && (
-          <div className="absolute text-[11px]" style={{ top: `${layout.memo.top}in`, left: `${layout.memo.left}in` }}>
-            {memo}
-          </div>
-        )}
       </div>
     </div>
   );
