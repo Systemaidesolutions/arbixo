@@ -43,7 +43,10 @@ export default async function CheckPage({ params }: { params: { documentNo: stri
 
   const cashLine = entries.find((e) => e.account.classification === "CASH_IN_BANK" || e.account.classification === "CASH_ON_HAND");
   const amount = Number(cashLine?.creditAmount ?? entries.reduce((s, e) => s + Number(e.creditAmount), 0));
-  const memo = entries.find((e) => e.description)?.description || entries.find((e) => e.lineDescription)?.lineDescription || "";
+  // Prefer the user-typed line description; the "description" field also
+  // carries auto-generated labels like "Input VAT — <doc no>" on the VAT
+  // posting line, which isn't a memo and shouldn't print as one.
+  const memo = entries.find((e) => e.lineDescription)?.lineDescription || entries.find((e) => e.description)?.description || "";
 
   const d = new Date(entries[0].postingDate);
   const dateStr = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
