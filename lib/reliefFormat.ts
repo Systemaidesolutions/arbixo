@@ -25,6 +25,14 @@ export const tinWithDashes = (s: string | null | undefined) => {
   return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6, 9)}`;
 };
 
+// TIN + 4-digit branch code, e.g. "651225031-0000" — the header-line TIN
+// format BIR's QAP/SAWT Alphalist templates use (unlike SLP/SLS/SLI, which
+// print the plain 9-digit TIN with no branch suffix in their header).
+export const tinWithBranch = (s: string | null | undefined) => {
+  const digits = digitsOnly(s);
+  return `${digits.slice(0, 9)}-${digits.slice(9, 13).padEnd(4, "0")}`;
+};
+
 // RDO code for BIR files. RDO codes are ALPHANUMERIC (e.g. 037, 54A, 54B), so
 // take the leading alphanumeric token — not just digits — and uppercase it.
 // Handles bare codes ("54B"), lowercase ("54b" -> "54B") and "code — name"

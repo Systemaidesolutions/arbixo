@@ -21,6 +21,7 @@ export default async function SawtPage() {
     <SawtClient
       tin={company.tin}
       registeredName={company.registeredName ?? company.tradeName}
+      isIndividual={Boolean(company.taxpayerLastName || company.taxpayerFirstName)}
       locations={locations}
     />
   );

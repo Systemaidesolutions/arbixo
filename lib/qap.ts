@@ -49,6 +49,13 @@ export type QapRow = {
   ratePercent: number;
   income: number;
   tax: number;
+  // Per-month split within the selected period, for the Quarterly Alphalist
+  // Excel template's 1st/2nd/3rd-month-of-quarter columns. Bucketed by each
+  // entry's calendar month offset from the period's own start month; a
+  // period longer than 3 months collapses everything past month 3 into the
+  // 3rd bucket (QAP is meant to be run one quarter at a time).
+  monthIncome: [number, number, number];
+  monthTax: [number, number, number];
 };
 
 export type Qap = {
@@ -130,16 +137,29 @@ export async function getAlphalistOfPayees(
         ratePercent: rateByCode.get(atc) ?? 0,
         income: 0,
         tax: 0,
+        monthIncome: [0, 0, 0],
+        monthTax: [0, 0, 0],
       };
       map.set(key, row);
     }
     // Income base = main line net (its debit, or credit on a return); returns net out.
     const sign = e.isReturn ? -1 : 1;
-    row.income += (num(e.debitAmount) + num(e.creditAmount)) * sign;
-    row.tax += num(e.withholdingAmt) * sign;
+    const income = (num(e.debitAmount) + num(e.creditAmount)) * sign;
+    const tax = num(e.withholdingAmt) * sign;
+    row.income += income;
+    row.tax += tax;
+    const monthIdx = Math.max(0, Math.min(2, (e.postingDate.getFullYear() - from.getFullYear()) * 12 + e.postingDate.getMonth() - from.getMonth()));
+    row.monthIncome[monthIdx] += income;
+    row.monthTax[monthIdx] += tax;
   }
 
-  const rows = [...map.values()].map((r) => ({ ...r, income: round2(r.income), tax: round2(r.tax) }));
+  const rows = [...map.values()].map((r) => ({
+    ...r,
+    income: round2(r.income),
+    tax: round2(r.tax),
+    monthIncome: r.monthIncome.map(round2) as [number, number, number],
+    monthTax: r.monthTax.map(round2) as [number, number, number],
+  }));
   rows.sort((a, b) => a.name.localeCompare(b.name) || a.atcCode.localeCompare(b.atcCode));
 
   const totals = rows.reduce(
