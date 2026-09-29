@@ -11,6 +11,13 @@ export type OpenBill = {
   amount: number;
   applied: number;
   openBalance: number;
+  // The invoice's own VAT-exclusive total — the sum of netAmount across its
+  // expense lines (not the AP line itself, which carries no VAT split).
+  // Lets a Cash Disbursement line that settles this bill compute its
+  // withholding base from what was ACTUALLY taxed at posting time, instead
+  // of re-guessing a VAT type when the payment is entered. Falls back to
+  // the full gross if, for some reason, no expense lines were found.
+  netOfVat: number;
 };
 
 /**
@@ -42,6 +49,19 @@ export async function getOpenBillsForVendor(companyId: string, vendorId: string)
 
   const appliedByDoc = new Map(applied.map((a) => [a.invoiceDocumentNo, Number(a._sum.amountApplied ?? 0)]));
 
+  const docNos = apLines.map((e) => e.documentNo);
+  const expenseLines = docNos.length
+    ? await prisma.ledgerEntry.findMany({
+        where: { companyId, journalType: "PURCHASE_ON_ACCOUNT", documentNo: { in: docNos }, isCancelled: false },
+        select: { documentNo: true, netAmount: true, account: { select: { classification: true } } },
+      })
+    : [];
+  const netOfVatByDoc = new Map<string, number>();
+  for (const l of expenseLines) {
+    if (l.account.classification === "ACCOUNTS_PAYABLE") continue; // the balancing line itself — no VAT split
+    netOfVatByDoc.set(l.documentNo, (netOfVatByDoc.get(l.documentNo) ?? 0) + Number(l.netAmount ?? 0));
+  }
+
   return apLines
     .map((e) => {
       const amount = Number(e.creditAmount);
@@ -53,6 +73,7 @@ export async function getOpenBillsForVendor(companyId: string, vendorId: string)
         amount,
         applied: appliedAmt,
         openBalance: round2(amount - appliedAmt),
+        netOfVat: round2(netOfVatByDoc.get(e.documentNo) ?? amount),
       };
     })
     .filter((bill) => bill.openBalance > 0.005);
