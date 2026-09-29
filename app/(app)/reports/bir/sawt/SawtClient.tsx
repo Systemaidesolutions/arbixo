@@ -4,11 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
 import { BranchFilter, type Branch } from "@/components/BranchFilter";
+import { tinWithBranch } from "@/lib/reliefFormat";
 
 type Row = {
   id: string;
   tin: string;
   name: string;
+  isIndividual: boolean;
+  reg: string;
+  last: string;
+  first: string;
+  middle: string;
   atcCode: string;
   atcDescription: string;
   ratePercent: number;
@@ -16,6 +22,12 @@ type Row = {
   tax: number;
 };
 type Data = { rows: Row[]; totals: { income: number; tax: number } };
+
+const personName = (r: Row) =>
+  r.last || r.first || r.middle ? `${r.last ?? ""}, ${r.first ?? ""} ${r.middle ?? ""}`.replace(/\s+/g, " ").trim() : "";
+const DASH30 = "-".repeat(30);
+const DASH18 = "-".repeat(18);
+const EQ18 = "=".repeat(18);
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -35,7 +47,17 @@ function quarterRange(y: number, q: number) {
   return { from: `${y}-${p(sm)}-01`, to: `${y}-${p(em)}-${p(last)}` };
 }
 
-export function SawtClient({ tin, registeredName, locations }: { tin: string; registeredName: string; locations: Branch[] }) {
+export function SawtClient({
+  tin,
+  registeredName,
+  isIndividual,
+  locations,
+}: {
+  tin: string;
+  registeredName: string;
+  isIndividual: boolean;
+  locations: Branch[];
+}) {
   const now = new Date();
   const [mode, setMode] = useState<"month" | "quarter" | "range">("quarter");
   const [year, setYear] = useState(now.getFullYear());
@@ -65,15 +87,35 @@ export function SawtClient({ tin, registeredName, locations }: { tin: string; re
     };
   }, [range.from, range.to, locationId]);
 
+  // Matches BIR's own SAWT Excel template: form/title header block, one row
+  // per payor + ATC, a Grand Total row, and an END OF REPORT footer.
   function exportCsv() {
     if (!data) return;
+    const periodEndDate = new Date(`${range.to}T00:00:00`);
     const out: (string | number)[][] = [
-      ["TIN", "Payor", "ATC", "Description", "Rate %", "Income payment", "Tax withheld"],
+      [`BIR FORM ${isIndividual ? "1701Q" : "1702Q"}`],
+      ["SUMMARY ALPHALIST OF WITHHOLDING TAXES (SAWT)"],
+      [`FOR THE MONTH OF ${MONTHS[periodEndDate.getMonth()].toUpperCase()}, ${periodEndDate.getFullYear()}`],
+      [],
+      [],
+      [`TIN : ${tinWithBranch(tin)}`],
+      [`PAYEE'S NAME: ${registeredName}`],
+      [],
+      [],
+      [],
+      ["SEQ", "TAXPAYER", "CORPORATION", "INDIVIDUAL", "ATC CODE", "NATURE OF PAYMENT", "AMOUNT OF", "TAX RATE", "AMOUNT OF"],
+      ["NO", "IDENTIFICATION", "(Registered Name)", "(Last Name, First Name, Middle Name)", "", "", "INCOME PAYMENT", "", "TAX WITHHELD"],
+      ["", "NUMBER", "", "", "", "", "", "", ""],
+      ["(1)", "(2)", "(3)", "(4)", "(5)", "", "(6)", "(7)", "(8)"],
+      Array(9).fill(DASH30),
     ];
-    for (const r of data.rows) {
-      out.push([r.tin, r.name, r.atcCode, r.atcDescription, r.ratePercent.toFixed(2), r.income.toFixed(2), r.tax.toFixed(2)]);
-    }
-    out.push(["", "TOTAL", "", "", "", data.totals.income.toFixed(2), data.totals.tax.toFixed(2)]);
+    data.rows.forEach((r, i) => {
+      out.push([i + 1, tinWithBranch(r.tin), r.reg, personName(r), r.atcCode, r.atcDescription, r.income.toFixed(2), r.ratePercent.toFixed(2), r.tax.toFixed(2)]);
+    });
+    out.push(["", "", "", "", "", "", DASH18, DASH18, DASH18]);
+    out.push(["Grand Total :", "", "", "", "", "", data.totals.income.toFixed(2), "", data.totals.tax.toFixed(2)]);
+    out.push(["", "", "", "", "", "", EQ18, EQ18, EQ18]);
+    out.push(["END OF REPORT"]);
     downloadXlsx(`SAWT_${range.from}_to_${range.to}`, "SAWT", out);
   }
 

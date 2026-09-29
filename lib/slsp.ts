@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { branchWhere, type BranchScope } from "@/lib/branchScope";
-import { digitsOnly, datText, datTin, tinWithDashes, datRdo, amt, mmddyyyy, monthEndOf, reliefDatFilename } from "@/lib/reliefFormat";
+import { digitsOnly, datText, datTin, tinWithDashes, tinWithBranch, datRdo, amt, mmddyyyy, monthEndOf, reliefDatFilename } from "@/lib/reliefFormat";
 
-export { digitsOnly, datText, datTin, tinWithDashes, datRdo, amt, mmddyyyy, monthEndOf, reliefDatFilename };
+export { digitsOnly, datText, datTin, tinWithDashes, tinWithBranch, datRdo, amt, mmddyyyy, monthEndOf, reliefDatFilename };
 
 // BIR Summary Lists of Sales (SLS) and Purchases (SLP) — one summarized line
 // per customer / supplier for a period, split by VAT treatment. Purchases

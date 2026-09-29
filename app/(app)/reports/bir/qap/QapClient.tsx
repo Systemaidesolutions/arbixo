@@ -4,18 +4,32 @@ import { useEffect, useMemo, useState } from "react";
 import { formatPeso } from "@/lib/format";
 import { downloadXlsx } from "@/lib/exportXlsx";
 import { BranchFilter, type Branch } from "@/components/BranchFilter";
+import { tinWithBranch } from "@/lib/reliefFormat";
 
 type Row = {
   id: string;
   tin: string;
   name: string;
+  reg: string;
+  last: string;
+  first: string;
+  middle: string;
   atcCode: string;
   atcDescription: string;
   ratePercent: number;
   income: number;
   tax: number;
+  monthIncome: [number, number, number];
+  monthTax: [number, number, number];
 };
 type Data = { rows: Row[]; totals: { income: number; tax: number } };
+
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+const personName = (r: Row) =>
+  r.last || r.first || r.middle ? `${r.last ?? ""}, ${r.first ?? ""} ${r.middle ?? ""}`.replace(/\s+/g, " ").trim() : "";
+const DASH30 = "-".repeat(30);
+const DASH18 = "-".repeat(18);
+const EQ18 = "=".repeat(18);
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -65,15 +79,53 @@ export function QapClient({ tin, registeredName, locations }: { tin: string; reg
     };
   }, [range.from, range.to, locationId]);
 
+  // Matches BIR's own Quarterly Alphalist (QAP) Excel template: taxpayer
+  // header block, a 1st/2nd/3rd-month-of-quarter + quarter-total column
+  // group, one row per payee + ATC, a Grand Total row, and an END OF REPORT
+  // footer. Run this with Period = Quarterly so the 3 month columns line up
+  // with an actual BIR quarter; Monthly/Date range still export, but only
+  // the 1st-month column will have figures.
   function exportCsv() {
     if (!data) return;
+    const periodEndDate = new Date(`${range.to}T00:00:00`);
     const out: (string | number)[][] = [
-      ["TIN", "Payee", "ATC", "Description", "Rate %", "Income payment", "Tax withheld"],
+      ["Attachment to BIR Form 1601-EQ"],
+      ["QUARTERLY ALPHABETICAL LIST OF PAYEES SUBJECTED TO EXPANDED WITHHOLDING TAX & PAYEES WHOSE INCOME PAYMENTS ARE EXEMPT "],
+      [`FOR THE QUARTER ENDING ${MONTHS[periodEndDate.getMonth()].toUpperCase()}, ${periodEndDate.getFullYear()}`],
+      [],
+      [],
+      [`TIN : ${tinWithBranch(tin)}`],
+      [`WITHHOLDING AGENT'S NAME: ${registeredName}`],
+      [],
+      [],
+      ["", "", "", "", "", "", "1ST MONTH OF THE QUARTER", "", "", "2ND MONTH OF THE QUARTER", "", "", "3RD MONTH OF THE QUARTER", "", "", "TOTAL FOR THE QUARTER", ""],
+      ["SEQ", "TAXPAYER", "CORPORATION", "INDIVIDUAL", "ATC CODE", "NATURE OF PAYMENT", "AMOUNT OF", "TAX RATE", "AMOUNT OF", "AMOUNT OF", "TAX RATE", "AMOUNT OF", "AMOUNT OF", "TAX RATE", "AMOUNT OF", "TOTAL", "TOTAL"],
+      ["NO", "IDENTIFICATION", "(Registered Name)", "(Last Name, First Name, Middle Name)", "", "", "INCOME PAYMENT", "", "TAX WITHHELD", "INCOME PAYMENT", "", "TAX WITHHELD", "INCOME PAYMENT", "", "TAX WITHHELD", "INCOME PAYMENT", "TAX WITHHELD"],
+      ["", "NUMBER", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+      ["(1)", "(2)", "(3)", "(4)", "(5)", "", "(6)", "(7)", "(8)", "(9)", "(10)", "(11)", "(12)", "(13)", "(14)", "(15)", "(16)"],
+      Array(17).fill(DASH30),
     ];
-    for (const r of data.rows) {
-      out.push([r.tin, r.name, r.atcCode, r.atcDescription, r.ratePercent.toFixed(2), r.income.toFixed(2), r.tax.toFixed(2)]);
-    }
-    out.push(["", "TOTAL", "", "", "", data.totals.income.toFixed(2), data.totals.tax.toFixed(2)]);
+    data.rows.forEach((r, i) => {
+      out.push([
+        i + 1, tinWithBranch(r.tin), r.reg, personName(r), r.atcCode, r.atcDescription,
+        r.monthIncome[0].toFixed(2), r.ratePercent.toFixed(2), r.monthTax[0].toFixed(2),
+        r.monthIncome[1].toFixed(2), r.ratePercent.toFixed(2), r.monthTax[1].toFixed(2),
+        r.monthIncome[2].toFixed(2), r.ratePercent.toFixed(2), r.monthTax[2].toFixed(2),
+        r.income.toFixed(2), r.tax.toFixed(2),
+      ]);
+    });
+    const monthIncomeTotal = [0, 1, 2].map((m) => round2(data.rows.reduce((s, r) => s + r.monthIncome[m], 0)));
+    const monthTaxTotal = [0, 1, 2].map((m) => round2(data.rows.reduce((s, r) => s + r.monthTax[m], 0)));
+    out.push(["", "", "", "", "", "", DASH18, DASH18, DASH18, DASH18, DASH18, DASH18, DASH18, DASH18, DASH18, DASH18, DASH18]);
+    out.push([
+      "Grand Total :", "", "", "", "", "",
+      monthIncomeTotal[0].toFixed(2), "", monthTaxTotal[0].toFixed(2),
+      monthIncomeTotal[1].toFixed(2), "", monthTaxTotal[1].toFixed(2),
+      monthIncomeTotal[2].toFixed(2), "", monthTaxTotal[2].toFixed(2),
+      data.totals.income.toFixed(2), data.totals.tax.toFixed(2),
+    ]);
+    out.push(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", EQ18, EQ18]);
+    out.push(["END OF REPORT"]);
     downloadXlsx(`QAP_${range.from}_to_${range.to}`, "QAP", out);
   }
 
