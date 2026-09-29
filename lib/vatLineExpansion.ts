@@ -17,6 +17,15 @@ export type ExpandInputLine = {
   // Optional per-line party (overrides the document counterparty on this line).
   counterpartyType?: CounterpartyType | null;
   counterpartyId?: string | null;
+  // When set, withholding is computed on THIS figure instead of the line's
+  // own vat.netAmount — everything else about the line (its GL posting,
+  // debit/credit amount, VAT companion line) is unaffected. Used when a
+  // Cash Disbursement line settles a Purchase on Account bill: the bill's
+  // VAT was already recognized when the purchase was posted, so this line
+  // itself stays untaxed (posts the full gross to Accounts Payable), but
+  // the withholding base should still be the bill's actual VAT-exclusive
+  // amount, not a fresh (and possibly wrong) guess made at payment time.
+  withholdingBaseOverride?: number | null;
 };
 
 export type CounterpartyFields = Pick<
@@ -96,7 +105,8 @@ export async function expandVatLines(
       : { grossAmount: line.amount, netAmount: line.amount, vatAmount: 0 };
 
     const atc = line.atcCodeId ? atcById.get(line.atcCodeId) : null;
-    const withholdingAmt = atc ? computeWithholding(vat.netAmount, Number(atc.ratePercent)) : 0;
+    const withholdingBase = line.withholdingBaseOverride ?? vat.netAmount;
+    const withholdingAmt = atc ? computeWithholding(withholdingBase, Number(atc.ratePercent)) : 0;
 
     // A per-line party (if set) overrides the document counterparty for this
     // line's main account entry.

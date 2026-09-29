@@ -11,7 +11,7 @@ import { CounterpartyPicker } from "@/components/CounterpartyPicker";
 import { TransactionSearch } from "@/components/TransactionSearch";
 
 type Application = { invoiceDocumentNo: string; amount: number };
-type OpenBill = { documentNo: string; postingDate: string; referenceNo: string | null; amount: number; applied: number; openBalance: number };
+type OpenBill = { documentNo: string; postingDate: string; referenceNo: string | null; amount: number; applied: number; openBalance: number; netOfVat: number };
 type LineState = { key: string; accountId: string; vatType: VatType; amount: number; amountIsGross: boolean; atcCodeId: string | null; taxSource: TaxSource; referenceNo: string; lineDescription: string; expanded: boolean; showParty: boolean; counterpartyType: CounterpartyType | null; counterpartyId: string | null; applyExpanded: boolean; applications: Application[] };
 type Attachment = { fileName: string; contentType: string; sizeBytes: number; data: string };
 
@@ -57,6 +57,21 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
     for (const l of lines) for (const a of l.applications) m.set(a.invoiceDocumentNo, (m.get(a.invoiceDocumentNo) ?? 0) + a.amount);
     return m;
   }, [lines]);
+  const openBillsByDoc = useMemo(() => new Map(openBills.map((b) => [b.documentNo, b])), [openBills]);
+  // What a line's applications actually owe in withholding tax: each bill's
+  // own VAT-exclusive amount (as recorded when the Purchase was posted),
+  // pro-rated to however much of that bill this line is paying off — not a
+  // fresh VAT guess made here at payment time. See lib/vatLineExpansion.ts.
+  function inheritedWithholdingBase(applications: Application[]): number | null {
+    if (applications.length === 0) return null;
+    return round2(
+      applications.reduce((sum, a) => {
+        const bill = openBillsByDoc.get(a.invoiceDocumentNo);
+        const ratio = bill && bill.amount > 0 ? bill.netOfVat / bill.amount : 1;
+        return sum + a.amount * ratio;
+      }, 0)
+    );
+  }
 
   async function loadOpenBills(vendorId: string | null) {
     if (!vendorId) { setOpenBills([]); return; }
@@ -95,7 +110,14 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
         // Keep the line's own Amount in sync with what's been applied — same
         // behavior as Cash Receipts' AR application.
         const appliedSum = round2(applications.reduce((s, a) => s + a.amount, 0));
-        return { ...l, applications, amount: appliedSum };
+        // A line settling a bill posts the full gross to Accounts Payable —
+        // VAT was already recognized when the Purchase itself was posted, so
+        // this line must NOT also carry its own VAT type (that would shrink
+        // the AP debit and double-book Input VAT). Lock it to Non-VAT the
+        // moment a bill is applied; withholding still uses the bill's real
+        // VAT-exclusive amount via inheritedWithholdingBase(), not this flag.
+        const vatOverride = applications.length > 0 ? { vatType: "NON_VAT" as VatType, amountIsGross: true } : {};
+        return { ...l, applications, amount: appliedSum, ...vatOverride };
       })
     );
   }
@@ -125,13 +147,16 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
     const rows = lines.map((l) => {
       const vat = computeVat({ vatType: l.vatType, amount: l.amount || 0, amountIsGross: l.amountIsGross });
       const atc = l.atcCodeId ? atcById.get(l.atcCodeId) : null;
-      const withholdingAmt = atc ? computeWithholding(vat.netAmount, Number(atc.ratePercent)) : 0;
-      return { ...l, net: vat.netAmount, vat: vat.vatAmount, withholdingAmt };
+      const inheritedBase = inheritedWithholdingBase(l.applications);
+      const withholdingBase = inheritedBase ?? vat.netAmount;
+      const withholdingAmt = atc ? computeWithholding(withholdingBase, Number(atc.ratePercent)) : 0;
+      return { ...l, net: vat.netAmount, vat: vat.vatAmount, withholdingAmt, withholdingBase: inheritedBase };
     });
     const totalDebit = Math.round(rows.reduce((s, r) => s + r.net + r.vat, 0) * 100) / 100;
     const totalWithholding = Math.round(rows.reduce((s, r) => s + r.withholdingAmt, 0) * 100) / 100;
     return { rows, totalDebit, totalWithholding, cashAmount: Math.round((totalDebit - totalWithholding) * 100) / 100 };
-  }, [lines, atcById]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lines, atcById, openBillsByDoc]);
 
   async function onFiles(fileList: FileList | null) {
     if (!fileList) return;
@@ -177,7 +202,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
     const payload = {
       companyId, locationId: locationId || null, documentNo, checkNo: checkNo || null, postingDate,
       counterpartyType, counterpartyId, cashAccountId, particulars: "",
-      lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, taxSource: l.taxSource, referenceNo: l.referenceNo || null, lineDescription: l.lineDescription || null, counterpartyType: l.showParty ? l.counterpartyType : null, counterpartyId: l.showParty ? l.counterpartyId : null })),
+      lines: lines.map((l) => ({ accountId: l.accountId, amount: l.amount, vatType: l.vatType, amountIsGross: l.amountIsGross, atcCodeId: l.atcCodeId, taxSource: l.taxSource, referenceNo: l.referenceNo || null, lineDescription: l.lineDescription || null, counterpartyType: l.showParty ? l.counterpartyType : null, counterpartyId: l.showParty ? l.counterpartyId : null, withholdingBaseOverride: inheritedWithholdingBase(l.applications) })),
       attachments,
       applications,
     };
@@ -271,9 +296,9 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                     <td className={cell}><input value={r.referenceNo} onChange={(e) => updateLine(r.key, { referenceNo: e.target.value })} className="w-28 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><input value={r.lineDescription} onChange={(e) => updateLine(r.key, { lineDescription: e.target.value })} className="w-40 rounded border border-neutral-300 px-1 py-1" /></td>
                     <td className={cell}><select value={r.taxSource} onChange={(e) => updateLine(r.key, { taxSource: e.target.value as TaxSource })} className="w-28 rounded border border-neutral-300 px-1 py-1">{Object.entries(NATURE_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td>
-                    <td className={cell}><select value={r.vatType} onChange={(e) => updateLine(r.key, { vatType: e.target.value as VatType })} className="w-24 rounded border border-neutral-300 px-1 py-1">{Object.entries(VAT_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td>
-                    <td className={cell}><input type="number" step="0.01" value={r.amount || ""} onChange={(e) => updateLine(r.key, { amount: Number(e.target.value) })} className="w-24 rounded border border-neutral-300 px-1 py-1" /></td>
-                    <td className={cell}><select value={r.amountIsGross ? "gross" : "net"} disabled={r.vatType !== "VAT_12"} onChange={(e) => updateLine(r.key, { amountIsGross: e.target.value === "gross" })} className="w-20 rounded border border-neutral-300 px-1 py-1 disabled:bg-neutral-100"><option value="gross">Gross</option><option value="net">Net</option></select></td>
+                    <td className={cell}><select value={r.vatType} disabled={r.applications.length > 0} title={r.applications.length > 0 ? "VAT was already recorded when this bill was posted — locked to Non-VAT for the payment itself." : undefined} onChange={(e) => updateLine(r.key, { vatType: e.target.value as VatType })} className="w-24 rounded border border-neutral-300 px-1 py-1 disabled:bg-neutral-100">{Object.entries(VAT_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td>
+                    <td className={cell}><input type="number" step="0.01" value={r.amount || ""} disabled={r.applications.length > 0} title={r.applications.length > 0 ? "Set via Apply to bill(s)." : undefined} onChange={(e) => updateLine(r.key, { amount: Number(e.target.value) })} className="w-24 rounded border border-neutral-300 px-1 py-1 disabled:bg-neutral-100" /></td>
+                    <td className={cell}><select value={r.amountIsGross ? "gross" : "net"} disabled={r.vatType !== "VAT_12" || r.applications.length > 0} onChange={(e) => updateLine(r.key, { amountIsGross: e.target.value === "gross" })} className="w-20 rounded border border-neutral-300 px-1 py-1 disabled:bg-neutral-100"><option value="gross">Gross</option><option value="net">Net</option></select></td>
                     <td className={cell}><select value={r.atcCodeId ?? ""} onChange={(e) => updateLine(r.key, { atcCodeId: e.target.value || null })} className="w-36 rounded border border-neutral-300 px-1 py-1"><option value="">None</option>{visibleAtc(r.taxSource, r.atcCodeId).map((a) => <option key={a.id} value={a.id}>{a.code} ({Number(a.ratePercent)}%)</option>)}</select></td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.net)}</td>
                     <td className={`${cell} text-right font-mono`}>{formatPeso(r.vat)}</td>
@@ -292,6 +317,11 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                     <tr>
                       <td className="border-b border-neutral-100 bg-neutral-50/60 px-3 py-3" colSpan={14}>
                         <div className="text-xs font-medium text-neutral-700">Apply this line to bill(s)</div>
+                        <p className="mt-1 text-[11px] text-neutral-500">
+                          Withholding here is computed on each bill&apos;s own VAT-exclusive amount (as posted on the
+                          original Purchase), not on this Amount. To split one bill under two ATC codes, apply part
+                          of it on this line and the rest on another line.
+                        </p>
                         {loadingBills ? (
                           <p className="mt-1 text-xs text-neutral-400">Loading open bills…</p>
                         ) : openBills.length === 0 ? (
@@ -304,6 +334,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                                 <th className="py-1 pr-2 font-normal">Bill</th>
                                 <th className="py-1 pr-2 font-normal">Date</th>
                                 <th className="py-1 pr-2 text-right font-normal">Open balance</th>
+                                <th className="py-1 pr-2 text-right font-normal">Net of VAT</th>
                                 <th className="py-1 text-right font-normal">Apply</th>
                               </tr>
                             </thead>
@@ -325,6 +356,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                                     <td className="py-1 pr-2 font-mono">{bill.documentNo}</td>
                                     <td className="py-1 pr-2">{formatDate(new Date(bill.postingDate))}</td>
                                     <td className="py-1 pr-2 text-right font-mono">{formatPeso(bill.openBalance)}</td>
+                                    <td className="py-1 pr-2 text-right font-mono text-neutral-500">{formatPeso(bill.netOfVat)}</td>
                                     <td className="py-1 text-right">
                                       <input
                                         type="number"
@@ -344,6 +376,7 @@ export function CashDisbursementForm({ companyId, accounts, cashAccounts, vendor
                         )}
                         <p className="mt-2 text-[11px] text-neutral-500">
                           Applied on this line: {formatPeso(appliedOnLine)} of {formatPeso(r.amount || 0)}
+                          {r.withholdingBase != null && ` — withholding base ${formatPeso(r.withholdingBase)}`}
                         </p>
                       </td>
                     </tr>
