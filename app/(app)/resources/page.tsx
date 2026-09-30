@@ -31,6 +31,10 @@ const MANUALS: (DocLink & { matches: (a: Access) => boolean })[] = [
   },
 ];
 
+// Manuals are hidden for now (content needs a pass before customers see
+// them again) — flip back to true to restore the section below.
+const SHOW_MANUALS = false;
+
 const LEGAL_DOCS: DocLink[] = [
   {
     href: "/documents/ARbixo-NDA.docx",
@@ -85,14 +89,16 @@ export default async function ResourcesPage() {
       <h1 className="text-xl font-medium text-neutral-900">Documents</h1>
       <p className="mt-1 text-sm text-neutral-500">Manuals and reference documents for ARbixo, ready to download.</p>
 
-      <section className="mt-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Manuals</h2>
-        <div className="mt-3 space-y-2">
-          {MANUALS.map((m) => (
-            <DocCard key={m.href} {...m} highlight={m.matches(access)} />
-          ))}
-        </div>
-      </section>
+      {SHOW_MANUALS && (
+        <section className="mt-6">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Manuals</h2>
+          <div className="mt-3 space-y-2">
+            {MANUALS.map((m) => (
+              <DocCard key={m.href} {...m} highlight={m.matches(access)} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {isAdmin && (
         <section className="mt-8">
@@ -109,11 +115,15 @@ export default async function ResourcesPage() {
         </section>
       )}
 
-      {!isAdmin && user.subscriberSubtype && (
+      {SHOW_MANUALS && !isAdmin && user.subscriberSubtype && (
         <p className="mt-6 text-xs text-neutral-400">
           Signed in as {SUBTYPE_LABELS[user.subscriberSubtype]}. The manual marked "Your account" matches your access
           level, but you're welcome to check the others too.
         </p>
+      )}
+
+      {!SHOW_MANUALS && !isAdmin && (
+        <p className="mt-6 text-sm text-neutral-400">Nothing here yet — check back soon.</p>
       )}
     </main>
   );
