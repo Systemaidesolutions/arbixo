@@ -69,7 +69,7 @@ export default async function AdminCompaniesPage() {
                     <td className="px-3 py-2 text-neutral-500">
                       {c.registrationType === "VAT" ? "VAT" : "Non-VAT"}
                     </td>
-                    <td className="px-3 py-2 text-neutral-500">
+                    <td className="max-w-[200px] truncate px-3 py-2 text-neutral-500" title={c.users.map((u) => u.email).join(", ") || undefined}>
                       {c.users.map((u) => u.email).join(", ") || "—"}
                     </td>
                     <td className="px-3 py-2">
