@@ -6,9 +6,10 @@ import { AdminUserForm } from "../../AdminUserForm";
 export default async function EditUserPage({ params }: { params: { id: string } }) {
   await requireAdmin();
 
-  const [user, companies] = await Promise.all([
+  const [user, companies, existingAccess] = await Promise.all([
     prisma.user.findUnique({ where: { id: params.id } }),
     prisma.company.findMany({ select: { id: true, tradeName: true }, orderBy: { tradeName: "asc" } }),
+    prisma.companyAccess.findMany({ where: { userId: params.id }, select: { companyId: true } }),
   ]);
   if (!user) notFound();
 
@@ -29,6 +30,7 @@ export default async function EditUserPage({ params }: { params: { id: string } 
           companyId: user.companyId,
         }}
         companies={companies}
+        initialCompanyAccessIds={existingAccess.map((a) => a.companyId)}
       />
     </main>
   );
