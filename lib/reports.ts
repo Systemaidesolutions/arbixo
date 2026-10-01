@@ -611,6 +611,79 @@ export async function getSubsidiaryLedger(
   return { beginningBalance, rows, endingBalance: round2(runningBalance) };
 }
 
+export type StatementOfAccountRow = {
+  id: string;
+  postingDate: Date;
+  dueDate: Date | null;
+  reference: string;
+  description: string;
+  amount: number; // signed: a charge is positive, a payment/credit is negative
+  balance: number; // running
+};
+
+/**
+ * A client-facing Statement of Account for one customer — same
+ * AR-classified-account movements as getSubsidiaryLedger, but reshaped for
+ * a billing document: one signed Amount column (not separate Debit/Credit),
+ * a free-text Reference/Description per line (what a client recognizes,
+ * not the internal journal/account), and each invoice's due date. The
+ * starting line is labeled "Balance Forward" and the running total "TOTAL"
+ * to match how this is actually captioned on the printed statement.
+ */
+export async function getStatementOfAccount(
+  companyId: string,
+  customerId: string,
+  dateFrom: Date,
+  dateTo: Date,
+  branch?: BranchScope
+): Promise<{ balanceForward: number; rows: StatementOfAccountRow[]; total: number }> {
+  const branchFilter = branchWhere(branch ?? null);
+
+  const [priorAgg, entries] = await Promise.all([
+    prisma.ledgerEntry.aggregate({
+      where: {
+        companyId,
+        isCancelled: false,
+        customerId,
+        ...branchFilter,
+        account: { classification: "ACCOUNTS_RECEIVABLE" },
+        postingDate: { lt: dateFrom },
+      },
+      _sum: { debitAmount: true, creditAmount: true },
+    }),
+    prisma.ledgerEntry.findMany({
+      where: {
+        companyId,
+        isCancelled: false,
+        customerId,
+        ...branchFilter,
+        account: { classification: "ACCOUNTS_RECEIVABLE" },
+        postingDate: { gte: dateFrom, lte: dateTo },
+      },
+      orderBy: [{ postingDate: "asc" }, { entryNo: "asc" }],
+    }),
+  ]);
+
+  let runningBalance = num(priorAgg._sum.debitAmount) - num(priorAgg._sum.creditAmount);
+  const balanceForward = round2(runningBalance);
+
+  const rows: StatementOfAccountRow[] = entries.map((e) => {
+    const amount = num(e.debitAmount) - num(e.creditAmount);
+    runningBalance += amount;
+    return {
+      id: e.id,
+      postingDate: e.postingDate,
+      dueDate: e.dueDate,
+      reference: e.referenceNo || e.checkNo || e.documentNo,
+      description: e.lineDescription || e.description || "",
+      amount: round2(amount),
+      balance: round2(runningBalance),
+    };
+  });
+
+  return { balanceForward, rows, total: round2(runningBalance) };
+}
+
 export type GeneralLedgerRow = {
   id: string;
   entryNo: number;

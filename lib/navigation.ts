@@ -72,6 +72,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/reports/subsidiary-ledger", label: "Debtors' / creditors' ledger", icon: "subsidiary" },
       { href: "/reports/general-ledger", label: "General ledger", icon: "generalLedger" },
       { href: "/reports/customer-balance", label: "Customer balance summary", icon: "customers" },
+      { href: "/reports/statement-of-account", label: "Statement of Account", icon: "customers" },
       { href: "/reports/vendor-balance", label: "Vendor balance summary", icon: "vendors" },
     ],
   },
