@@ -89,10 +89,10 @@ export function SubsidiaryLedgerClient({
     const out: (string | number)[][] = [
       [partyType === "CUSTOMER" ? "Debtors' Ledger" : "Creditors' Ledger", partyLabel, `${dateFrom} to ${dateTo}`],
       [],
-      ["Date", "Journal", "Doc no.", "Account", "Debit", "Credit", "Balance"],
-      ["", "", "", "Beginning balance", "", "", beginningBalance.toFixed(2)],
-      ...rows.map((r) => [r.postingDate.slice(0, 10), r.journalType.replaceAll("_", " "), r.documentNo, `${r.accountCode} — ${r.accountTitle}`, r.debit ? r.debit.toFixed(2) : "", r.credit ? r.credit.toFixed(2) : "", r.runningBalance.toFixed(2)]),
-      ["", "", "", "Ending balance", "", "", endingBalance.toFixed(2)],
+      ["Date", "Journal", "Doc no.", "Description", "Account", "Debit", "Credit", "Balance"],
+      ["", "", "", "", "Beginning balance", "", "", beginningBalance.toFixed(2)],
+      ...rows.map((r) => [r.postingDate.slice(0, 10), r.journalType.replaceAll("_", " "), r.documentNo, r.description ?? "", `${r.accountCode} — ${r.accountTitle}`, r.debit ? r.debit.toFixed(2) : "", r.credit ? r.credit.toFixed(2) : "", r.runningBalance.toFixed(2)]),
+      ["", "", "", "", "Ending balance", "", "", endingBalance.toFixed(2)],
     ];
     downloadXlsx(`subsidiary-ledger_${dateFrom}_to_${dateTo}`, "Subsidiary Ledger", out);
   }
@@ -168,6 +168,7 @@ export function SubsidiaryLedgerClient({
               <th className="px-3 py-2 text-left">Date</th>
               <th className="px-3 py-2 text-left">Journal</th>
               <th className="px-3 py-2 text-left">Doc no.</th>
+              <th className="px-3 py-2 text-left">Description</th>
               <th className="px-3 py-2 text-left">Account</th>
               <th className="px-3 py-2 text-right">Debit</th>
               <th className="px-3 py-2 text-right">Credit</th>
@@ -176,7 +177,7 @@ export function SubsidiaryLedgerClient({
           </thead>
           <tbody className="divide-y divide-neutral-100">
             <tr className="bg-neutral-50/50">
-              <td colSpan={6} className="px-3 py-2 text-xs font-medium text-neutral-500">
+              <td colSpan={7} className="px-3 py-2 text-xs font-medium text-neutral-500">
                 Beginning balance
               </td>
               <td className="px-3 py-2 text-right font-mono text-xs font-medium text-neutral-500">
@@ -185,13 +186,13 @@ export function SubsidiaryLedgerClient({
             </tr>
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-3 py-4 text-center text-neutral-400">
+                <td colSpan={8} className="px-3 py-4 text-center text-neutral-400">
                   Loading…
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-4 text-center text-neutral-400">
+                <td colSpan={8} className="px-3 py-4 text-center text-neutral-400">
                   No entries for this period
                 </td>
               </tr>
@@ -201,6 +202,7 @@ export function SubsidiaryLedgerClient({
                   <td className="px-3 py-2">{formatDate(new Date(row.postingDate))}</td>
                   <td className="px-3 py-2 text-neutral-500">{row.journalType.replaceAll("_", " ")}</td>
                   <td className="px-3 py-2 font-mono">{row.documentNo}</td>
+                  <td className="px-3 py-2 text-neutral-500">{row.description || "—"}</td>
                   <td className="px-3 py-2 text-neutral-500">
                     {row.accountCode} — {row.accountTitle}
                   </td>
@@ -213,7 +215,7 @@ export function SubsidiaryLedgerClient({
           </tbody>
           <tfoot className="border-t-2 border-neutral-300 bg-neutral-50 font-medium">
             <tr>
-              <td colSpan={6} className="px-3 py-2">
+              <td colSpan={7} className="px-3 py-2">
                 Ending balance
               </td>
               <td className="px-3 py-2 text-right font-mono">{formatBalance(endingBalance)}</td>

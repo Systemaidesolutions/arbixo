@@ -11,6 +11,7 @@ type DetailRow = {
   transactionType: "Bill" | "Credit Note";
   locationName: string | null;
   dueDate: string | null;
+  description: string;
   amount: number;
   openBalance: number;
   balance: number;
@@ -105,13 +106,14 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
     const out: (string | number)[][] = [
       [selected.name, "Vendor Balance Detail Report", coverage],
       [],
-      ["Date", "Transaction type", "Number", "Location", "Due date", "Amount", "Open balance", "Balance"],
+      ["Date", "Transaction type", "Number", "Location", "Due date", "Description", "Amount", "Open balance", "Balance"],
       ...detail.map((r) => [
         r.postingDate.slice(0, 10),
         r.transactionType,
         r.documentNo,
         r.locationName ?? "",
         r.dueDate ? r.dueDate.slice(0, 10) : "",
+        r.description,
         r.amount.toFixed(2),
         r.openBalance.toFixed(2),
         r.balance.toFixed(2),
@@ -184,6 +186,7 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
                 <th className="px-3 py-2 text-left">Number</th>
                 <th className="px-3 py-2 text-left">Location</th>
                 <th className="px-3 py-2 text-left">Due date</th>
+                <th className="px-3 py-2 text-left">Description</th>
                 <th className="px-3 py-2 text-right">Amount</th>
                 <th className="px-3 py-2 text-right">Open balance</th>
                 <th className="px-3 py-2 text-right">Balance</th>
@@ -192,11 +195,11 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
             <tbody className="divide-y divide-neutral-100">
               {loadingDetail ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-4 text-center text-neutral-400">Loading…</td>
+                  <td colSpan={9} className="px-3 py-4 text-center text-neutral-400">Loading…</td>
                 </tr>
               ) : !detail || detail.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-4 text-center text-neutral-400">No open balance</td>
+                  <td colSpan={9} className="px-3 py-4 text-center text-neutral-400">No open balance</td>
                 </tr>
               ) : (
                 detail.map((r) => (
@@ -206,6 +209,7 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
                     <td className="px-3 py-2 font-mono">{r.documentNo}</td>
                     <td className="px-3 py-2 text-neutral-500">{r.locationName ?? "—"}</td>
                     <td className="px-3 py-2">{r.dueDate ? formatDate(new Date(r.dueDate)) : "—"}</td>
+                    <td className="px-3 py-2 text-neutral-500">{r.description || "—"}</td>
                     <td className="px-3 py-2 text-right font-mono">{formatPeso(r.amount)}</td>
                     <td className="px-3 py-2 text-right font-mono">{formatPeso(r.openBalance)}</td>
                     <td className="px-3 py-2 text-right font-mono">{formatPeso(r.balance)}</td>
@@ -216,7 +220,7 @@ export function VendorBalanceClient({ companyId, registeredName }: { companyId: 
             {detail && detail.length > 0 && (
               <tfoot className="border-t-2 border-neutral-300 bg-neutral-50 font-medium">
                 <tr>
-                  <td colSpan={7} className="px-3 py-2">Total</td>
+                  <td colSpan={8} className="px-3 py-2">Total</td>
                   <td className="px-3 py-2 text-right font-mono">{formatPeso(detailTotal)}</td>
                 </tr>
               </tfoot>

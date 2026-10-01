@@ -17,6 +17,7 @@ export type CustomerBalanceDetailRow = {
   transactionType: "Invoice" | "Credit Note";
   locationName: string | null;
   dueDate: Date | null;
+  description: string;
   amount: number;
   openBalance: number;
   balance: number; // running total of openBalance, in date order
@@ -31,6 +32,7 @@ type OpenArItem = {
   documentType: "INVOICE" | "CREDIT_MEMO";
   locationName: string | null;
   dueDate: Date | null;
+  description: string;
   amount: number;
   openBalance: number;
 };
@@ -60,13 +62,18 @@ async function getOpenArItems(companyId: string, customerId?: string, range?: Da
         journalType: "SALES_ON_ACCOUNT",
         documentType: { in: ["INVOICE", "CREDIT_MEMO"] },
         isCancelled: false,
-        account: { classification: "ACCOUNTS_RECEIVABLE" },
+        // Not filtered to the AR line alone — the line a user actually
+        // describes (lineDescription) is the income line, not the AR/
+        // balancing line, which rarely carries one of its own. VAT/
+        // withholding companion lines never carry the counterparty, so
+        // they're naturally excluded by the customerId filter above
+        // without needing to check classification here.
         ...(range?.from || range?.to
           ? { postingDate: { ...(range.from ? { gte: range.from } : {}), ...(range.to ? { lte: range.to } : {}) } }
           : {}),
       },
-      include: { customer: true, location: true },
-      orderBy: [{ postingDate: "asc" }, { documentNo: "asc" }],
+      include: { customer: true, location: true, account: { select: { classification: true } } },
+      orderBy: [{ postingDate: "asc" }, { documentNo: "asc" }, { lineNo: "asc" }],
     }),
     prisma.receivableApplication.groupBy({
       by: ["invoiceDocumentNo"],
@@ -77,6 +84,7 @@ async function getOpenArItems(companyId: string, customerId?: string, range?: Da
 
   const appliedByDoc = new Map(applied.map((a) => [a.invoiceDocumentNo, Number(a._sum.amountApplied ?? 0)]));
 
+  const descriptionsByDoc = new Map<string, string[]>();
   const byDoc = new Map<string, OpenArItem>();
   for (const e of lines) {
     if (!e.customerId) continue;
@@ -91,18 +99,27 @@ async function getOpenArItems(companyId: string, customerId?: string, range?: Da
         documentType: e.documentType as "INVOICE" | "CREDIT_MEMO",
         locationName: e.location?.name ?? null,
         dueDate: e.dueDate,
+        description: "",
         amount: 0,
         openBalance: 0,
       };
       byDoc.set(e.documentNo, row);
     }
-    row.amount += Number(e.debitAmount) - Number(e.creditAmount);
+    if (e.account.classification === "ACCOUNTS_RECEIVABLE") {
+      row.amount += Number(e.debitAmount) - Number(e.creditAmount);
+    }
+    if (e.lineDescription) {
+      const list = descriptionsByDoc.get(e.documentNo) ?? [];
+      if (!list.includes(e.lineDescription)) list.push(e.lineDescription);
+      descriptionsByDoc.set(e.documentNo, list);
+    }
   }
 
   for (const row of byDoc.values()) {
     row.amount = round2(row.amount);
     const appliedAmt = row.documentType === "INVOICE" ? round2(appliedByDoc.get(row.documentNo) ?? 0) : 0;
     row.openBalance = round2(row.amount - appliedAmt);
+    row.description = (descriptionsByDoc.get(row.documentNo) ?? []).join("; ");
   }
 
   return [...byDoc.values()].filter((r) => Math.abs(r.openBalance) > 0.005);
@@ -163,6 +180,7 @@ export async function getCustomerBalanceDetailAll(
           transactionType: item.documentType === "INVOICE" ? ("Invoice" as const) : ("Credit Note" as const),
           locationName: item.locationName,
           dueDate: item.dueDate,
+          description: item.description,
           amount: item.amount,
           openBalance: item.openBalance,
           balance: running,
@@ -195,6 +213,7 @@ export async function getCustomerBalanceDetail(
       transactionType: item.documentType === "INVOICE" ? "Invoice" : "Credit Note",
       locationName: item.locationName,
       dueDate: item.dueDate,
+      description: item.description,
       amount: item.amount,
       openBalance: item.openBalance,
       balance: running,
