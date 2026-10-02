@@ -181,6 +181,7 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
       { href: "/admin/subscription/pricing", label: "Pricing", icon: "pricing" },
       { href: "/admin/subscription/vouchers", label: "Vouchers", icon: "voucher" },
       { href: "/admin/subscription/gcash", label: "GCash account", icon: "gcash" },
+      { href: "/admin/subscription/business-profile", label: "Business profile", icon: "company" },
       { href: "/subscription/payments", label: "Payments", icon: "payments" },
     ],
   },

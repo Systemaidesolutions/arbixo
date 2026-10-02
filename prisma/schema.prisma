@@ -53,6 +53,33 @@ model AppSettings {
   gcashName       String?
   gcashNumber     String?
   gcashQrImage    String?  @db.Text // the admin's real GCash QR (base64 data URL)
+
+  // ARbixo's own BIR-registered business profile — the "seller" details
+  // printed on subscription invoices issued to subscribers. Free-text (not
+  // enums) since this is a single admin-edited settings record, not a
+  // per-company registration.
+  bizRegisteredName   String?
+  bizTradeName        String?
+  bizTin              String?
+  bizTaxpayerClass    String?
+  bizAddress          String?
+  bizRdoCode          String?
+  bizPeriodType       String?
+  bizRegistrationType String?
+  bizBusinessType     String?
+  bizLineOfBusiness   String?
+  bizTelephone        String?
+  // Authority to Print details for the invoice series used by subscription
+  // invoices — printed in the invoice footer as BIR requires. Left blank
+  // until the admin fills them in from the actual ATP.
+  atpNumber           String?
+  atpSeriesFrom        String?
+  atpSeriesTo          String?
+  atpValidUntil        DateTime?
+  // Next number to assign to a subscription invoice (lib/subscriptionInvoice.ts
+  // increments this atomically when a payment is verified).
+  nextInvoiceNo        Int      @default(1)
+
   updatedAt       DateTime @updatedAt
 }
 
@@ -123,6 +150,10 @@ model SubscriptionPayment {
   status         PaymentStatus @default(PENDING)
   periodStart    DateTime?
   periodEnd      DateTime?     // the subscription end this payment sets when verified
+  // Set when the payment is verified — the official ARbixo invoice number
+  // (lib/subscriptionInvoice.ts) and the moment it was issued.
+  invoiceNo      String?
+  invoiceIssuedAt DateTime?
   createdById    String?
   createdByEmail String?
   verifiedById   String?
