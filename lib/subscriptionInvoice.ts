@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type BusinessProfile = {
@@ -43,12 +44,16 @@ function formatInvoiceNo(n: number): string {
   return `INV-${String(n).padStart(6, "0")}`;
 }
 
-// Atomically claims the next invoice number — a single UPDATE statement
-// (not wrapped in a $transaction), consistent with the rest of the verify
-// flow avoiding multi-statement transactions on the connection-pooled prod
-// database (see audit-extension-tx-deadlock memory).
-export async function issueInvoiceNumber(): Promise<string> {
-  const updated = await prisma.appSettings.update({
+// Atomically claims the next invoice number — a single UPDATE statement.
+// Pass a $transaction callback's `tx` client to issue inside an existing
+// (audit-suppressed) transaction, e.g. the admin renewals route; otherwise
+// it runs as its own statement against `prisma`, consistent with the verify
+// route avoiding multi-statement transactions (see audit-extension-tx-deadlock
+// memory).
+export async function issueInvoiceNumber(
+  client: Pick<typeof prisma, "appSettings"> | Prisma.TransactionClient = prisma
+): Promise<string> {
+  const updated = await client.appSettings.update({
     where: { id: "singleton" },
     data: { nextInvoiceNo: { increment: 1 } },
     select: { nextInvoiceNo: true },

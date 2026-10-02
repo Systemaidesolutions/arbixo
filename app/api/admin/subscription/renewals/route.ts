@@ -5,6 +5,7 @@ import { getCurrentPrice } from "@/lib/subscriptionPricing";
 import { voucherDiscount, voucherStatus } from "@/lib/vouchers";
 import { setAuditSuppressed } from "@/lib/auditContext";
 import { monthStringToPeriod, recomputeCompanySubscriptionSummary } from "@/lib/subscriptionCoverage";
+import { issueInvoiceNumber } from "@/lib/subscriptionInvoice";
 
 function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -93,6 +94,10 @@ export async function POST(request: NextRequest) {
         voucherCode = v.code;
         await tx.voucher.update({ where: { id: v.id }, data: { redeemedAt: now, redeemedByCompanyId: companyId } });
       }
+      const amountDue = round2(base - discount);
+      // No invoice for a $0 payment (fully-discounted/free grant) — nothing
+      // was actually sold.
+      const invoiceNo = amountDue > 0 ? await issueInvoiceNumber(tx) : null;
       await tx.subscriptionPayment.create({
         data: {
           companyId,
@@ -101,7 +106,7 @@ export async function POST(request: NextRequest) {
           currency: price.currency,
           voucherCode,
           discountAmount: discount,
-          amountDue: round2(base - discount),
+          amountDue,
           gcashRef: gcashRef || null,
           status: "VERIFIED",
           createdById: admin.id,
@@ -110,6 +115,8 @@ export async function POST(request: NextRequest) {
           verifiedAt: now,
           periodStart,
           periodEnd,
+          invoiceNo,
+          invoiceIssuedAt: invoiceNo ? now : null,
         },
       });
     });
