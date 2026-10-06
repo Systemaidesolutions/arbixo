@@ -78,7 +78,8 @@ export async function postVatJournal(
   companyId: string,
   key: VatJournalKey,
   doc: VatJournalDoc,
-  createdById: string
+  createdById: string,
+  opts?: { skipSubscriptionCheck?: boolean }
 ) {
   const cfg = VAT_JOURNALS[key];
   const counterparty = counterpartyFields(doc.counterpartyType ?? cfg.defaultParty, doc.counterpartyId ?? null);
@@ -115,5 +116,6 @@ export async function postVatJournal(
     isReturn,
     lines: finalLines,
     createdById,
+    skipSubscriptionCheck: opts?.skipSubscriptionCheck,
   });
 }

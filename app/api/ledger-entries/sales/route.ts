@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
         isReturn: body.isReturn ?? false,
         lines,
       },
-      auth.user.id
+      auth.user.id,
+      { skipSubscriptionCheck: auth.user.role === "ADMIN" }
     );
     if (body.attachments?.length) {
       await saveAttachments(companyId, "SALES_ON_ACCOUNT", documentNo, body.attachments, auth.user.id);

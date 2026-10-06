@@ -54,7 +54,9 @@ export async function POST(request: NextRequest) {
   if (Number.isNaN(importDate.getTime())) {
     return NextResponse.json({ error: "Date of importation is invalid." }, { status: 400 });
   }
-  if (!(await isPostingDateSubscriptionCovered(companyId, importDate))) {
+  // Admin acting inside this company's books isn't bound by the date
+  // restriction, same as every other posting route.
+  if (auth.user.role !== "ADMIN" && !(await isPostingDateSubscriptionCovered(companyId, importDate))) {
     return NextResponse.json(
       {
         error: `${formatDate(importDate)} isn't within a month your company has an active subscription for. Contact your administrator to check your subscription.`,
