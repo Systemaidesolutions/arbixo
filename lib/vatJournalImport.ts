@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/format";
-import { getCurrentUserRecord, resolvePoster } from "@/lib/currentUser";
+import { resolvePoster, effectiveCompanyId } from "@/lib/currentUser";
 import { logAudit, getClientIp } from "@/lib/audit";
 import { parseImportFile, pick, toAmount, toDateStr, toBoolGross, type SheetRow } from "@/lib/transactionImportParse";
 import { VAT_JOURNALS, postVatJournal, ZeroBalanceError, type VatJournalKey, type VatJournalDoc } from "@/lib/vatJournals";
@@ -186,9 +186,11 @@ export async function buildVatJournalDocs(
 /** Handles a VAT-journal import request (preview via dryRun=1, else post). */
 export async function handleVatJournalImport(request: NextRequest, key: VatJournalKey) {
   const cfg = VAT_JOURNALS[key];
-  const user = await getCurrentUserRecord();
-  if (!user?.companyId) return NextResponse.json({ error: "No company." }, { status: 403 });
-  const companyId = user.companyId;
+  // effectiveCompanyId resolves a USER's own company or an ADMIN's
+  // acting-as company (lib/adminActingAs.ts) — unlike user.companyId, which
+  // is only ever set on USER accounts and would 403 any admin outright.
+  const companyId = await effectiveCompanyId();
+  if (!companyId) return NextResponse.json({ error: "No company." }, { status: 403 });
   const auth = await resolvePoster(companyId, "canPost");
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
@@ -220,7 +222,7 @@ export async function handleVatJournalImport(request: NextRequest, key: VatJourn
   let posted = 0;
   for (const d of docs) {
     try {
-      await postVatJournal(companyId, key, d, auth.user.id);
+      await postVatJournal(companyId, key, d, auth.user.id, { skipSubscriptionCheck: auth.user.role === "ADMIN" });
       posted++;
       results.push({ ref: d.documentNo, ok: true });
     } catch (err) {
