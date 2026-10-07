@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/currentUser";
 import { setAuditSuppressed } from "@/lib/auditContext";
 import { recomputeCompanySubscriptionSummary } from "@/lib/subscriptionCoverage";
+import { issueInvoiceNumber } from "@/lib/subscriptionInvoice";
 
 function addOneMonth(d: Date): Date {
   const out = new Date(d);
@@ -53,9 +54,18 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         periodEnd = addOneMonth(periodStart);
       }
 
+      const invoiceNo = await issueInvoiceNumber();
       const result = await prisma.subscriptionPayment.update({
         where: { id: payment.id },
-        data: { status: "VERIFIED", verifiedById: admin.id, verifiedAt: new Date(), periodStart, periodEnd },
+        data: {
+          status: "VERIFIED",
+          verifiedById: admin.id,
+          verifiedAt: new Date(),
+          periodStart,
+          periodEnd,
+          invoiceNo,
+          invoiceIssuedAt: new Date(),
+        },
       });
       // Outside the transaction implicit in the single update above — this
       // is its own statement, matching the pattern used by the admin

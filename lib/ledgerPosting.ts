@@ -40,10 +40,14 @@ export type PostDocumentInput = {
   // Who posted it. Every document lands approved on the spot — there's no
   // maker-checker/pending-review workflow.
   createdById?: string | null;
-  // Cancellation reversals always post at today's date regardless of the
-  // original entry's period, and (like resolvePoster's canCancel) shouldn't
-  // require an active subscription just to undo something — this is the
-  // only caller that should ever set it.
+  // Two deliberate callers set this: (1) cancellation reversals, which
+  // always post at today's date regardless of the original entry's period
+  // and shouldn't require an active subscription just to undo something;
+  // (2) a posting route when the resolved poster is an ADMIN acting inside
+  // the company (lib/adminActingAs.ts) — admin support access isn't gated
+  // by the company's own subscription status, same as requirePostingCompany
+  // and resolvePoster already treat it elsewhere. Never derive this from
+  // client-supplied input.
   skipSubscriptionCheck?: boolean;
 };
 

@@ -17,6 +17,7 @@ export type VendorBalanceDetailRow = {
   transactionType: "Bill" | "Credit Note";
   locationName: string | null;
   dueDate: Date | null;
+  description: string;
   amount: number;
   openBalance: number;
   balance: number; // running total of openBalance, in date order
@@ -31,6 +32,7 @@ type OpenApItem = {
   documentType: "PURCHASE" | "CREDIT_MEMO";
   locationName: string | null;
   dueDate: Date | null;
+  description: string;
   amount: number;
   openBalance: number;
 };
@@ -59,13 +61,15 @@ async function getOpenApItems(companyId: string, vendorId?: string, range?: Date
         journalType: "PURCHASE_ON_ACCOUNT",
         documentType: { in: ["PURCHASE", "CREDIT_MEMO"] },
         isCancelled: false,
-        account: { classification: "ACCOUNTS_PAYABLE" },
+        // Not filtered to the AP line alone — see customerBalances.ts's
+        // getOpenArItems for why (the line a user actually describes is
+        // the expense line, not the AP/balancing line).
         ...(range?.from || range?.to
           ? { postingDate: { ...(range.from ? { gte: range.from } : {}), ...(range.to ? { lte: range.to } : {}) } }
           : {}),
       },
-      include: { vendor: true, location: true },
-      orderBy: [{ postingDate: "asc" }, { documentNo: "asc" }],
+      include: { vendor: true, location: true, account: { select: { classification: true } } },
+      orderBy: [{ postingDate: "asc" }, { documentNo: "asc" }, { lineNo: "asc" }],
     }),
     prisma.payableApplication.groupBy({
       by: ["invoiceDocumentNo"],
@@ -76,6 +80,7 @@ async function getOpenApItems(companyId: string, vendorId?: string, range?: Date
 
   const appliedByDoc = new Map(applied.map((a) => [a.invoiceDocumentNo, Number(a._sum.amountApplied ?? 0)]));
 
+  const descriptionsByDoc = new Map<string, string[]>();
   const byDoc = new Map<string, OpenApItem>();
   for (const e of lines) {
     if (!e.vendorId) continue;
@@ -90,18 +95,27 @@ async function getOpenApItems(companyId: string, vendorId?: string, range?: Date
         documentType: e.documentType as "PURCHASE" | "CREDIT_MEMO",
         locationName: e.location?.name ?? null,
         dueDate: e.dueDate,
+        description: "",
         amount: 0,
         openBalance: 0,
       };
       byDoc.set(e.documentNo, row);
     }
-    row.amount += Number(e.creditAmount) - Number(e.debitAmount);
+    if (e.account.classification === "ACCOUNTS_PAYABLE") {
+      row.amount += Number(e.creditAmount) - Number(e.debitAmount);
+    }
+    if (e.lineDescription) {
+      const list = descriptionsByDoc.get(e.documentNo) ?? [];
+      if (!list.includes(e.lineDescription)) list.push(e.lineDescription);
+      descriptionsByDoc.set(e.documentNo, list);
+    }
   }
 
   for (const row of byDoc.values()) {
     row.amount = round2(row.amount);
     const appliedAmt = row.documentType === "PURCHASE" ? round2(appliedByDoc.get(row.documentNo) ?? 0) : 0;
     row.openBalance = round2(row.amount - appliedAmt);
+    row.description = (descriptionsByDoc.get(row.documentNo) ?? []).join("; ");
   }
 
   return [...byDoc.values()].filter((r) => Math.abs(r.openBalance) > 0.005);
@@ -162,6 +176,7 @@ export async function getVendorBalanceDetailAll(
           transactionType: item.documentType === "PURCHASE" ? ("Bill" as const) : ("Credit Note" as const),
           locationName: item.locationName,
           dueDate: item.dueDate,
+          description: item.description,
           amount: item.amount,
           openBalance: item.openBalance,
           balance: running,
@@ -194,6 +209,7 @@ export async function getVendorBalanceDetail(
       transactionType: item.documentType === "PURCHASE" ? "Bill" : "Credit Note",
       locationName: item.locationName,
       dueDate: item.dueDate,
+      description: item.description,
       amount: item.amount,
       openBalance: item.openBalance,
       balance: running,

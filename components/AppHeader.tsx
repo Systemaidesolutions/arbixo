@@ -1,6 +1,7 @@
 import { Menu, User, ChevronDown } from "lucide-react";
 import { LogoutButton } from "@/components/LogoutButton";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { CompanySwitcher } from "@/components/CompanySwitcher";
 import type { SessionPayload } from "@/lib/auth";
 
 export function AppHeader({
@@ -10,6 +11,8 @@ export function AppHeader({
   userName = null,
   hasPhoto = false,
   hasCompanyLogo = false,
+  switcherCompanies = [],
+  activeCompanyId = null,
 }: {
   user: SessionPayload | null;
   onMenu?: () => void;
@@ -17,6 +20,8 @@ export function AppHeader({
   userName?: string | null;
   hasPhoto?: boolean;
   hasCompanyLogo?: boolean;
+  switcherCompanies?: { id: string; tradeName: string }[];
+  activeCompanyId?: string | null;
 }) {
   return (
     <header className="shrink-0 bg-gradient-to-r from-brand-navyDark via-brand-navy to-[#0e3a63] text-white shadow-sm">
@@ -47,10 +52,16 @@ export function AppHeader({
             />
           </a>
         )}
-        {companyName && (
-          <span className="hidden max-w-[32vw] truncate text-sm font-bold text-white sm:inline">
-            {companyName}
+        {switcherCompanies.length > 1 ? (
+          <span className="hidden sm:inline">
+            <CompanySwitcher companies={switcherCompanies} activeCompanyId={activeCompanyId} />
           </span>
+        ) : (
+          companyName && (
+            <span className="hidden max-w-[32vw] truncate text-sm font-bold text-white sm:inline">
+              {companyName}
+            </span>
+          )
         )}
 
         {user && (

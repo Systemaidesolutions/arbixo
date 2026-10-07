@@ -589,10 +589,32 @@ export async function getSubsidiaryLedger(
   let runningBalance = num(priorAgg._sum.debitAmount) - num(priorAgg._sum.creditAmount);
   const beginningBalance = round2(runningBalance);
 
+  // The AR/AP line itself rarely carries its own description (it gets the
+  // document-level particulars, usually blank) — what a user actually typed
+  // lives on that same document's OTHER line(s) (e.g. the income/expense
+  // line), tagged via lineDescription. Look those up per document and
+  // prefer them; fall back to the AR/AP line's own description.
+  const docKeys = [...new Map(entries.map((e) => [`${e.journalType}|${e.documentNo}`, { journalType: e.journalType, documentNo: e.documentNo }])).values()];
+  const descLines = docKeys.length
+    ? await prisma.ledgerEntry.findMany({
+        where: { companyId, OR: docKeys.map((k) => ({ journalType: k.journalType, documentNo: k.documentNo })) },
+        select: { journalType: true, documentNo: true, lineDescription: true },
+      })
+    : [];
+  const descByDoc = new Map<string, string[]>();
+  for (const l of descLines) {
+    if (!l.lineDescription) continue;
+    const key = `${l.journalType}|${l.documentNo}`;
+    const list = descByDoc.get(key) ?? [];
+    if (!list.includes(l.lineDescription)) list.push(l.lineDescription);
+    descByDoc.set(key, list);
+  }
+
   const rows: SubsidiaryLedgerRow[] = entries.map((e) => {
     const debit = num(e.debitAmount);
     const credit = num(e.creditAmount);
     runningBalance += debit - credit;
+    const lineDescriptions = descByDoc.get(`${e.journalType}|${e.documentNo}`);
     return {
       id: e.id,
       entryNo: e.entryNo,
@@ -601,7 +623,7 @@ export async function getSubsidiaryLedger(
       documentNo: e.documentNo,
       accountCode: e.account.code,
       accountTitle: e.account.title,
-      description: e.description,
+      description: (lineDescriptions && lineDescriptions.length ? lineDescriptions.join("; ") : e.description) ?? null,
       debit: round2(debit),
       credit: round2(credit),
       runningBalance: round2(runningBalance),
@@ -609,6 +631,79 @@ export async function getSubsidiaryLedger(
   });
 
   return { beginningBalance, rows, endingBalance: round2(runningBalance) };
+}
+
+export type StatementOfAccountRow = {
+  id: string;
+  postingDate: Date;
+  dueDate: Date | null;
+  reference: string;
+  description: string;
+  amount: number; // signed: a charge is positive, a payment/credit is negative
+  balance: number; // running
+};
+
+/**
+ * A client-facing Statement of Account for one customer — same
+ * AR-classified-account movements as getSubsidiaryLedger, but reshaped for
+ * a billing document: one signed Amount column (not separate Debit/Credit),
+ * a free-text Reference/Description per line (what a client recognizes,
+ * not the internal journal/account), and each invoice's due date. The
+ * starting line is labeled "Balance Forward" and the running total "TOTAL"
+ * to match how this is actually captioned on the printed statement.
+ */
+export async function getStatementOfAccount(
+  companyId: string,
+  customerId: string,
+  dateFrom: Date,
+  dateTo: Date,
+  branch?: BranchScope
+): Promise<{ balanceForward: number; rows: StatementOfAccountRow[]; total: number }> {
+  const branchFilter = branchWhere(branch ?? null);
+
+  const [priorAgg, entries] = await Promise.all([
+    prisma.ledgerEntry.aggregate({
+      where: {
+        companyId,
+        isCancelled: false,
+        customerId,
+        ...branchFilter,
+        account: { classification: "ACCOUNTS_RECEIVABLE" },
+        postingDate: { lt: dateFrom },
+      },
+      _sum: { debitAmount: true, creditAmount: true },
+    }),
+    prisma.ledgerEntry.findMany({
+      where: {
+        companyId,
+        isCancelled: false,
+        customerId,
+        ...branchFilter,
+        account: { classification: "ACCOUNTS_RECEIVABLE" },
+        postingDate: { gte: dateFrom, lte: dateTo },
+      },
+      orderBy: [{ postingDate: "asc" }, { entryNo: "asc" }],
+    }),
+  ]);
+
+  let runningBalance = num(priorAgg._sum.debitAmount) - num(priorAgg._sum.creditAmount);
+  const balanceForward = round2(runningBalance);
+
+  const rows: StatementOfAccountRow[] = entries.map((e) => {
+    const amount = num(e.debitAmount) - num(e.creditAmount);
+    runningBalance += amount;
+    return {
+      id: e.id,
+      postingDate: e.postingDate,
+      dueDate: e.dueDate,
+      reference: e.referenceNo || e.checkNo || e.documentNo,
+      description: e.lineDescription || e.description || "",
+      amount: round2(amount),
+      balance: round2(runningBalance),
+    };
+  });
+
+  return { balanceForward, rows, total: round2(runningBalance) };
 }
 
 export type GeneralLedgerRow = {

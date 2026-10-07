@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/format";
-import { getCurrentUserRecord, resolvePoster } from "@/lib/currentUser";
+import { resolvePoster, effectiveCompanyId } from "@/lib/currentUser";
 import { logAudit, getClientIp } from "@/lib/audit";
 import { parseImportFile, pick, toAmount, toDateStr, type SheetRow } from "@/lib/transactionImportParse";
 import { getSubscriptionCoverage, isMonthCovered, type SubscriptionCoverage } from "@/lib/subscriptionCoverage";
@@ -79,9 +79,11 @@ async function buildDocs(
 }
 
 export async function handleImportationImport(request: NextRequest) {
-  const user = await getCurrentUserRecord();
-  if (!user?.companyId) return NextResponse.json({ error: "No company." }, { status: 403 });
-  const companyId = user.companyId;
+  // effectiveCompanyId resolves a USER's own company or an ADMIN's
+  // acting-as company (lib/adminActingAs.ts) — unlike user.companyId, which
+  // is only ever set on USER accounts and would 403 any admin outright.
+  const companyId = await effectiveCompanyId();
+  if (!companyId) return NextResponse.json({ error: "No company." }, { status: 403 });
   const auth = await resolvePoster(companyId, "canPost");
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
@@ -99,7 +101,10 @@ export async function handleImportationImport(request: NextRequest) {
   }
   if (rows.length === 0) return NextResponse.json({ error: "The file has no data rows." }, { status: 400 });
 
-  const coverage = await getSubscriptionCoverage(companyId);
+  // Admin acting inside this company's books isn't bound by the date
+  // restriction, same as every other posting route.
+  const coverage: SubscriptionCoverage =
+    auth.user.role === "ADMIN" ? { monthRanges: [[-Infinity, Infinity]] } : await getSubscriptionCoverage(companyId);
   const { docs, issues } = await buildDocs(rows, coverage);
 
   if (dryRun) {

@@ -26,6 +26,8 @@ export function AppShell({
   hasPhoto = false,
   hasCompanyLogo = false,
   actingAsCompanyName = null,
+  switcherCompanies = [],
+  activeCompanyId = null,
   children,
 }: {
   user: SessionPayload | null;
@@ -39,6 +41,11 @@ export function AppShell({
   // Set when an ADMIN is currently acting inside this company (see
   // lib/adminActingAs.ts) — shows a persistent banner above the header.
   actingAsCompanyName?: string | null;
+  // A USER account's other accessible companies (see
+  // lib/userCompanyAccess.ts) — only ever non-empty when there's more than
+  // just their primary company to switch between.
+  switcherCompanies?: { id: string; tradeName: string }[];
+  activeCompanyId?: string | null;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -108,6 +115,8 @@ export function AppShell({
         userName={userName}
         hasPhoto={hasPhoto}
         hasCompanyLogo={hasCompanyLogo}
+        switcherCompanies={switcherCompanies}
+        activeCompanyId={activeCompanyId}
       />
 
       <div className="relative flex min-h-0 flex-1">

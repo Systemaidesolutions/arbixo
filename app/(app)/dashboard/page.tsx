@@ -97,7 +97,21 @@ export default async function HomePage() {
               : "border-red-200 bg-red-50 text-red-800"
           }`}
         >
-          {sub.state === "expiring" ? (
+          {user.role === "ADMIN" ? (
+            // Reaching this page as ADMIN means acting inside this company
+            // (see the redirect above) — that bypasses the subscription
+            // gate, so the wording shouldn't claim posting is blocked.
+            <>
+              {sub.state === "none" ? (
+                <>This company doesn&apos;t have an active subscription.</>
+              ) : sub.state === "expiring" ? (
+                <>This company&apos;s subscription ends on <strong>{subEndsOn}</strong>.</>
+              ) : (
+                <>This company&apos;s subscription expired on <strong>{subEndsOn}</strong>.</>
+              )}{" "}
+              As an admin, you can still post transactions here for support purposes.
+            </>
+          ) : sub.state === "expiring" ? (
             <>
               Your subscription ends on <strong>{subEndsOn}</strong> ({sub.daysLeft} day
               {sub.daysLeft === 1 ? "" : "s"} left). Please contact your administrator to renew.

@@ -46,6 +46,7 @@ export default async function CustomerBalanceDetailAllPrintPage({
                     <th className={th}>Number</th>
                     <th className={th}>Location</th>
                     <th className={th}>Due date</th>
+                    <th className={th}>Description</th>
                     <th className={th}>Amount</th>
                     <th className={th}>Open balance</th>
                     <th className={th}>Balance</th>
@@ -59,6 +60,7 @@ export default async function CustomerBalanceDetailAllPrintPage({
                       <td className={`${td} font-mono`}>{r.documentNo}</td>
                       <td className={td}>{r.locationName ?? "—"}</td>
                       <td className={td}>{r.dueDate ? formatDate(r.dueDate) : "—"}</td>
+                      <td className={td}>{r.description || "—"}</td>
                       <td className={tdNum}>{formatPeso(r.amount)}</td>
                       <td className={tdNum}>{formatPeso(r.openBalance)}</td>
                       <td className={tdNum}>{formatPeso(r.balance)}</td>
@@ -67,7 +69,7 @@ export default async function CustomerBalanceDetailAllPrintPage({
                 </tbody>
                 <tfoot>
                   <tr className="font-bold">
-                    <td className={td} colSpan={7}>Subtotal</td>
+                    <td className={td} colSpan={8}>Subtotal</td>
                     <td className={tdNum}>{formatPeso(g.subtotal)}</td>
                   </tr>
                 </tfoot>

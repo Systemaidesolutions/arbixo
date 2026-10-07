@@ -53,6 +53,33 @@ model AppSettings {
   gcashName       String?
   gcashNumber     String?
   gcashQrImage    String?  @db.Text // the admin's real GCash QR (base64 data URL)
+
+  // ARbixo's own BIR-registered business profile — the "seller" details
+  // printed on subscription invoices issued to subscribers. Free-text (not
+  // enums) since this is a single admin-edited settings record, not a
+  // per-company registration.
+  bizRegisteredName   String?
+  bizTradeName        String?
+  bizTin              String?
+  bizTaxpayerClass    String?
+  bizAddress          String?
+  bizRdoCode          String?
+  bizPeriodType       String?
+  bizRegistrationType String?
+  bizBusinessType     String?
+  bizLineOfBusiness   String?
+  bizTelephone        String?
+  // Authority to Print details for the invoice series used by subscription
+  // invoices — printed in the invoice footer as BIR requires. Left blank
+  // until the admin fills them in from the actual ATP.
+  atpNumber           String?
+  atpSeriesFrom        String?
+  atpSeriesTo          String?
+  atpValidUntil        DateTime?
+  // Next number to assign to a subscription invoice (lib/subscriptionInvoice.ts
+  // increments this atomically when a payment is verified).
+  nextInvoiceNo        Int      @default(1)
+
   updatedAt       DateTime @updatedAt
 }
 
@@ -123,6 +150,10 @@ model SubscriptionPayment {
   status         PaymentStatus @default(PENDING)
   periodStart    DateTime?
   periodEnd      DateTime?     // the subscription end this payment sets when verified
+  // Set when the payment is verified — the official ARbixo invoice number
+  // (lib/subscriptionInvoice.ts) and the moment it was issued.
+  invoiceNo      String?
+  invoiceIssuedAt DateTime?
   createdById    String?
   createdByEmail String?
   verifiedById   String?
@@ -181,13 +212,40 @@ model User {
   updatedAt             DateTime  @updatedAt
 
   // ADMIN users are Arbixo staff — platform-wide, no single company.
-  // USER (subscriber) accounts belong to exactly one company. This is
-  // the multi-tenant boundary: every company-scoped query in the app
-  // resolves "which company" from this field via lib/currentUser.ts,
-  // never from a global "the only company" lookup.
-  company   Company? @relation(fields: [companyId], references: [id])
+  // USER (subscriber) accounts have exactly one PRIMARY company (their
+  // home/default, always accessible — this field). They may additionally
+  // be granted access to other companies via CompanyAccess below; which of
+  // their companies is "current" for a given request/session is resolved
+  // by lib/userCompanyAccess.ts, not this field directly. Every
+  // company-scoped query in the app still ultimately resolves "which
+  // company" via lib/currentUser.ts, never from a global lookup.
+  company   Company? @relation("PrimaryCompany", fields: [companyId], references: [id])
   companyId String?
 
+  // Additional companies (beyond the primary one above) this user can
+  // switch into. Granted/revoked by an admin — see CompanyAccess.
+  companyAccess CompanyAccess[] @relation("UserCompanyAccess")
+
+  @@index([companyId])
+}
+
+// A USER account's access to a company OTHER than their primary one
+// (User.companyId, which is always implicitly accessible and doesn't need
+// a row here). Lets one subscriber account work across multiple companies
+// — e.g. an outsourced bookkeeper handling several clients — switching
+// between them via lib/userCompanyAccess.ts instead of needing a separate
+// login per company. Role/subscriber-subtype stay on the User row and
+// apply the same way in every company they can access.
+model CompanyAccess {
+  id          String   @id @default(cuid())
+  user        User     @relation("UserCompanyAccess", fields: [userId], references: [id])
+  userId      String
+  company     Company  @relation("CompanyUserAccess", fields: [companyId], references: [id])
+  companyId   String
+  grantedById String?
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, companyId])
   @@index([companyId])
 }
 
@@ -262,7 +320,8 @@ model Company {
   payableApplications PayableApplication[]
   auditLogs     AuditLog[]
   taxPostingSetup TaxPostingSetup?
-  users         User[]
+  users         User[] @relation("PrimaryCompany")
+  userAccess    CompanyAccess[] @relation("CompanyUserAccess")
   numberSeries  NumberSeries[]
   importations  Importation[]
   subscriptionPayments SubscriptionPayment[]

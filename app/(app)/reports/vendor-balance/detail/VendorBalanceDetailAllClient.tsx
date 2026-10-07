@@ -10,6 +10,7 @@ type DetailRow = {
   transactionType: "Bill" | "Credit Note";
   locationName: string | null;
   dueDate: string | null;
+  description: string;
   amount: number;
   openBalance: number;
   balance: number;
@@ -71,7 +72,7 @@ export function VendorBalanceDetailAllClient({
     ];
     for (const g of groups) {
       out.push([g.vendorName]);
-      out.push(["Date", "Transaction type", "Number", "Location", "Due date", "Amount", "Open balance", "Balance"]);
+      out.push(["Date", "Transaction type", "Number", "Location", "Due date", "Description", "Amount", "Open balance", "Balance"]);
       for (const r of g.rows) {
         out.push([
           r.postingDate.slice(0, 10),
@@ -79,15 +80,16 @@ export function VendorBalanceDetailAllClient({
           r.documentNo,
           r.locationName ?? "",
           r.dueDate ? r.dueDate.slice(0, 10) : "",
+          r.description,
           r.amount.toFixed(2),
           r.openBalance.toFixed(2),
           r.balance.toFixed(2),
         ]);
       }
-      out.push(["", "", "", "", "", "", "Subtotal", g.subtotal.toFixed(2)]);
+      out.push(["", "", "", "", "", "", "", "Subtotal", g.subtotal.toFixed(2)]);
       out.push([]);
     }
-    out.push(["", "", "", "", "", "", "TOTAL", grandTotal.toFixed(2)]);
+    out.push(["", "", "", "", "", "", "", "TOTAL", grandTotal.toFixed(2)]);
     downloadXlsx("vendor-balance-detail-all", "Vendor Balance Detail", out);
   }
 
@@ -156,6 +158,7 @@ export function VendorBalanceDetailAllClient({
                     <th className={th}>Number</th>
                     <th className={th}>Location</th>
                     <th className={th}>Due date</th>
+                    <th className={th}>Description</th>
                     <th className={thNum}>Amount</th>
                     <th className={thNum}>Open balance</th>
                     <th className={thNum}>Balance</th>
@@ -169,6 +172,7 @@ export function VendorBalanceDetailAllClient({
                       <td className="px-3 py-2 font-mono">{r.documentNo}</td>
                       <td className="px-3 py-2 text-neutral-500">{r.locationName ?? "—"}</td>
                       <td className="px-3 py-2">{r.dueDate ? formatDate(new Date(r.dueDate)) : "—"}</td>
+                      <td className="px-3 py-2 text-neutral-500">{r.description || "—"}</td>
                       <td className="px-3 py-2 text-right font-mono">{formatPeso(r.amount)}</td>
                       <td className="px-3 py-2 text-right font-mono">{formatPeso(r.openBalance)}</td>
                       <td className="px-3 py-2 text-right font-mono">{formatPeso(r.balance)}</td>
@@ -177,7 +181,7 @@ export function VendorBalanceDetailAllClient({
                 </tbody>
                 <tfoot className="border-t-2 border-neutral-300 bg-neutral-50 font-medium">
                   <tr>
-                    <td colSpan={7} className="px-3 py-2">Subtotal</td>
+                    <td colSpan={8} className="px-3 py-2">Subtotal</td>
                     <td className="px-3 py-2 text-right font-mono">{formatPeso(g.subtotal)}</td>
                   </tr>
                 </tfoot>

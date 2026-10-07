@@ -7,6 +7,7 @@ import { capabilitiesFor, type Capability } from "@/lib/permissions";
 import { setAuditActor } from "@/lib/auditContext";
 import { hasActiveSubscription } from "@/lib/subscription";
 import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
+import { resolveActiveCompanyId } from "@/lib/userCompanyAccess";
 
 /**
  * The JWT session payload only carries id/email/role — enough for
@@ -34,25 +35,29 @@ export const getCurrentUserRecord = cache(async (): Promise<User | null> => {
         isAdminActingAs: !!actingAsCompanyId,
       });
     } else {
-      setAuditActor({ userId: user.id, email: user.email, companyId: user.companyId });
+      const activeCompanyId = await resolveActiveCompanyId(user);
+      setAuditActor({ userId: user.id, email: user.email, companyId: activeCompanyId });
     }
   }
   return user;
 });
 
 /**
- * The multi-tenant boundary. USER (subscriber) accounts get exactly the one
- * company their `companyId` points to, or null if they haven't set one up
- * yet. An ADMIN normally has no company (by design, not a bug) — except
- * while acting inside one for support (lib/adminActingAs.ts), in which case
- * this resolves to that company, same as it would for that company's own
- * users.
+ * The multi-tenant boundary. USER (subscriber) accounts resolve to their
+ * currently active company — their primary one (`companyId`), or another
+ * company they've been granted access to and switched into (see
+ * lib/userCompanyAccess.ts) — or null if they haven't set one up yet. An
+ * ADMIN normally has no company (by design, not a bug) — except while
+ * acting inside one for support (lib/adminActingAs.ts), in which case this
+ * resolves to that company, same as it would for that company's own users.
  */
 export const getCurrentCompany = cache(async (): Promise<Company | null> => {
   const user = await getCurrentUserRecord();
   if (!user) return null;
-  if (user.role === "USER" && user.companyId) {
-    return prisma.company.findUnique({ where: { id: user.companyId } });
+  if (user.role === "USER") {
+    const activeCompanyId = await resolveActiveCompanyId(user);
+    if (!activeCompanyId) return null;
+    return prisma.company.findUnique({ where: { id: activeCompanyId } });
   }
   if (user.role === "ADMIN") {
     const actingAsCompanyId = getAdminActingAsCompanyId();
@@ -73,7 +78,7 @@ export const getCurrentCompany = cache(async (): Promise<Company | null> => {
 export async function effectiveCompanyId(): Promise<string | null> {
   const user = await getCurrentUserRecord();
   if (!user) return null;
-  if (user.role === "USER") return user.companyId;
+  if (user.role === "USER") return resolveActiveCompanyId(user);
   if (user.role === "ADMIN") return getAdminActingAsCompanyId();
   return null;
 }
@@ -139,8 +144,9 @@ export async function requirePostingCompany(): Promise<Company | null> {
 
   const capability = capabilitiesFor(user.role, user.subscriberSubtype);
   if (!capability.canPost) redirect("/dashboard");
-  if (!user.companyId) return null;
-  const company = await prisma.company.findUnique({ where: { id: user.companyId } });
+  const activeCompanyId = await resolveActiveCompanyId(user);
+  if (!activeCompanyId) return null;
+  const company = await prisma.company.findUnique({ where: { id: activeCompanyId } });
   // No active subscription -> bounce to the dashboard (which explains why).
   if (company && !hasActiveSubscription(company.subscriptionEndsAt)) {
     redirect("/dashboard");
@@ -182,11 +188,12 @@ export async function resolvePoster(
   if (user.role !== "USER") {
     return { ok: false, status: 403, error: "Only subscriber accounts can work on a company's books." };
   }
-  if (!user.companyId) {
+  const activeCompanyId = await resolveActiveCompanyId(user);
+  if (!activeCompanyId) {
     return { ok: false, status: 403, error: "Your account isn't assigned to a company yet." };
   }
-  if (user.companyId !== companyId) {
-    return { ok: false, status: 403, error: "You can only act on your own company's records." };
+  if (activeCompanyId !== companyId) {
+    return { ok: false, status: 403, error: "You can only act on your currently active company's records." };
   }
   const capability = capabilitiesFor(user.role, user.subscriberSubtype);
   if (!capability[need]) {
@@ -203,7 +210,7 @@ export async function resolvePoster(
   // managing existing entries does not).
   if (need === "canPost") {
     const company = await prisma.company.findUnique({
-      where: { id: user.companyId },
+      where: { id: activeCompanyId },
       select: { subscriptionEndsAt: true },
     });
     if (!hasActiveSubscription(company?.subscriptionEndsAt)) {
