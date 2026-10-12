@@ -66,6 +66,24 @@ export default async function VoucherPage({ params }: { params: { journalType: s
   const totalDebit = entries.reduce((s, e) => s + Number(e.debitAmount), 0);
   const totalCredit = entries.reduce((s, e) => s + Number(e.creditAmount), 0);
 
+  // The actual settlement amount — net of any withholding tax deducted —
+  // is whatever the balancing line (cash / receivable / payable) carries,
+  // not the sum of the gross particulars (which is what's being expensed/
+  // earned before withholding, same as totalDebit/totalCredit always are
+  // in a balanced entry). This is what "Pesos" below should spell out: the
+  // actual face value of the check, not the gross transaction amount.
+  const BALANCING_CLASSIFICATION: Partial<Record<JournalType, { classifications: string[]; side: "debitAmount" | "creditAmount" }>> = {
+    CASH_DISBURSEMENT: { classifications: ["CASH_IN_BANK", "CASH_ON_HAND"], side: "creditAmount" },
+    CASH_RECEIPT: { classifications: ["CASH_IN_BANK", "CASH_ON_HAND"], side: "debitAmount" },
+    SALES_ON_ACCOUNT: { classifications: ["ACCOUNTS_RECEIVABLE"], side: "debitAmount" },
+    PURCHASE_ON_ACCOUNT: { classifications: ["ACCOUNTS_PAYABLE"], side: "creditAmount" },
+  };
+  const balancingSpec = BALANCING_CLASSIFICATION[journalType];
+  const balancingLine = balancingSpec
+    ? entries.find((e) => balancingSpec.classifications.includes(e.account.classification))
+    : undefined;
+  const netAmount = balancingLine ? Number(balancingLine[balancingSpec!.side]) : particularsTotal;
+
   const companyName = company.registeredName || company.tradeName;
   const addrLine1 = company.businessAddress ?? "";
   const addrLine2 = [company.barangay, company.district, company.city, company.province, company.zipCode].filter(Boolean).join(", ");
@@ -180,7 +198,8 @@ export default async function VoucherPage({ params }: { params: { journalType: s
         </div>
 
         <div className={`flex w-2/5 flex-col ${b} p-2 text-xs`}>
-          <div><span className="font-semibold">Pesos</span> : {pesosInWords(particularsTotal)}</div>
+          <div><span className="font-semibold">Amount</span> : <span className="font-mono font-semibold">{formatPeso(netAmount)}</span></div>
+          <div className="mt-1"><span className="font-semibold">Pesos</span> : {pesosInWords(netAmount)}</div>
           <div className="mt-4 border-t border-neutral-300 pt-1">
             <span className="font-semibold">Bank</span> : {journalType === "CASH_DISBURSEMENT" ? "" : "—"}
           </div>
