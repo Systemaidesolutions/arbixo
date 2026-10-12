@@ -54,7 +54,10 @@ export default async function SubscriptionInvoicePrintPage({ params }: { params:
             <div>{seller.registrationType}</div>
           </div>
           <div className="text-right">
-            <div className="text-xl font-bold tracking-wide">SALES INVOICE</div>
+            {/* "Invoice" — the EOPT Act (RA 11976) unified Sales Invoice and
+                Official Receipt into one document type for both goods and
+                services; "Sales Invoice" is no longer the correct label. */}
+            <div className="text-xl font-bold tracking-wide">INVOICE</div>
             <div className="mt-1">No. <span className="font-mono font-bold">{payment.invoiceNo}</span></div>
             <div>Date: {payment.invoiceIssuedAt ? formatDate(payment.invoiceIssuedAt) : "—"}</div>
           </div>
@@ -67,6 +70,7 @@ export default async function SubscriptionInvoicePrintPage({ params }: { params:
             {buyer.registeredName && buyer.registeredName !== buyer.tradeName && <div>{buyer.registeredName}</div>}
             <div className="max-w-[320px]">{buyer.businessAddress}</div>
             <div>TIN: <span className="font-mono">{buyer.tin}</span></div>
+            {buyer.businessType && <div>Business Style: {buyer.businessType}</div>}
           </div>
           <div className="text-right">
             <div className="text-neutral-500">Billing period</div>
@@ -105,6 +109,13 @@ export default async function SubscriptionInvoicePrintPage({ params }: { params:
             <div className={`${row} border-t border-neutral-300 mt-1 pt-1`}><span>Total Sales</span><span className="font-mono">{formatPeso(vat.totalSales)}</span></div>
             <div className={row}><span>Add: 12% VAT</span><span className="font-mono">{formatPeso(vat.vatAmount)}</span></div>
             <div className={`${row} border-t-2 border-neutral-800 mt-1 pt-1 text-xs font-bold`}><span>Total Amount Due</span><span className="font-mono">{formatPeso(vat.totalAmountDue)}</span></div>
+          </div>
+        </div>
+
+        <div className="mt-8 flex justify-end">
+          <div className="w-56 text-center text-[10px]">
+            <div className="border-b border-neutral-800 pb-6" />
+            <div className="mt-1 font-medium">Authorized Representative</div>
           </div>
         </div>
 
