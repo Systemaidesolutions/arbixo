@@ -44,6 +44,7 @@ export type PurchaseSubsidiaryRow = {
   supplierName: string;
   supplierAddress: string;
   vatRegNo: string; // supplier TIN
+  description: string; // the transaction's line description(s), if any
   vatPurchLocal: number; // VAT Purchases (Goods) — Local (12% net)
   nonVatLocal: number; // Non-VAT Purchases (Goods) — Local (exempt net)
   nonVatZero: number; // Non-VAT Purchases (Goods) — Zero Rated (net)
@@ -151,6 +152,8 @@ export async function getPurchaseSubsidiaryJournal(
       glCredit += num(l.creditAmount) * sign;
     }
 
+    const descs = [...new Set(purchaseLines.map((l) => l.lineDescription).filter((d): d is string => Boolean(d)))];
+
     rows.push({
       key,
       postingDate: first.postingDate.toISOString(),
@@ -159,6 +162,7 @@ export async function getPurchaseSubsidiaryJournal(
       supplierName: partySrc ? partyName(partySrc) : "",
       supplierAddress: partySrc ? partyAddress(partySrc) : "",
       vatRegNo: partySrc?.tin ?? "",
+      description: descs.join("; "),
       vatPurchLocal: round2(vatPurchLocal),
       nonVatLocal: round2(nonVatLocal),
       nonVatZero: round2(nonVatZero),

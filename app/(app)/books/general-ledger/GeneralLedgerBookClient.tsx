@@ -81,11 +81,11 @@ export function GeneralLedgerBookClient({
 
   function exportCsv() {
     if (!data) return;
-    const out: (string | number)[][] = [["General Ledger", registeredName, `${from} to ${to}`], [], ["Account", "Date", "Doc No.", "Journal", "Party", "Debit", "Credit", "Balance"]];
+    const out: (string | number)[][] = [["General Ledger", registeredName, `${from} to ${to}`], [], ["Account", "Date", "Doc No.", "Journal", "Party", "Description", "Debit", "Credit", "Balance"]];
     for (const acc of data.accounts) {
-      out.push([`${acc.code} — ${acc.title}`, "", "", "", `Beginning ${bal(acc.beginningBalance)}`, "", "", ""]);
-      for (const e of acc.entries) out.push(["", e.postingDate.slice(0, 10), e.documentNo, JOURNAL_LABELS[e.journalType], e.counterparty ?? "", e.debit ? e.debit.toFixed(2) : "", e.credit ? e.credit.toFixed(2) : "", bal(e.balance)]);
-      out.push(["", "", "", "", `Ending ${bal(acc.endingBalance)}`, acc.totalDebit.toFixed(2), acc.totalCredit.toFixed(2), ""]);
+      out.push([`${acc.code} — ${acc.title}`, "", "", "", `Beginning ${bal(acc.beginningBalance)}`, "", "", "", ""]);
+      for (const e of acc.entries) out.push(["", e.postingDate.slice(0, 10), e.documentNo, JOURNAL_LABELS[e.journalType], e.counterparty ?? "", e.particulars ?? "", e.debit ? e.debit.toFixed(2) : "", e.credit ? e.credit.toFixed(2) : "", bal(e.balance)]);
+      out.push(["", "", "", "", `Ending ${bal(acc.endingBalance)}`, "", acc.totalDebit.toFixed(2), acc.totalCredit.toFixed(2), ""]);
     }
     downloadXlsx(`general-ledger-book_${from}_to_${to}`, "General Ledger Book", out);
   }
@@ -137,6 +137,7 @@ export function GeneralLedgerBookClient({
                     <th className="px-3 py-1.5">Doc No.</th>
                     <th className="px-3 py-1.5">Jrnl</th>
                     <th className="px-3 py-1.5">Party</th>
+                    <th className="px-3 py-1.5">Description</th>
                     <th className="px-3 py-1.5 text-right">Debit</th>
                     <th className="px-3 py-1.5 text-right">Credit</th>
                     <th className="px-3 py-1.5 text-right">Balance</th>
@@ -151,6 +152,9 @@ export function GeneralLedgerBookClient({
                       <td className="max-w-[240px] truncate px-3 py-1.5 text-xs text-neutral-500" title={e.counterparty ?? ""}>
                         {e.counterparty ?? "—"}
                       </td>
+                      <td className="max-w-[220px] truncate px-3 py-1.5 text-xs text-neutral-500" title={e.particulars ?? ""}>
+                        {e.particulars || "—"}
+                      </td>
                       <td className="px-3 py-1.5 text-right font-mono">{e.debit ? formatPeso(e.debit) : ""}</td>
                       <td className="px-3 py-1.5 text-right font-mono">{e.credit ? formatPeso(e.credit) : ""}</td>
                       <td className="px-3 py-1.5 text-right font-mono text-neutral-600">{bal(e.balance)}</td>
@@ -159,7 +163,7 @@ export function GeneralLedgerBookClient({
                 </tbody>
                 <tfoot>
                   <tr className="bg-neutral-50 text-xs font-medium">
-                    <td className="px-3 py-1.5" colSpan={4}>Total — ending {bal(acc.endingBalance)}</td>
+                    <td className="px-3 py-1.5" colSpan={5}>Total — ending {bal(acc.endingBalance)}</td>
                     <td className="px-3 py-1.5 text-right font-mono">{formatPeso(acc.totalDebit)}</td>
                     <td className="px-3 py-1.5 text-right font-mono">{formatPeso(acc.totalCredit)}</td>
                     <td className="px-3 py-1.5" />

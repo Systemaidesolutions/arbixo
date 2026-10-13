@@ -64,12 +64,12 @@ export function JournalBookClient({
   function exportCsv() {
     if (!data) return;
     const out: (string | number)[][] = [
-      ["Date", "Doc No.", partyLabel, "Account code", "Account", "Debit", "Credit"],
+      ["Date", "Doc No.", partyLabel, "Account code", "Account", "Description", "Debit", "Credit"],
     ];
     for (const l of data.lines) {
-      out.push([l.postingDate.slice(0, 10), l.documentNo, l.counterparty ?? "", l.accountCode, l.accountTitle, l.debit.toFixed(2), l.credit.toFixed(2)]);
+      out.push([l.postingDate.slice(0, 10), l.documentNo, l.counterparty ?? "", l.accountCode, l.accountTitle, l.particulars ?? "", l.debit.toFixed(2), l.credit.toFixed(2)]);
     }
-    out.push(["", "", "", "", "TOTAL", data.totalDebit.toFixed(2), data.totalCredit.toFixed(2)]);
+    out.push(["", "", "", "", "", "TOTAL", data.totalDebit.toFixed(2), data.totalCredit.toFixed(2)]);
     downloadXlsx(`${book}_${from}_to_${to}`, book, out);
   }
 
@@ -120,6 +120,7 @@ export function JournalBookClient({
                 <th className="px-3 py-2">Doc No.</th>
                 <th className="px-3 py-2">{partyLabel}</th>
                 <th className="px-3 py-2">Account</th>
+                <th className="px-3 py-2">Description</th>
                 <th className="px-3 py-2 text-right">Debit</th>
                 <th className="px-3 py-2 text-right">Credit</th>
               </tr>
@@ -147,6 +148,7 @@ export function JournalBookClient({
                       <td className="px-3 py-1.5 text-xs">
                         <span className="font-mono text-neutral-400">{l.accountCode}</span> {l.accountTitle}
                       </td>
+                      <td className="max-w-[220px] truncate px-3 py-1.5 text-xs text-neutral-500" title={l.particulars ?? ""}>{l.particulars || "—"}</td>
                       <td className="px-3 py-1.5 text-right font-mono">{l.debit ? formatPeso(l.debit) : ""}</td>
                       <td className="px-3 py-1.5 text-right font-mono">{l.credit ? formatPeso(l.credit) : ""}</td>
                     </tr>
@@ -156,7 +158,7 @@ export function JournalBookClient({
             </tbody>
             <tfoot>
               <tr className="bg-neutral-50 font-medium">
-                <td className="px-3 py-2" colSpan={4}>TOTAL</td>
+                <td className="px-3 py-2" colSpan={5}>TOTAL</td>
                 <td className="px-3 py-2 text-right font-mono">{formatPeso(data.totalDebit)}</td>
                 <td className="px-3 py-2 text-right font-mono">{formatPeso(data.totalCredit)}</td>
               </tr>

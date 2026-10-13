@@ -52,6 +52,7 @@ export default async function GeneralLedgerBookPrintPage({
                     <th className="px-1 py-[3px]">Doc No.</th>
                     <th className="px-1 py-[3px]">Jrnl</th>
                     <th className="px-1 py-[3px]">Party</th>
+                    <th className="px-1 py-[3px]">Description</th>
                     <th className="px-1 py-[3px] text-right">Debit</th>
                     <th className="px-1 py-[3px] text-right">Credit</th>
                     <th className="px-1 py-[3px] text-right">Balance</th>
@@ -64,13 +65,14 @@ export default async function GeneralLedgerBookPrintPage({
                       <td className="px-1 py-[3px] font-mono">{e.documentNo}</td>
                       <td className="px-1 py-[3px] text-neutral-500">{JRNL[e.journalType]}</td>
                       <td className="max-w-[200px] truncate px-1 py-[3px] text-neutral-600">{e.counterparty ?? "—"}</td>
+                      <td className="max-w-[180px] truncate px-1 py-[3px] text-neutral-500">{e.particulars || "—"}</td>
                       <td className={num}>{e.debit ? formatPeso(e.debit) : ""}</td>
                       <td className={num}>{e.credit ? formatPeso(e.credit) : ""}</td>
                       <td className={num}>{bal(e.balance)}</td>
                     </tr>
                   ))}
                   <tr className="border-t border-neutral-400 font-semibold">
-                    <td colSpan={4} className="px-1 py-[3px]">Total — ending {bal(acc.endingBalance)}</td>
+                    <td colSpan={5} className="px-1 py-[3px]">Total — ending {bal(acc.endingBalance)}</td>
                     <td className={num}>{formatPeso(acc.totalDebit)}</td>
                     <td className={num}>{formatPeso(acc.totalCredit)}</td>
                     <td className="px-1 py-[3px]" />
