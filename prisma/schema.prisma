@@ -80,6 +80,17 @@ model AppSettings {
   // increments this atomically when a payment is verified).
   nextInvoiceNo        Int      @default(1)
 
+  // Which Company row IS "ARbixo" itself (Systemaide Solutions Inc., a
+  // subscriber of its own app) and which of ITS accounts a verified
+  // subscription payment posts to as a Sales on Account entry — so ARbixo's
+  // own books reflect its subscription revenue. Plain ids (not relations)
+  // since Account/Company rows aren't otherwise tied to AppSettings. See
+  // lib/arbixoBookkeeping.ts. Left blank = that sync is skipped (best-effort,
+  // never blocks verifying a payment).
+  arbixoCompanyId           String?
+  arbixoReceivableAccountId String?
+  arbixoRevenueAccountId    String?
+
   updatedAt       DateTime @updatedAt
 }
 
@@ -154,6 +165,11 @@ model SubscriptionPayment {
   // (lib/subscriptionInvoice.ts) and the moment it was issued.
   invoiceNo      String?
   invoiceIssuedAt DateTime?
+  // The Sales on Account document number posted into ARbixo's own books for
+  // this payment (lib/arbixoBookkeeping.ts), reusing invoiceNo as the doc
+  // no. Null if that sync was skipped (not configured, $0 payment) or failed
+  // — best-effort, never blocks verifying the payment itself.
+  arbixoDocumentNo String?
   createdById    String?
   createdByEmail String?
   verifiedById   String?
@@ -293,6 +309,12 @@ model Company {
   // company was created (best-effort link; null if ticketing sync was off or
   // failed).
   ticketProjectKey     String?
+
+  // The Customer id auto-created for this company within ARbixo's own books
+  // (lib/arbixoBookkeeping.ts) the first time one of its subscription
+  // payments was posted there — reused on later payments instead of
+  // creating a duplicate customer. Null until that first posting happens.
+  billingCustomerId    String?
 
   // Company-level sign-in control. When false, NO user of this company can
   // log in (admin action for unpaid/closed accounts). A lapsed

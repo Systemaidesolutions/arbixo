@@ -18,7 +18,13 @@ type Profile = {
   atpSeriesFrom: string;
   atpSeriesTo: string;
   atpValidUntil: string;
+  arbixoCompanyId: string;
+  arbixoReceivableAccountId: string;
+  arbixoRevenueAccountId: string;
 };
+
+type CompanyOption = { id: string; tradeName: string; registeredName: string | null };
+type AccountOption = { id: string; code: string; title: string; classification: string };
 
 const EMPTY: Profile = {
   registeredName: "",
@@ -36,6 +42,9 @@ const EMPTY: Profile = {
   atpSeriesFrom: "",
   atpSeriesTo: "",
   atpValidUntil: "",
+  arbixoCompanyId: "",
+  arbixoReceivableAccountId: "",
+  arbixoRevenueAccountId: "",
 };
 
 export function BusinessProfileClient() {
@@ -43,6 +52,9 @@ export function BusinessProfileClient() {
   const [nextInvoiceNo, setNextInvoiceNo] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [companies, setCompanies] = useState<CompanyOption[]>([]);
+  const [receivableAccounts, setReceivableAccounts] = useState<AccountOption[]>([]);
+  const [revenueAccounts, setRevenueAccounts] = useState<AccountOption[]>([]);
 
   useEffect(() => {
     fetch("/api/admin/subscription/business-profile")
@@ -52,7 +64,27 @@ export function BusinessProfileClient() {
         setNextInvoiceNo(j.nextInvoiceNo ?? null);
       })
       .catch(() => {});
+    fetch("/api/admin/companies/list")
+      .then((r) => r.json())
+      .then((j) => setCompanies(j.companies ?? []))
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!p.arbixoCompanyId) {
+      setReceivableAccounts([]);
+      setRevenueAccounts([]);
+      return;
+    }
+    fetch(`/api/admin/companies/${p.arbixoCompanyId}/accounts?classification=ACCOUNTS_RECEIVABLE`)
+      .then((r) => r.json())
+      .then((j) => setReceivableAccounts(j.accounts ?? []))
+      .catch(() => {});
+    fetch(`/api/admin/companies/${p.arbixoCompanyId}/accounts?classification=REVENUE`)
+      .then((r) => r.json())
+      .then((j) => setRevenueAccounts(j.accounts ?? []))
+      .catch(() => {});
+  }, [p.arbixoCompanyId]);
 
   function set<K extends keyof Profile>(k: K, v: string) {
     setP((cur) => ({ ...cur, [k]: v }));
@@ -156,6 +188,44 @@ export function BusinessProfileClient() {
         {nextInvoiceNo !== null && (
           <p className="mt-3 text-xs text-neutral-400">Next invoice issued will be numbered INV-{String(nextInvoiceNo).padStart(6, "0")}.</p>
         )}
+      </div>
+
+      <div className="rounded-lg border border-neutral-200 p-4">
+        <h2 className="text-sm font-medium text-neutral-800">Post subscription revenue to ARbixo&apos;s own books</h2>
+        <p className="mt-1 text-xs text-neutral-400">
+          When a subscription payment is verified, record it as a Sales on Account entry in ARbixo&apos;s own
+          company here (a customer is auto-created per subscriber the first time they&apos;re billed). Leave
+          blank to skip this — verifying payments and invoicing subscribers works either way.
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className={`${label} sm:col-span-2`}>
+            ARbixo company
+            <select value={p.arbixoCompanyId} onChange={(e) => { set("arbixoCompanyId", e.target.value); set("arbixoReceivableAccountId", ""); set("arbixoRevenueAccountId", ""); }} className={field}>
+              <option value="">— Not configured —</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>{c.tradeName}{c.registeredName && c.registeredName !== c.tradeName ? ` — ${c.registeredName}` : ""}</option>
+              ))}
+            </select>
+          </label>
+          <label className={label}>
+            Receivable account
+            <select value={p.arbixoReceivableAccountId} onChange={(e) => set("arbixoReceivableAccountId", e.target.value)} disabled={!p.arbixoCompanyId} className={`${field} disabled:opacity-50`}>
+              <option value="">Select…</option>
+              {receivableAccounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.code} — {a.title}</option>
+              ))}
+            </select>
+          </label>
+          <label className={label}>
+            Revenue account
+            <select value={p.arbixoRevenueAccountId} onChange={(e) => set("arbixoRevenueAccountId", e.target.value)} disabled={!p.arbixoCompanyId} className={`${field} disabled:opacity-50`}>
+              <option value="">Select…</option>
+              {revenueAccounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.code} — {a.title}</option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       {msg && <p className={`text-sm ${msg.ok ? "text-green-600" : "text-red-600"}`}>{msg.text}</p>}

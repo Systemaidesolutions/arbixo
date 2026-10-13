@@ -48,6 +48,9 @@ export async function GET() {
     ...out,
     atpValidUntil: s?.atpValidUntil ? s.atpValidUntil.toISOString().slice(0, 10) : "",
     nextInvoiceNo: s?.nextInvoiceNo ?? 1,
+    arbixoCompanyId: s?.arbixoCompanyId ?? "",
+    arbixoReceivableAccountId: s?.arbixoReceivableAccountId ?? "",
+    arbixoRevenueAccountId: s?.arbixoRevenueAccountId ?? "",
   });
 }
 
@@ -64,6 +67,9 @@ export async function PUT(request: NextRequest) {
   }
   if (typeof body.atpValidUntil === "string") {
     data.atpValidUntil = body.atpValidUntil ? new Date(`${body.atpValidUntil}T00:00:00Z`) : null;
+  }
+  for (const f of ["arbixoCompanyId", "arbixoReceivableAccountId", "arbixoRevenueAccountId"] as const) {
+    if (typeof body[f] === "string") data[f] = body[f].trim() || null;
   }
 
   await prisma.appSettings.upsert({

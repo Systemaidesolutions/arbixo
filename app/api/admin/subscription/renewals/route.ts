@@ -6,6 +6,7 @@ import { voucherDiscount, voucherStatus } from "@/lib/vouchers";
 import { setAuditSuppressed } from "@/lib/auditContext";
 import { monthStringToPeriod, recomputeCompanySubscriptionSummary } from "@/lib/subscriptionCoverage";
 import { issueInvoiceNumber } from "@/lib/subscriptionInvoice";
+import { postSubscriptionPaymentToArbixoBooks } from "@/lib/arbixoBookkeeping";
 
 function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
   // SubscriptionPayment row is itself the record of this action.
   setAuditSuppressed(true);
   try {
-    await prisma.$transaction(async (tx) => {
+    const payment = await prisma.$transaction(async (tx) => {
       let discount = 0;
       let voucherCode: string | null = null;
       if (code) {
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
       // No invoice for a $0 payment (fully-discounted/free grant) — nothing
       // was actually sold.
       const invoiceNo = amountDue > 0 ? await issueInvoiceNumber(tx) : null;
-      await tx.subscriptionPayment.create({
+      return tx.subscriptionPayment.create({
         data: {
           companyId,
           priceName: price.name,
@@ -123,6 +124,9 @@ export async function POST(request: NextRequest) {
     // Outside the transaction — recomputing after it commits avoids a second
     // connection contending with the one the transaction is still holding.
     await recomputeCompanySubscriptionSummary(companyId);
+    // Best-effort: reflect this payment as a Sales on Account entry in
+    // ARbixo's own books. Never blocks the renewal itself.
+    await postSubscriptionPaymentToArbixoBooks(payment, admin.id);
     const updated = await prisma.company.findUnique({ where: { id: companyId }, select: { subscriptionEndsAt: true } });
     return NextResponse.json({ ok: true, subscriptionEndsAt: updated?.subscriptionEndsAt ?? periodEnd });
   } catch (err) {
