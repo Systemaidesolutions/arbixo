@@ -7,6 +7,7 @@ import {
   TAX_CLASSIFICATION_LABELS,
 } from "@/lib/company";
 import { NumberSeriesSetup } from "@/components/NumberSeriesSetup";
+import { EInvoiceSetup } from "@/components/EInvoiceSetup";
 
 // Subscribers see their company details read-only. Company records are
 // created and edited by an Arbixo admin (see /admin/companies), so there
@@ -103,6 +104,7 @@ export default async function CompanyDetailsPage() {
       </dl>
 
       <NumberSeriesSetup editable={canEditSeries} />
+      <EInvoiceSetup editable={canEditSeries} />
     </main>
   );
 }

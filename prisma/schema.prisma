@@ -181,6 +181,27 @@ model SubscriptionPayment {
   @@index([status])
 }
 
+// A generated BIR-style e-invoice for one of a company's own posted Sales on
+// Account documents (lib/salesInvoice.ts) — the per-company counterpart of
+// ARbixo's own subscription invoice (lib/subscriptionInvoice.ts /
+// SubscriptionPayment.invoiceNo). Created on demand ("Create e-invoice" on
+// the transaction view), not automatically on every post — so unlike
+// SubscriptionPayment, which already has one row per billable event,
+// documentNo here maps to an existing SALES_ON_ACCOUNT LedgerEntry document
+// that a user chose to invoice. At most one per document.
+model SalesInvoice {
+  id          String   @id @default(cuid())
+  company     Company  @relation(fields: [companyId], references: [id])
+  companyId   String
+  documentNo  String
+  invoiceNo   String
+  issuedAt    DateTime @default(now())
+  createdById String?
+
+  @@unique([companyId, documentNo])
+  @@index([companyId, invoiceNo])
+}
+
 // Admin-curated shortcuts shown on every subscriber's dashboard — e.g. the
 // BIR site, an online tax calculator, SSS/PhilHealth. Platform-wide (not
 // company-scoped); the logo is an optional base64 data URL.
@@ -315,6 +336,21 @@ model Company {
   // payments was posted there — reused on later payments instead of
   // creating a duplicate customer. Null until that first posting happens.
   billingCustomerId    String?
+
+  // This company's own Authority to Print for its Sales on Account
+  // e-invoices (lib/salesInvoice.ts) — the same concept as AppSettings'
+  // atpXxx fields for ARbixo's own subscription invoice
+  // (lib/subscriptionInvoice.ts), scoped per company instead of the one
+  // global ARbixo-as-seller record. Left blank until the company's own
+  // admin fills them in from their actual ATP.
+  atpNumber            String?
+  atpSeriesFrom        String?
+  atpSeriesTo          String?
+  atpValidUntil        DateTime?
+  // Next number to assign to this company's own Sales on Account e-invoice
+  // (lib/salesInvoice.ts increments this atomically when one is generated).
+  nextInvoiceNo        Int      @default(1)
+  salesInvoices        SalesInvoice[]
 
   // Company-level sign-in control. When false, NO user of this company can
   // log in (admin action for unpaid/closed accounts). A lapsed

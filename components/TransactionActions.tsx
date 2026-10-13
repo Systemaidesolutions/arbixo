@@ -11,18 +11,24 @@ export function TransactionActions({
   journalType,
   documentNo,
   isCancelled,
+  isReturn,
   canCancel,
   showPrint,
   show2307,
+  showEInvoice,
+  invoiceNo: initialInvoiceNo,
   placement = "top",
 }: {
   companyId: string;
   journalType: string;
   documentNo: string;
   isCancelled: boolean;
+  isReturn?: boolean;
   canCancel: boolean;
   showPrint: boolean;
   show2307?: boolean;
+  showEInvoice?: boolean;
+  invoiceNo?: string | null;
   placement?: "top" | "bottom";
 }) {
   const router = useRouter();
@@ -30,6 +36,8 @@ export function TransactionActions({
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [invoiceNo, setInvoiceNo] = useState(initialInvoiceNo ?? null);
+  const [invoiceBusy, setInvoiceBusy] = useState(false);
 
   function printVoucher() {
     window.open(`/transactions/voucher/${journalType}/${encodeURIComponent(documentNo)}?_embed=1`, "_blank");
@@ -37,6 +45,27 @@ export function TransactionActions({
 
   function print2307() {
     window.open(`/api/transactions/2307/pdf?journalType=${journalType}&documentNo=${encodeURIComponent(documentNo)}`, "_blank");
+  }
+
+  function openInvoice() {
+    window.open(`/transactions/sales-invoice/${encodeURIComponent(documentNo)}/print?_embed=1`, "_blank");
+  }
+
+  async function createInvoice() {
+    if (invoiceNo) {
+      openInvoice();
+      return;
+    }
+    setInvoiceBusy(true);
+    const res = await fetch(`/api/transactions/sales/${encodeURIComponent(documentNo)}/invoice`, { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    setInvoiceBusy(false);
+    if (!res.ok) {
+      window.alert(data?.error ?? "Could not create the e-invoice.");
+      return;
+    }
+    setInvoiceNo(data.invoiceNo);
+    openInvoice();
   }
 
   // Opened as a stacked page (iframe) in normal use — ask the parent to close
@@ -92,6 +121,16 @@ export function TransactionActions({
             className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
           >
             Print 2307
+          </button>
+        )}
+        {showEInvoice && !isCancelled && !isReturn && (
+          <button
+            type="button"
+            onClick={createInvoice}
+            disabled={invoiceBusy}
+            className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+          >
+            {invoiceBusy ? "Creating…" : invoiceNo ? `View e-invoice (${invoiceNo})` : "Create e-invoice"}
           </button>
         )}
         <button
