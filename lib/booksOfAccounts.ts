@@ -67,7 +67,10 @@ export async function getJournalBook(
       documentNo: e.documentNo,
       accountCode: e.account.code,
       accountTitle: e.account.title,
-      particulars: e.description,
+      // e.description is the document-level "particulars" field, which every
+      // transaction form hardcodes blank — the user-typed text lives per-line
+      // on lineDescription instead.
+      particulars: e.lineDescription || e.description,
       counterparty: cp ? partyName(cp) : null,
       debit: round2(debit),
       credit: round2(credit),
@@ -155,7 +158,7 @@ export async function getGeneralLedgerBook(
         postingDate: e.postingDate.toISOString(),
         documentNo: e.documentNo,
         journalType: e.journalType,
-        particulars: e.description,
+        particulars: e.lineDescription || e.description,
         counterparty: cp ? partyName(cp) : null,
         debit: round2(debit),
         credit: round2(credit),

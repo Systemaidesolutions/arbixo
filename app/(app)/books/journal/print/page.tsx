@@ -49,13 +49,14 @@ export default async function JournalBookPrintPage({
             <th className="px-1 py-1">Doc No.</th>
             <th className="px-1 py-1">{meta.partyLabel}</th>
             <th className="px-1 py-1">Account</th>
+            <th className="px-1 py-1">Description</th>
             <th className="px-1 py-1 text-right">Debit</th>
             <th className="px-1 py-1 text-right">Credit</th>
           </tr>
         </thead>
         <tbody>
           {data.lines.length === 0 ? (
-            <tr><td colSpan={6} className="py-4 text-center text-neutral-400">No entries in this period</td></tr>
+            <tr><td colSpan={7} className="py-4 text-center text-neutral-400">No entries in this period</td></tr>
           ) : (
             (() => {
               // Shade and rule by transaction (document): all lines of one doc
@@ -74,6 +75,7 @@ export default async function JournalBookPrintPage({
                     <td className="px-1 py-1 font-mono">{newTxn ? l.documentNo : ""}</td>
                     <td className="px-1 py-1 text-neutral-600">{newTxn ? l.counterparty ?? "—" : ""}</td>
                     <td className="px-1 py-1"><span className="font-mono text-neutral-400">{l.accountCode}</span> {l.accountTitle}</td>
+                    <td className="px-1 py-1 text-neutral-600">{l.particulars || "—"}</td>
                     <td className={num}>{l.debit ? formatPeso(l.debit) : ""}</td>
                     <td className={num}>{l.credit ? formatPeso(l.credit) : ""}</td>
                   </tr>
@@ -82,7 +84,7 @@ export default async function JournalBookPrintPage({
             })()
           )}
           <tr className="border-t-2 border-neutral-800 font-bold">
-            <td colSpan={4} className="px-1 py-1">TOTAL</td>
+            <td colSpan={5} className="px-1 py-1">TOTAL</td>
             <td className={num}>{formatPeso(data.totalDebit)}</td>
             <td className={num}>{formatPeso(data.totalCredit)}</td>
           </tr>

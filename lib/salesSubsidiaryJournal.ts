@@ -21,6 +21,7 @@ export type SalesSubsidiaryRow = {
   buyerName: string;
   buyerAddress: string;
   vatRegNo: string; // buyer TIN
+  description: string; // the transaction's line description(s), if any
   exempt: number; // Sales Exempted (net)
   vatable12: number; // Taxable Sales — 12% (net)
   zeroRated: number; // Taxable Sales — Zero Rated (net)
@@ -81,6 +82,7 @@ export async function getSalesSubsidiaryJournal(
         buyerName: c ? partyName(c) : "",
         buyerAddress: c ? [c.address, c.barangay, c.district, c.city, c.province, c.zipCode].filter(Boolean).join(", ") : "",
         vatRegNo: c?.tin ?? "",
+        description: "",
         exempt: 0,
         vatable12: 0,
         zeroRated: 0,
@@ -91,6 +93,9 @@ export async function getSalesSubsidiaryJournal(
         terms: e.journalType === "CASH_RECEIPT" ? "Cash" : "Account",
       };
       map.set(key, row);
+    }
+    if (e.lineDescription && !row.description.includes(e.lineDescription)) {
+      row.description = row.description ? `${row.description}; ${e.lineDescription}` : e.lineDescription;
     }
     const sign = e.isReturn ? -1 : 1;
     const net = num(e.netAmount) * sign;

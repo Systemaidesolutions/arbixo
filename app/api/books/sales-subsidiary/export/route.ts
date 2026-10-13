@@ -39,11 +39,11 @@ export async function GET(request: NextRequest) {
   const ws = wb.addWorksheet("Sales Subsidiary Journal", {
     headerFooter: { oddFooter: "&CPage &P of &N", evenFooter: "&CPage &P of &N" },
   });
-  [12, 34, 5, 14, 14, 12, 12, 12, 12, 14, 12, 12, 12, 12].forEach((w, i) => (ws.getColumn(i + 1).width = w));
+  [12, 34, 5, 14, 14, 12, 12, 12, 12, 14, 12, 12, 12, 12, 28].forEach((w, i) => (ws.getColumn(i + 1).width = w));
 
   const heading = (text: string, font: Partial<ExcelJS.Font>) => {
     const r = ws.addRow([text]);
-    ws.mergeCells(r.number, 1, r.number, 14);
+    ws.mergeCells(r.number, 1, r.number, 15);
     const c = ws.getCell(r.number, 1);
     c.alignment = { horizontal: "center" };
     c.font = font;
@@ -56,8 +56,8 @@ export async function GET(request: NextRequest) {
   ws.addRow([]);
 
   // Two-row grouped header.
-  const hr1 = ws.addRow(["Date", "Name and Address of Buyers", "F", "Invoice Numbers", "VAT Reg. No.", "Sales", "Taxable Sales", "", "VAT Output Tax", "Total Invoice Amount", "Classification of Sales", "", "Terms", ""]);
-  const hr2 = ws.addRow(["", "", "", "", "", "Exempted", "12%", "Zero Rated", "", "", "Local", "Service", "Cash", "Account"]);
+  const hr1 = ws.addRow(["Date", "Name and Address of Buyers", "F", "Invoice Numbers", "VAT Reg. No.", "Sales", "Taxable Sales", "", "VAT Output Tax", "Total Invoice Amount", "Classification of Sales", "", "Terms", "", "Description"]);
+  const hr2 = ws.addRow(["", "", "", "", "", "Exempted", "12%", "Zero Rated", "", "", "Local", "Service", "Cash", "Account", ""]);
   const r1 = hr1.number;
   const r2 = hr2.number;
   ws.mergeCells(r1, 1, r2, 1);
@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
   ws.mergeCells(r1, 10, r2, 10);
   ws.mergeCells(r1, 11, r1, 12); // Classification of Sales
   ws.mergeCells(r1, 13, r1, 14); // Terms
+  ws.mergeCells(r1, 15, r2, 15); // Description
   for (const r of [hr1, hr2]) {
     r.font = { bold: true, size: 10 };
     r.eachCell((c) => {
@@ -96,15 +97,17 @@ export async function GET(request: NextRequest) {
       amt(r.service),
       r.terms === "Cash" ? amt(r.totalInvoice) : null,
       r.terms === "Account" ? amt(r.totalInvoice) : null,
+      r.description,
     ]);
     row.getCell(2).alignment = { wrapText: true, vertical: "top" };
+    row.getCell(15).alignment = { wrapText: true, vertical: "top" };
     for (let c = 6; c <= 14; c++) row.getCell(c).numFmt = NUM;
   }
 
   const cashTotal = data.rows.filter((r) => r.terms === "Cash").reduce((s, r) => s + r.totalInvoice, 0);
   const acctTotal = data.rows.filter((r) => r.terms === "Account").reduce((s, r) => s + r.totalInvoice, 0);
   const t = data.totals;
-  const totalRow = ws.addRow(["TOTAL", "", "", "", "", t.exempt, t.vatable12, t.zeroRated, t.outputTax, t.totalInvoice, t.local, t.service, cashTotal, acctTotal]);
+  const totalRow = ws.addRow(["TOTAL", "", "", "", "", t.exempt, t.vatable12, t.zeroRated, t.outputTax, t.totalInvoice, t.local, t.service, cashTotal, acctTotal, ""]);
   totalRow.font = { bold: true };
   ws.mergeCells(totalRow.number, 1, totalRow.number, 5);
   for (let c = 6; c <= 14; c++) {
