@@ -134,7 +134,9 @@ export default async function SalesInvoicePrintPage({ params }: { params: { docu
         <div className="mt-6 border-t border-neutral-300 pt-2 text-[9px] text-neutral-500">
           <div>
             ATP No. {company.atpNumber || "—"}
-            {company.atpSeriesFrom && company.atpSeriesTo ? ` · Series ${company.atpSeriesFrom} to ${company.atpSeriesTo}` : ""}
+            {company.atpSeriesFrom || company.atpSeriesTo
+              ? ` · Series ${company.atpSeriesFrom || "—"} to ${company.atpSeriesTo || "—"}`
+              : ""}
             {company.atpValidUntil ? ` · Valid until ${formatDate(new Date(company.atpValidUntil))}` : ""}
           </div>
           <div className="mt-1">This document is system-generated and serves as a record copy of the above-numbered invoice.</div>

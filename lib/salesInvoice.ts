@@ -66,7 +66,12 @@ export function computeDocumentVatBreakdown(
       vatAmount += vat;
     } else if (l.vatType === "ZERO_RATED") {
       zeroRatedSales += net;
-    } else if (l.vatType === "VAT_EXEMPT") {
+    } else {
+      // VAT_EXEMPT, NON_VAT, or untagged — no VAT charged either way, so
+      // these all land in the same "no VAT" bucket. Without this, a line
+      // with vatType other than the three BIR categories above silently
+      // contributed to neither total, leaving Total Amount Due understating
+      // the actual particulars total.
       vatExemptSales += net;
     }
   }

@@ -122,7 +122,9 @@ export default async function SubscriptionInvoicePrintPage({ params }: { params:
         <div className="mt-6 border-t border-neutral-300 pt-2 text-[9px] text-neutral-500">
           <div>
             ATP No. {seller.atpNumber || "—"}
-            {seller.atpSeriesFrom && seller.atpSeriesTo ? ` · Series ${seller.atpSeriesFrom} to ${seller.atpSeriesTo}` : ""}
+            {seller.atpSeriesFrom || seller.atpSeriesTo
+              ? ` · Series ${seller.atpSeriesFrom || "—"} to ${seller.atpSeriesTo || "—"}`
+              : ""}
             {seller.atpValidUntil ? ` · Valid until ${formatDate(new Date(seller.atpValidUntil))}` : ""}
           </div>
           <div className="mt-1">This document is system-generated and serves as a record copy of the above-numbered invoice.</div>
