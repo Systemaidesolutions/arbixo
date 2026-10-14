@@ -43,6 +43,10 @@ export async function GET(request: NextRequest) {
   });
 
   const byDocument = new Map<string, DocumentSummary>();
+  // e.description is the document-level "particulars" field, which every
+  // transaction form hardcodes blank — the user-typed text lives per-line on
+  // lineDescription instead. Collect it across every line of a document.
+  const descByDoc = new Map<string, string[]>();
   for (const entry of entries) {
     const existing = byDocument.get(entry.documentNo);
     const counterpartyName =
@@ -83,6 +87,16 @@ export async function GET(request: NextRequest) {
       existing.checkNo = existing.checkNo ?? entry.checkNo;
       existing.counterpartyName = existing.counterpartyName ?? counterpartyName;
     }
+
+    if (entry.lineDescription) {
+      const list = descByDoc.get(entry.documentNo) ?? [];
+      if (!list.includes(entry.lineDescription)) list.push(entry.lineDescription);
+      descByDoc.set(entry.documentNo, list);
+    }
+  }
+  for (const [docNo, doc] of byDocument) {
+    const descs = descByDoc.get(docNo);
+    if (descs?.length) doc.particulars = descs.join("; ");
   }
 
   return NextResponse.json({ documents: Array.from(byDocument.values()) });

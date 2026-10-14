@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
+import { resolveActiveCompanyId, getAccessibleCompanies } from "@/lib/userCompanyAccess";
 import { brandingFlags } from "@/lib/branding";
 import { AppShell } from "@/components/AppShell";
 import type { SessionPayload } from "@/lib/auth";
@@ -27,17 +28,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   let companyName: string | null = null;
   let hasCompanyLogo = false;
   let actingAsCompanyName: string | null = null;
+  let switcherCompanies: { id: string; tradeName: string }[] = [];
+  let activeCompanyId: string | null = null;
 
-  if (record.role === "USER" && record.companyId) {
-    const company = await prisma.company.findUnique({
-      where: { id: record.companyId },
-      select: { isActive: true, tradeName: true, logoUrl: true },
-    });
-    if (company && !company.isActive) {
-      redirect("/login");
+  if (record.role === "USER") {
+    activeCompanyId = await resolveActiveCompanyId(record);
+    if (activeCompanyId) {
+      const company = await prisma.company.findUnique({
+        where: { id: activeCompanyId },
+        select: { isActive: true, tradeName: true, logoUrl: true },
+      });
+      if (company && !company.isActive) {
+        redirect("/login");
+      }
+      companyName = company?.tradeName ?? null;
+      hasCompanyLogo = !!company?.logoUrl;
     }
-    companyName = company?.tradeName ?? null;
-    hasCompanyLogo = !!company?.logoUrl;
+    // Only worth fetching the switcher's company list when there's more
+    // than the one (primary) company to switch between.
+    const accessible = await getAccessibleCompanies(record.id, record.companyId);
+    if (accessible.length > 1) {
+      switcherCompanies = accessible.map((c) => ({ id: c.id, tradeName: c.tradeName }));
+    }
   } else if (record.role === "ADMIN") {
     const actingAsCompanyId = getAdminActingAsCompanyId();
     if (actingAsCompanyId) {
@@ -72,6 +84,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       hasPhoto={!!record.photoUrl}
       hasCompanyLogo={hasCompanyLogo}
       actingAsCompanyName={actingAsCompanyName}
+      switcherCompanies={switcherCompanies}
+      activeCompanyId={activeCompanyId}
     >
       {children}
     </AppShell>

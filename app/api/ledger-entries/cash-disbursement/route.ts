@@ -86,7 +86,8 @@ export async function POST(request: NextRequest) {
         dueDate: body.dueDate ?? null,
         lines,
       },
-      auth.user.id
+      auth.user.id,
+      { skipSubscriptionCheck: auth.user.role === "ADMIN" }
     );
     if (body.attachments?.length) {
       await saveAttachments(companyId, "CASH_DISBURSEMENT", documentNo, body.attachments, auth.user.id);

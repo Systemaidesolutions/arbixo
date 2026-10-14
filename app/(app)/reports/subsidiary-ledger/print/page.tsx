@@ -50,6 +50,7 @@ export default async function SubsidiaryLedgerPrintPage({
             <th className="px-1 py-1">Date</th>
             <th className="px-1 py-1">Journal</th>
             <th className="px-1 py-1">Doc no.</th>
+            <th className="px-1 py-1">Description</th>
             <th className="px-1 py-1">Account</th>
             <th className="px-1 py-1 text-right">Debit</th>
             <th className="px-1 py-1 text-right">Credit</th>
@@ -58,17 +59,18 @@ export default async function SubsidiaryLedgerPrintPage({
         </thead>
         <tbody>
           <tr className="font-semibold">
-            <td colSpan={6} className="px-1 py-1">Beginning balance</td>
+            <td colSpan={7} className="px-1 py-1">Beginning balance</td>
             <td className={num}>{bal(ledger.beginningBalance)}</td>
           </tr>
           {ledger.rows.length === 0 ? (
-            <tr><td colSpan={7} className="py-4 text-center text-neutral-400">No entries for this period</td></tr>
+            <tr><td colSpan={8} className="py-4 text-center text-neutral-400">No entries for this period</td></tr>
           ) : (
             ledger.rows.map((r, i) => (
               <tr key={r.id} className={i % 2 === 1 ? "bg-neutral-50" : "bg-white"}>
                 <td className="whitespace-nowrap px-1 py-1">{formatDate(new Date(r.postingDate))}</td>
                 <td className="px-1 py-1 text-neutral-500">{r.journalType.replaceAll("_", " ")}</td>
                 <td className="px-1 py-1 font-mono">{r.documentNo}</td>
+                <td className="px-1 py-1 text-neutral-600">{r.description || "—"}</td>
                 <td className="px-1 py-1 text-neutral-600">{r.accountCode} — {r.accountTitle}</td>
                 <td className={num}>{r.debit > 0 ? formatPeso(r.debit) : ""}</td>
                 <td className={num}>{r.credit > 0 ? formatPeso(r.credit) : ""}</td>
@@ -77,7 +79,7 @@ export default async function SubsidiaryLedgerPrintPage({
             ))
           )}
           <tr className="border-t-2 border-neutral-800 font-bold">
-            <td colSpan={6} className="px-1 py-1">Ending balance</td>
+            <td colSpan={7} className="px-1 py-1">Ending balance</td>
             <td className={num}>{bal(ledger.endingBalance)}</td>
           </tr>
         </tbody>

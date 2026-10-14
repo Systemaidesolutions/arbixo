@@ -109,6 +109,7 @@ export function SalesSubsidiaryJournalClient({
                 <th className={th} rowSpan={2}>Total Invoice Amount</th>
                 <th className={th} colSpan={2}>Classification of Sales</th>
                 <th className={th} colSpan={2}>Terms</th>
+                <th className={th} rowSpan={2}>Description</th>
               </tr>
               <tr>
                 <th className={th}>Exempted</th>
@@ -122,7 +123,7 @@ export function SalesSubsidiaryJournalClient({
             </thead>
             <tbody>
               {data.rows.length === 0 ? (
-                <tr><td className={`${td} text-center text-neutral-400`} colSpan={14}>No sales in this period</td></tr>
+                <tr><td className={`${td} text-center text-neutral-400`} colSpan={15}>No sales in this period</td></tr>
               ) : (
                 data.rows.map((r) => (
                   <tr key={r.key}>
@@ -143,6 +144,7 @@ export function SalesSubsidiaryJournalClient({
                     <td className={tdNum}>{num(r.service)}</td>
                     <td className={tdNum}>{r.terms === "Cash" ? num(r.totalInvoice) : ""}</td>
                     <td className={tdNum}>{r.terms === "Account" ? num(r.totalInvoice) : ""}</td>
+                    <td className={td}>{r.description || "—"}</td>
                   </tr>
                 ))
               )}
@@ -159,6 +161,7 @@ export function SalesSubsidiaryJournalClient({
                 <td className={tdNum}>{num(data.totals.service)}</td>
                 <td className={tdNum}>{num(cashTotal)}</td>
                 <td className={tdNum}>{num(acctTotal)}</td>
+                <td className={td} />
               </tr>
             </tfoot>
           </table>

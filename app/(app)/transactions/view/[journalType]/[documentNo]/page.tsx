@@ -58,6 +58,10 @@ export default async function TransactionViewPage({ params }: { params: { journa
   const capability = await getCurrentCapability();
   const cancellationReason = entries.find((e) => e.cancellationReason)?.cancellationReason ?? "";
   const attachments = (await listAttachments(company.id, journalType, [documentNo]))[documentNo] ?? [];
+  const salesInvoice =
+    journalType === "SALES_ON_ACCOUNT"
+      ? await prisma.salesInvoice.findUnique({ where: { companyId_documentNo: { companyId: company.id, documentNo } } })
+      : null;
 
   const totalNet = entries.reduce((s, e) => s + Number(e.netAmount ?? 0), 0);
   const totalVat = entries.reduce((s, e) => s + Number(e.vatAmount ?? 0), 0);
@@ -94,9 +98,12 @@ export default async function TransactionViewPage({ params }: { params: { journa
           journalType={journalType}
           documentNo={documentNo}
           isCancelled={first.isCancelled}
+          isReturn={first.isReturn}
           canCancel={Boolean(capability?.canCancel)}
           showPrint={PRINTABLE.includes(journalType)}
           show2307={PRINTABLE_2307.includes(journalType)}
+          showEInvoice={journalType === "SALES_ON_ACCOUNT"}
+          invoiceNo={salesInvoice?.invoiceNo}
         />
       </div>
 

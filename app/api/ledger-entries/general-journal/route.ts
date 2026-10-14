@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
       postingDate: new Date(postingDate),
       lines: glLines,
       createdById: auth.user.id,
+      skipSubscriptionCheck: auth.user.role === "ADMIN",
     });
     if (body.attachments?.length) {
       await saveAttachments(companyId, "GENERAL_JOURNAL", documentNo, body.attachments, auth.user.id);

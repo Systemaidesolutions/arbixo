@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { getAuditActor } from "@/lib/auditContext";
 
 // Transaction-date coverage: a company may only post a transaction dated
 // within a calendar month it actually paid a subscription for. Built from
@@ -11,6 +10,14 @@ import { getAuditActor } from "@/lib/auditContext";
 // Kept out of lib/subscription.ts, which is imported by client components
 // (e.g. SubscriptionPanel.tsx) — importing prisma there would pull
 // next/headers into the client bundle and break the build.
+//
+// An admin acting inside a company's books (lib/adminActingAs.ts) bypasses
+// this check entirely — not by special-casing it in here, but because every
+// posting call site passes postDocument's skipSubscriptionCheck when the
+// resolved poster is an ADMIN. (A per-request "audit actor" bypass used to
+// live in this file, but the AsyncLocalStorage context it read didn't
+// actually survive the call chain down to postDocument, so it silently
+// never fired — removed in favor of the explicit flag.)
 
 /** Sortable "months since epoch" key — UTC, since postingDate is stored as
  * UTC midnight for the intended calendar date (see other date handling in
@@ -36,11 +43,6 @@ export type SubscriptionCoverage = { monthRanges: [number, number][] };
  * checking many dates (e.g. a bulk import) don't re-query per row.
  */
 export async function getSubscriptionCoverage(companyId: string): Promise<SubscriptionCoverage> {
-  // An admin acting inside this company's books (see lib/adminActingAs.ts)
-  // isn't bound by the date restriction — they may be helping with a
-  // lapsed or backdated situation the company itself couldn't fix.
-  if (getAuditActor()?.isAdminActingAs) return { monthRanges: [[-Infinity, Infinity]] };
-
   const payments = await prisma.subscriptionPayment.findMany({
     where: { companyId, status: "VERIFIED", periodStart: { not: null }, periodEnd: { not: null } },
     select: { periodStart: true, periodEnd: true },

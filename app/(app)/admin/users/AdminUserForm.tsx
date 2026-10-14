@@ -14,6 +14,7 @@ export function AdminUserForm({
   userId,
   initial,
   companies,
+  initialCompanyAccessIds = [],
 }: {
   mode: "create" | "edit";
   userId?: string;
@@ -24,6 +25,9 @@ export function AdminUserForm({
     companyId: string | null;
   };
   companies: CompanyOption[];
+  // Companies (beyond the primary one below) this user can already switch
+  // into — see lib/userCompanyAccess.ts. Only meaningful in edit mode.
+  initialCompanyAccessIds?: string[];
 }) {
   const router = useRouter();
   const [email, setEmail] = useState(initial?.email ?? "");
@@ -31,8 +35,13 @@ export function AdminUserForm({
   const [role, setRole] = useState<UserRole>(initial?.role ?? "USER");
   const [subtype, setSubtype] = useState<SubscriberSubtype>(initial?.subscriberSubtype ?? "USER");
   const [companyId, setCompanyId] = useState<string>(initial?.companyId ?? "");
+  const [companyAccessIds, setCompanyAccessIds] = useState<string[]>(initialCompanyAccessIds);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  function toggleCompanyAccess(id: string, checked: boolean) {
+    setCompanyAccessIds((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)));
+  }
 
   const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const label = "block text-xs text-neutral-500";
@@ -63,13 +72,32 @@ export function AdminUserForm({
                 : { role, subscriberSubtype: subtype, companyId: companyId || null }
             ),
           });
-    setSaving(false);
-
     if (!res.ok) {
+      setSaving(false);
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Something went wrong saving the user.");
       return;
     }
+
+    // Additional company access is only meaningful for an existing
+    // subscriber account — saved as a second step so a failure here (rare)
+    // doesn't read as "the whole save failed" when the user record itself
+    // already saved fine.
+    if (mode === "edit" && role === "USER") {
+      const accessRes = await fetch(`/api/admin/users/${userId}/company-access`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyIds: companyAccessIds }),
+      });
+      if (!accessRes.ok) {
+        setSaving(false);
+        const data = await accessRes.json().catch(() => ({}));
+        setError(data.error ?? "Saved the user, but couldn't save their additional company access.");
+        return;
+      }
+    }
+
+    setSaving(false);
     router.push("/admin/users");
     router.refresh();
   }
@@ -144,7 +172,36 @@ export function AdminUserForm({
                 </option>
               ))}
             </select>
+            <span className="mt-1 block text-[11px] text-neutral-400">
+              Their primary/home company — always accessible, and where they land after logging in.
+            </span>
           </label>
+
+          {mode === "edit" && (
+            <div>
+              <span className={label}>Additional companies (optional)</span>
+              <p className="mt-1 text-[11px] text-neutral-400">
+                Lets this user switch into these companies too, from a dropdown next to their company name — e.g.
+                a bookkeeper handling several clients. Their primary company above doesn&apos;t need to be checked
+                here; it&apos;s always accessible.
+              </p>
+              <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded border border-neutral-300 p-2">
+                {companies
+                  .filter((c) => c.id !== companyId)
+                  .map((c) => (
+                    <label key={c.id} className="flex items-center gap-2 text-sm text-neutral-700">
+                      <input
+                        type="checkbox"
+                        checked={companyAccessIds.includes(c.id)}
+                        onChange={(e) => toggleCompanyAccess(c.id, e.target.checked)}
+                      />
+                      {c.tradeName}
+                    </label>
+                  ))}
+                {companies.length <= 1 && <p className="text-xs text-neutral-400">No other companies exist yet.</p>}
+              </div>
+            </div>
+          )}
         </>
       )}
 

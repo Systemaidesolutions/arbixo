@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/currentUser";
 import { setAuditSuppressed } from "@/lib/auditContext";
 import { recomputeCompanySubscriptionSummary } from "@/lib/subscriptionCoverage";
+import { issueInvoiceNumber } from "@/lib/subscriptionInvoice";
+import { postSubscriptionPaymentToArbixoBooks } from "@/lib/arbixoBookkeeping";
 
 function addOneMonth(d: Date): Date {
   const out = new Date(d);
@@ -53,16 +55,28 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         periodEnd = addOneMonth(periodStart);
       }
 
+      const invoiceNo = await issueInvoiceNumber();
       const result = await prisma.subscriptionPayment.update({
         where: { id: payment.id },
-        data: { status: "VERIFIED", verifiedById: admin.id, verifiedAt: new Date(), periodStart, periodEnd },
+        data: {
+          status: "VERIFIED",
+          verifiedById: admin.id,
+          verifiedAt: new Date(),
+          periodStart,
+          periodEnd,
+          invoiceNo,
+          invoiceIssuedAt: new Date(),
+        },
       });
       // Outside the transaction implicit in the single update above — this
       // is its own statement, matching the pattern used by the admin
       // renewals route (avoids a second connection contending with one
       // already held, which deadlocks on the pooler).
       await recomputeCompanySubscriptionSummary(payment.companyId);
-      return NextResponse.json({ payment: result });
+      // Best-effort: reflect this payment as a Sales on Account entry in
+      // ARbixo's own books. Never blocks verifying the payment itself.
+      const arbixoSync = await postSubscriptionPaymentToArbixoBooks(result, admin.id);
+      return NextResponse.json({ payment: result, arbixoSync });
     }
 
     // REJECTED — free the voucher back up if one was used.

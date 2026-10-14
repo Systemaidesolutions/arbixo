@@ -31,6 +31,7 @@ export async function searchLedgerDocuments(
         OR: [
           { documentNo: contains },
           { description: contains },
+          { lineDescription: contains },
           { referenceNo: contains },
           { checkNo: contains },
           { customer: { is: { tradeName: contains } } },
@@ -58,6 +59,11 @@ export async function searchLedgerDocuments(
   });
 
   const byDocument = new Map<string, DocumentSummary>();
+  // e.description is the document-level "particulars" field, which every
+  // transaction form hardcodes blank — the user-typed text lives per-line on
+  // lineDescription instead. Collect it across every line of a document
+  // (not just the first) since it can differ per line.
+  const descByDoc = new Map<string, string[]>();
   for (const entry of entries) {
     const existing = byDocument.get(entry.documentNo);
     // Reports show the party's REGISTERED name; trade name is only a fallback.
@@ -99,6 +105,16 @@ export async function searchLedgerDocuments(
       existing.checkNo = existing.checkNo ?? entry.checkNo;
       existing.counterpartyName = existing.counterpartyName ?? counterpartyName;
     }
+
+    if (entry.lineDescription) {
+      const list = descByDoc.get(entry.documentNo) ?? [];
+      if (!list.includes(entry.lineDescription)) list.push(entry.lineDescription);
+      descByDoc.set(entry.documentNo, list);
+    }
+  }
+  for (const [docNo, doc] of byDocument) {
+    const descs = descByDoc.get(docNo);
+    if (descs?.length) doc.particulars = descs.join("; ");
   }
 
   // Preserve the newest-first order the docNo lookup established.

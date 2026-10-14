@@ -16,6 +16,7 @@ type Payment = {
   status: "PENDING" | "VERIFIED" | "REJECTED";
   periodStart: string | null;
   periodEnd: string | null;
+  invoiceNo: string | null;
   createdByEmail: string | null;
   createdAt: string;
   company: { tradeName: string; registeredName: string | null };
@@ -93,12 +94,13 @@ export function PaymentsClient({ refreshSignal }: { refreshSignal?: number } = {
             <th className="px-3 py-2">GCash ref</th>
             <th className="px-3 py-2">Receipt</th>
             <th className="px-3 py-2">Status</th>
+            <th className="px-3 py-2">Invoice</th>
             {isAdmin && <th className="px-3 py-2" />}
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
           {payments.length === 0 ? (
-            <tr><td colSpan={isAdmin ? 11 : 9} className="px-3 py-3 text-neutral-400">No payments yet.</td></tr>
+            <tr><td colSpan={isAdmin ? 12 : 10} className="px-3 py-3 text-neutral-400">No payments yet.</td></tr>
           ) : (
             payments.map((p) => (
               <tr key={p.id}>
@@ -122,6 +124,18 @@ export function PaymentsClient({ refreshSignal }: { refreshSignal?: number } = {
                 </td>
                 <td className="px-3 py-1.5">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${BADGE[p.status]}`}>{p.status.toLowerCase()}</span>
+                </td>
+                <td className="px-3 py-1.5 text-xs">
+                  {p.invoiceNo ? (
+                    <button
+                      onClick={() => window.open(`/subscription/payments/${p.id}/invoice/print`, "_blank")}
+                      className="font-mono text-brand-blue hover:underline"
+                    >
+                      {p.invoiceNo}
+                    </button>
+                  ) : (
+                    <span className="text-neutral-400">—</span>
+                  )}
                 </td>
                 {isAdmin && (
                   <td className="px-3 py-1.5 text-right">
