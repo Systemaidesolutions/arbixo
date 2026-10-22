@@ -125,7 +125,11 @@ export default async function StatementOfAccountPrintPage({
           {company.authorizedRepPosition && <div className="text-neutral-600">{company.authorizedRepPosition}</div>}
         </div>
         <div className="max-w-[55%] text-right text-neutral-600">
-          Please check this statement carefully and report any discrepancy to us.
+          <div>Please check this statement carefully and report any discrepancy to us.</div>
+          <div className="mt-1 italic">
+            Note: This Statement of Account summarizes outstanding transactions. It is not a substitute for the
+            applicable invoice or official payment document required under Philippine regulations.
+          </div>
         </div>
       </div>
 
