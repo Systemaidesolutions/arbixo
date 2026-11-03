@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import type { Company, User } from "@prisma/client";
 import { capabilitiesFor, type Capability } from "@/lib/permissions";
 import { setAuditActor } from "@/lib/auditContext";
-import { hasActiveSubscription } from "@/lib/subscription";
 import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
 import { resolveActiveCompanyId } from "@/lib/userCompanyAccess";
 
@@ -146,12 +145,13 @@ export async function requirePostingCompany(): Promise<Company | null> {
   if (!capability.canPost) redirect("/dashboard");
   const activeCompanyId = await resolveActiveCompanyId(user);
   if (!activeCompanyId) return null;
-  const company = await prisma.company.findUnique({ where: { id: activeCompanyId } });
-  // No active subscription -> bounce to the dashboard (which explains why).
-  if (company && !hasActiveSubscription(company.subscriptionEndsAt)) {
-    redirect("/dashboard");
-  }
-  return company;
+  // No blanket active-subscription gate here: this also backs view-only
+  // pages (reports, history, voucher/transaction views), which a lapsed
+  // subscription shouldn't hide. Posting a NEW transaction is still gated,
+  // but per posting-date coverage (lib/subscriptionCoverage.ts, enforced in
+  // postDocument) rather than "is the subscription active right now" — so a
+  // user can still encode into a month they already paid for.
+  return prisma.company.findUnique({ where: { id: activeCompanyId } });
 }
 
 export type PosterResult =
@@ -206,22 +206,11 @@ export async function resolvePoster(
     return { ok: false, status: 403, error: reason };
   }
 
-  // Posting new transactions requires an active subscription (viewing and
-  // managing existing entries does not).
-  if (need === "canPost") {
-    const company = await prisma.company.findUnique({
-      where: { id: activeCompanyId },
-      select: { subscriptionEndsAt: true },
-    });
-    if (!hasActiveSubscription(company?.subscriptionEndsAt)) {
-      return {
-        ok: false,
-        status: 403,
-        error:
-          "Your company doesn't have an active subscription. Contact your administrator to subscribe before posting transactions.",
-      };
-    }
-  }
+  // No blanket "subscription active right now" gate here: a company whose
+  // subscription has lapsed can still post into a month it already paid
+  // for. That's enforced per posting-date in postDocument
+  // (isPostingDateSubscriptionCovered, lib/subscriptionCoverage.ts) once the
+  // actual transaction date is known — not here, before it's known.
 
   return { ok: true, user, capability };
 }
