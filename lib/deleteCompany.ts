@@ -22,6 +22,12 @@ export async function deleteCompany(companyId: string): Promise<void> {
         // cascade with their doc.
         await tx.stockMovement.deleteMany({ where: { companyId } });
         await tx.item.deleteMany({ where: { companyId } });
+        // Payroll: run lines cascade with their run; profiles before pay groups.
+        await tx.payrollRun.deleteMany({ where: { companyId } });
+        await tx.payrollProfile.deleteMany({ where: { companyId } });
+        await tx.payGroup.deleteMany({ where: { companyId } });
+        await tx.payItem.deleteMany({ where: { companyId } });
+        await tx.payrollSetup.deleteMany({ where: { companyId } });
         await tx.transactionAttachment.deleteMany({ where: { companyId } });
         await tx.taxPostingSetup.deleteMany({ where: { companyId } });
         await tx.numberSeries.deleteMany({ where: { companyId } });

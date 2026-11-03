@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { APP_COOKIE, type AppKey } from "@/lib/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
@@ -86,6 +88,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       actingAsCompanyName={actingAsCompanyName}
       switcherCompanies={switcherCompanies}
       activeCompanyId={activeCompanyId}
+      selectedApp={cookies().get(APP_COOKIE)?.value === "payroll" ? "payroll" : ("accounting" as AppKey)}
     >
       {children}
     </AppShell>

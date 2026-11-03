@@ -1,8 +1,12 @@
-import { Menu, User, ChevronDown } from "lucide-react";
+"use client";
+
+import { usePathname } from "next/navigation";
+import { Menu, User, ChevronDown, LayoutGrid } from "lucide-react";
 import { LogoutButton } from "@/components/LogoutButton";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { CompanySwitcher } from "@/components/CompanySwitcher";
 import type { SessionPayload } from "@/lib/auth";
+import { APP_LABEL, appForPath, type AppKey } from "@/lib/navigation";
 
 export function AppHeader({
   user,
@@ -13,6 +17,8 @@ export function AppHeader({
   hasCompanyLogo = false,
   switcherCompanies = [],
   activeCompanyId = null,
+  showAppSwitcher = false,
+  selectedApp = null,
 }: {
   user: SessionPayload | null;
   onMenu?: () => void;
@@ -22,7 +28,10 @@ export function AppHeader({
   hasCompanyLogo?: boolean;
   switcherCompanies?: { id: string; tradeName: string }[];
   activeCompanyId?: string | null;
+  showAppSwitcher?: boolean;
+  selectedApp?: AppKey | null;
 }) {
+  const app = appForPath(usePathname(), selectedApp);
   return (
     <header className="shrink-0 bg-gradient-to-r from-brand-navyDark via-brand-navy to-[#0e3a63] text-white shadow-sm">
       {/* Bright accent line across the top */}
@@ -62,6 +71,18 @@ export function AppHeader({
               {companyName}
             </span>
           )
+        )}
+
+        {showAppSwitcher && (
+          <a
+            href="/apps"
+            data-no-stack
+            title="Switch app"
+            className="flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-2.5 py-1 text-xs font-medium text-white hover:bg-white/15"
+          >
+            <LayoutGrid size={14} className="text-brand-green" />
+            {APP_LABEL[app]}
+          </a>
         )}
 
         {user && (

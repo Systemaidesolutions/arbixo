@@ -10,6 +10,7 @@ import { PageStackProvider, PageStackOverlay, BaseLinkInterceptor, EmbedLinkInte
 import type { SessionPayload } from "@/lib/auth";
 import type { SubscriberSubtype } from "@prisma/client";
 import type { BrandingFlags } from "@/lib/branding";
+import type { AppKey } from "@/lib/navigation";
 
 /**
  * App shell: fixed-height layout with a dark header on top, a dark docked
@@ -28,6 +29,7 @@ export function AppShell({
   actingAsCompanyName = null,
   switcherCompanies = [],
   activeCompanyId = null,
+  selectedApp = null,
   children,
 }: {
   user: SessionPayload | null;
@@ -46,6 +48,8 @@ export function AppShell({
   // just their primary company to switch between.
   switcherCompanies?: { id: string; tradeName: string }[];
   activeCompanyId?: string | null;
+  // Accounting or Payroll, as last picked on /apps (APP_COOKIE).
+  selectedApp?: AppKey | null;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -117,12 +121,15 @@ export function AppShell({
         hasCompanyLogo={hasCompanyLogo}
         switcherCompanies={switcherCompanies}
         activeCompanyId={activeCompanyId}
+        showAppSwitcher={role === "USER"}
+        selectedApp={selectedApp}
       />
 
       <div className="relative flex min-h-0 flex-1">
         <Sidebar
           role={role}
           subtype={subtype}
+          selectedApp={selectedApp}
           mobileOpen={mobileOpen}
           onCloseMobile={() => setMobileOpen(false)}
         />

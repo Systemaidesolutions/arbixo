@@ -31,7 +31,9 @@ export type NavIcon =
   | "customers"
   | "vendors"
   | "employees"
-  | "contacts";
+  | "contacts"
+  | "payroll"
+  | "payrollSetup";
 
 export type NavLink = { href: string; label: string; icon: NavIcon };
 // A collapsible sub-group of links nested inside a section (e.g. "Relief Files"
@@ -127,6 +129,45 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/company/branches", label: "Branches", icon: "companies" },
       { href: "/company/tax-posting-setup", label: "Tax posting setup", icon: "tax" },
       { href: "/accounts", label: "Chart of accounts", icon: "accounts" },
+    ],
+  },
+];
+
+// ARbixo is two apps on one login: Accounting (NAV_SECTIONS above) and
+// Payroll. The user picks one on /apps after signing in; the choice is kept
+// in the APP_COOKIE cookie and decides which sidebar they see.
+export type AppKey = "accounting" | "payroll";
+export const APP_COOKIE = "arbixo_app";
+export const APP_HOME: Record<AppKey, string> = { accounting: "/dashboard", payroll: "/payroll" };
+export const APP_LABEL: Record<AppKey, string> = { accounting: "Accounting", payroll: "Payroll" };
+
+// Routes that belong to one app only. Anything else (profile, branches,
+// company details, employee master…) is shared and keeps the cookie's app.
+const ACCOUNTING_ONLY = ["/dashboard", "/transactions", "/reports", "/books", "/history", "/accounts", "/items", "/ask-arbi"];
+
+export function appForPath(pathname: string, cookieApp: AppKey | null): AppKey {
+  if (pathname === "/payroll" || pathname.startsWith("/payroll/")) return "payroll";
+  if (ACCOUNTING_ONLY.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return "accounting";
+  return cookieApp ?? "accounting";
+}
+
+export const PAYROLL_NAV_SECTIONS: NavSection[] = [
+  {
+    title: "Payroll",
+    icon: "transactions",
+    links: [
+      { href: "/payroll/runs", label: "Payroll runs", icon: "payroll" },
+      { href: "/payroll/employees", label: "Payroll employees", icon: "employees" },
+    ],
+  },
+  {
+    title: "Setup",
+    icon: "settings",
+    links: [
+      { href: "/payroll/setup", label: "Payroll setup", icon: "payrollSetup" },
+      { href: "/agents/employees", label: "Employees", icon: "employees" },
+      { href: "/company/branches", label: "Branches", icon: "companies" },
+      { href: "/company/setup", label: "Company details", icon: "company" },
     ],
   },
 ];

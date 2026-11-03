@@ -383,6 +383,10 @@ model Company {
   numberSeries  NumberSeries[]
   importations  Importation[]
   subscriptionPayments SubscriptionPayment[]
+  payrollSetup   PayrollSetup?
+  payGroups      PayGroup[]
+  payItems       PayItem[]
+  payrollRuns    PayrollRun[]
   items          Item[]
   stockMovements StockMovement[]
   transactionAttachments TransactionAttachment[]
@@ -744,7 +748,9 @@ model Employee {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  ledgerEntries LedgerEntry[]
+  ledgerEntries  LedgerEntry[]
+  payrollProfile PayrollProfile?
+  payrollLines   PayrollRunLine[]
 
   @@unique([companyId, code])
 }
@@ -1085,4 +1091,237 @@ model TransactionAttachment {
   createdAt    DateTime    @default(now())
 
   @@index([companyId, journalType, documentNo])
+}
+
+// ============================================================
+// PAYROLL
+// Setup-driven: every company configures its own pay groups, pay items,
+// rate multipliers and statutory-deduction switches. Covers monthly-paid
+// staff and DAILY-rate contractuals (attendance grid per day). A posted
+// run writes one General Journal document through postDocument. Account
+// and branch references are plain IDs (validated in code), same as Item.
+// ============================================================
+enum EmploymentType {
+  REGULAR
+  PROBATIONARY
+  CONTRACTUAL
+  PROJECT_BASED
+  CASUAL
+}
+
+enum PayBasis {
+  MONTHLY // fixed monthly salary, prorated per run
+  DAILY // paid per day actually worked (attendance grid)
+}
+
+enum PayFrequency {
+  MONTHLY
+  SEMI_MONTHLY
+  WEEKLY
+  DAILY // short custom periods, e.g. paid out daily or every few days
+}
+
+enum PayItemKind {
+  EARNING
+  DEDUCTION
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
+// One per company: rate multipliers and GL posting accounts.
+model PayrollSetup {
+  id        String  @id @default(cuid())
+  company   Company @relation(fields: [companyId], references: [id])
+  companyId String  @unique
+
+  // Daily-rate equivalent of a monthly salary = monthly x 12 / workDaysPerYear
+  // (261 = 5-day week, 313 = 6-day week, 365 = paid every day).
+  workDaysPerYear Int     @default(313)
+  hoursPerDay     Decimal @default(8) @db.Decimal(5, 2)
+
+  // Premium multipliers (Labor Code defaults, editable per company).
+  otMultiplier              Decimal @default(1.25) @db.Decimal(6, 4)
+  restDayMultiplier         Decimal @default(1.30) @db.Decimal(6, 4)
+  specialHolidayMultiplier  Decimal @default(1.30) @db.Decimal(6, 4)
+  regularHolidayMultiplier  Decimal @default(2.00) @db.Decimal(6, 4)
+  nightDiffRate             Decimal @default(0.10) @db.Decimal(6, 4)
+  // Daily-paid employees still get 100% of the daily rate on an unworked regular holiday.
+  payUnworkedRegularHoliday Boolean @default(true)
+
+  // GL accounts (plain Account ids).
+  salariesExpenseAccountId       String?
+  contributionsExpenseAccountId  String? // employer share of SSS/PhilHealth/Pag-IBIG
+  sssPayableAccountId            String?
+  philhealthPayableAccountId     String?
+  hdmfPayableAccountId           String?
+  withholdingTaxPayableAccountId String?
+  otherDeductionsAccountId       String? // fallback for deduction pay items without their own account
+  netPayAccountId                String? // Salaries payable (or Cash in bank)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Employees paid on the same schedule with the same statutory rules, e.g.
+// "Office staff - semi-monthly" or "Site contractuals - weekly, daily rate".
+model PayGroup {
+  id        String       @id @default(cuid())
+  company   Company      @relation(fields: [companyId], references: [id])
+  companyId String
+  code      String
+  name      String
+  frequency PayFrequency @default(SEMI_MONTHLY)
+
+  deductSss        Boolean @default(true)
+  deductPhilhealth Boolean @default(true)
+  deductHdmf       Boolean @default(true)
+  withholdTax      Boolean @default(true)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profiles PayrollProfile[]
+  runs     PayrollRun[]
+
+  @@unique([companyId, code])
+}
+
+// Company-defined earnings/deductions (allowances, commissions, loans, cash advances).
+model PayItem {
+  id        String      @id @default(cuid())
+  company   Company     @relation(fields: [companyId], references: [id])
+  companyId String
+  code      String
+  name      String
+  kind      PayItemKind
+  taxable   Boolean     @default(true) // EARNING only: counted in taxable compensation
+  accountId String? // expense (earning) / liability or receivable (deduction)
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([companyId, code])
+}
+
+// Payroll details for an Employee (1:1). Kept off Employee so the shared
+// party master stays lean and payroll is opt-in per employee.
+model PayrollProfile {
+  id         String    @id @default(cuid())
+  companyId  String
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String    @unique
+  payGroup   PayGroup? @relation(fields: [payGroupId], references: [id])
+  payGroupId String?
+  locationId String? // branch
+
+  employmentType EmploymentType @default(REGULAR)
+  payBasis       PayBasis       @default(MONTHLY)
+  rate           Decimal        @default(0) @db.Decimal(18, 2) // monthly salary or daily rate
+  hireDate       DateTime?
+  contractEnd    DateTime?
+
+  sssNo         String?
+  philhealthNo  String?
+  pagibigNo     String?
+  // Minimum wage earner: exempt from withholding tax on compensation.
+  isMinimumWage Boolean @default(false)
+
+  // Recurring earnings/deductions copied into every new run: [{ payItemId, amount }].
+  recurring Json?
+
+  bankName      String?
+  bankAccountNo String?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+model PayrollRun {
+  id          String           @id @default(cuid())
+  company     Company          @relation(fields: [companyId], references: [id])
+  companyId   String
+  runNo       String // also the General Journal document no. once posted
+  payGroup    PayGroup         @relation(fields: [payGroupId], references: [id])
+  payGroupId  String
+  locationId  String?
+  periodStart DateTime
+  periodEnd   DateTime
+  payDate     DateTime
+  status      PayrollRunStatus @default(DRAFT)
+  remarks     String?
+
+  // Day type per date in the period: { "2026-11-01": "RD", "2026-11-30": "RH" }.
+  // Missing dates are regular workdays. RD = rest day, SH = special holiday,
+  // RH = regular holiday.
+  dayTypes Json?
+
+  totalGross      Decimal @default(0) @db.Decimal(18, 2)
+  totalDeductions Decimal @default(0) @db.Decimal(18, 2)
+  totalNet        Decimal @default(0) @db.Decimal(18, 2)
+  totalEmployer   Decimal @default(0) @db.Decimal(18, 2)
+
+  postedAt    DateTime?
+  postedById  String?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  lines PayrollRunLine[]
+
+  @@unique([companyId, runNo])
+  @@index([companyId, periodStart])
+}
+
+model PayrollRunLine {
+  id         String     @id @default(cuid())
+  run        PayrollRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  runId      String
+  employee   Employee   @relation(fields: [employeeId], references: [id])
+  employeeId String
+
+  // Snapshot of the profile at the time of the run.
+  payBasis PayBasis
+  rate     Decimal  @db.Decimal(18, 2)
+
+  // --- Inputs ---
+  // DAILY basis: days worked per date { "2026-11-03": 1, "2026-11-04": 0.5 }.
+  attendance     Json?
+  absentDays     Decimal @default(0) @db.Decimal(8, 2) // MONTHLY basis
+  lateMinutes    Decimal @default(0) @db.Decimal(10, 2) // late + undertime
+  otHours        Decimal @default(0) @db.Decimal(8, 2)
+  nightDiffHours Decimal @default(0) @db.Decimal(8, 2)
+  // This run's earnings/deductions: [{ payItemId, amount }].
+  adjustments    Json?
+
+  // --- Computed ---
+  daysWorked      Decimal @default(0) @db.Decimal(8, 2)
+  basicPay        Decimal @default(0) @db.Decimal(18, 2)
+  premiumPay      Decimal @default(0) @db.Decimal(18, 2) // rest day / holiday premiums
+  otPay           Decimal @default(0) @db.Decimal(18, 2)
+  nightDiffPay    Decimal @default(0) @db.Decimal(18, 2)
+  lateDeduction   Decimal @default(0) @db.Decimal(18, 2)
+  otherEarnings   Decimal @default(0) @db.Decimal(18, 2)
+  grossPay        Decimal @default(0) @db.Decimal(18, 2)
+  sssEe           Decimal @default(0) @db.Decimal(18, 2)
+  sssEr           Decimal @default(0) @db.Decimal(18, 2) // incl. EC
+  philhealthEe    Decimal @default(0) @db.Decimal(18, 2)
+  philhealthEr    Decimal @default(0) @db.Decimal(18, 2)
+  hdmfEe          Decimal @default(0) @db.Decimal(18, 2)
+  hdmfEr          Decimal @default(0) @db.Decimal(18, 2)
+  taxableIncome   Decimal @default(0) @db.Decimal(18, 2)
+  withholdingTax  Decimal @default(0) @db.Decimal(18, 2)
+  otherDeductions Decimal @default(0) @db.Decimal(18, 2)
+  totalDeductions Decimal @default(0) @db.Decimal(18, 2)
+  netPay          Decimal @default(0) @db.Decimal(18, 2)
+
+  @@unique([runId, employeeId])
+  @@index([employeeId])
 }

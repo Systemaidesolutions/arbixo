@@ -89,9 +89,9 @@ const FAQ = [
 ];
 
 export default async function LandingPage() {
-  // Signed-in visitors go straight to their dashboard.
+  // Signed-in visitors go straight to the app launcher.
   const user = await getCurrentUser();
-  if (user) redirect("/dashboard");
+  if (user) redirect("/apps");
 
   const navLink = "text-sm font-medium text-neutral-600 transition-colors hover:text-brand-navy";
   const section = "mx-auto w-full max-w-6xl px-5 sm:px-8";

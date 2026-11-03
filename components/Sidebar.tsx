@@ -34,6 +34,8 @@ import {
   Ticket,
   Wallet,
   Sparkles,
+  Banknote,
+  SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
 import type { SubscriberSubtype } from "@prisma/client";
@@ -41,7 +43,11 @@ import {
   NAV_SECTIONS,
   ADMIN_NAV_SECTIONS,
   HISTORY_SECTION,
+  PAYROLL_NAV_SECTIONS,
+  APP_HOME,
+  appForPath,
   isNavGroup,
+  type AppKey,
   type NavIcon,
   type NavLink,
   type NavSection,
@@ -61,8 +67,9 @@ const SUBSCRIPTION_PAYMENTS_LINK = { href: "/subscription/payments", label: "Sub
 // Builds the nav a subscriber sees based on their subtype: Report Creator
 // (read-only) loses the Transactions section; a Manager gains the History
 // group (ledger browsers + audit trail) and a company-backup option in Setup.
-function sectionsFor(role: "ADMIN" | "USER", subtype: SubscriberSubtype | null): NavSection[] {
+function sectionsFor(role: "ADMIN" | "USER", subtype: SubscriberSubtype | null, app: AppKey): NavSection[] {
   if (role === "ADMIN") return ADMIN_NAV_SECTIONS;
+  if (app === "payroll") return PAYROLL_NAV_SECTIONS;
   const cap = capabilitiesFor(role, subtype);
   let sections = NAV_SECTIONS;
   if (!cap.canPost) {
@@ -124,6 +131,8 @@ const LINK_ICONS: Record<NavIcon, LucideIcon> = {
   vendors: Truck,
   employees: Briefcase,
   contacts: Contact,
+  payroll: Banknote,
+  payrollSetup: SlidersHorizontal,
 };
 
 function SidebarBrand() {
@@ -252,18 +261,21 @@ function NavList({
 export function Sidebar({
   role,
   subtype = null,
+  selectedApp = null,
   mobileOpen = false,
   onCloseMobile,
 }: {
   role: "ADMIN" | "USER";
   subtype?: SubscriberSubtype | null;
+  selectedApp?: AppKey | null;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
 }) {
   const pathname = usePathname();
-  const sections = sectionsFor(role, subtype);
-  const dashboardHref = role === "ADMIN" ? "/admin" : "/";
-  const storageKey = `arbixo:navOpen:${role}`;
+  const app = appForPath(pathname, selectedApp);
+  const sections = sectionsFor(role, subtype, app);
+  const dashboardHref = role === "ADMIN" ? "/admin" : APP_HOME[app];
+  const storageKey = `arbixo:navOpen:${role}:${app}`;
 
   // Groups start collapsed (headers only). The user's expand/collapse choices
   // are remembered across sessions in localStorage. Server + first client

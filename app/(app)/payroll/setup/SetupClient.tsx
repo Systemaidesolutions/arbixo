@@ -1,0 +1,249 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { FREQUENCY_LABEL, type PayFrequency } from "@/lib/payroll/compute";
+
+type Account = { id: string; code: string; title: string };
+type Setup = {
+  workDaysPerYear: number; hoursPerDay: number; otMultiplier: number; restDayMultiplier: number;
+  specialHolidayMultiplier: number; regularHolidayMultiplier: number; nightDiffRate: number; payUnworkedRegularHoliday: boolean;
+  salariesExpenseAccountId: string | null; contributionsExpenseAccountId: string | null; sssPayableAccountId: string | null;
+  philhealthPayableAccountId: string | null; hdmfPayableAccountId: string | null; withholdingTaxPayableAccountId: string | null;
+  otherDeductionsAccountId: string | null; netPayAccountId: string | null;
+};
+type Group = { id: string; code: string; name: string; frequency: PayFrequency; deductSss: boolean; deductPhilhealth: boolean; deductHdmf: boolean; withholdTax: boolean; isActive: boolean };
+type Item = { id: string; code: string; name: string; kind: "EARNING" | "DEDUCTION"; taxable: boolean; accountId: string | null; isActive: boolean };
+
+const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm disabled:bg-neutral-100";
+const label = "block text-xs text-neutral-500";
+const btn = "rounded bg-brand-navy px-3 py-1.5 text-sm text-white hover:bg-brand-navyLight disabled:opacity-50";
+const btnGhost = "rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50";
+
+const RULE_FIELDS: { key: keyof Setup; label: string; hint: string }[] = [
+  { key: "workDaysPerYear", label: "Work days per year", hint: "261 = 5-day week, 313 = 6-day week. Converts monthly salary to a daily rate." },
+  { key: "hoursPerDay", label: "Hours per day", hint: "Hourly rate = daily rate ÷ this." },
+  { key: "otMultiplier", label: "Overtime multiplier", hint: "1.25 = 125% of the hourly rate." },
+  { key: "restDayMultiplier", label: "Rest day worked", hint: "1.30 = 130% of the daily rate." },
+  { key: "specialHolidayMultiplier", label: "Special holiday worked", hint: "1.30 = 130%." },
+  { key: "regularHolidayMultiplier", label: "Regular holiday worked", hint: "2.00 = 200%." },
+  { key: "nightDiffRate", label: "Night differential rate", hint: "0.10 = +10% of the hourly rate." },
+];
+
+const ACCOUNT_FIELDS: { key: keyof Setup; label: string }[] = [
+  { key: "salariesExpenseAccountId", label: "Salaries & wages expense (Dr)" },
+  { key: "contributionsExpenseAccountId", label: "Employer contributions expense (Dr)" },
+  { key: "sssPayableAccountId", label: "SSS payable (Cr)" },
+  { key: "philhealthPayableAccountId", label: "PhilHealth payable (Cr)" },
+  { key: "hdmfPayableAccountId", label: "Pag-IBIG payable (Cr)" },
+  { key: "withholdingTaxPayableAccountId", label: "Withholding tax on compensation payable (Cr)" },
+  { key: "otherDeductionsAccountId", label: "Other deductions, default (Cr)" },
+  { key: "netPayAccountId", label: "Net pay: salaries payable or cash (Cr)" },
+];
+
+async function send(url: string, method: string, body: unknown): Promise<string | null> {
+  const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (res.ok) return null;
+  const d = await res.json().catch(() => ({}));
+  return d.error ?? "Could not save.";
+}
+
+function AccountSelect({ accounts, value, onChange, disabled, placeholder = "Select account…" }: { accounts: Account[]; value: string | null; onChange: (v: string | null) => void; disabled?: boolean; placeholder?: string }) {
+  return (
+    <select value={value ?? ""} disabled={disabled} onChange={(e) => onChange(e.target.value || null)} className={field}>
+      <option value="">{placeholder}</option>
+      {accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.title}</option>)}
+    </select>
+  );
+}
+
+export function SetupClient({ setup, groups, items, accounts, canEdit }: { setup: Setup; groups: Group[]; items: Item[]; accounts: Account[]; canEdit: boolean }) {
+  const router = useRouter();
+  const [form, setForm] = useState<Setup>(setup);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function saveSetup() {
+    setBusy(true); setMsg(null);
+    const err = await send("/api/payroll/setup", "PUT", form);
+    setBusy(false);
+    setMsg(err ? { ok: false, text: err } : { ok: true, text: "Saved." });
+    if (!err) router.refresh();
+  }
+
+  return (
+    <div className="space-y-6">
+      <section className="rounded-lg border border-neutral-200 p-4">
+        <h2 className="text-sm font-medium text-neutral-800">Pay rules</h2>
+        <p className="text-xs text-neutral-500">Defaults follow the Labor Code. Change them if company policy pays more.</p>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {RULE_FIELDS.map((f) => (
+            <label key={f.key} className={label} title={f.hint}>
+              {f.label}
+              <input value={String(form[f.key] ?? "")} disabled={!canEdit} inputMode="decimal" onChange={(e) => setForm({ ...form, [f.key]: e.target.value as unknown as number })} className={field} />
+              <span className="mt-0.5 block text-[11px] text-neutral-400">{f.hint}</span>
+            </label>
+          ))}
+          <label className="flex items-start gap-2 pt-5 text-sm text-neutral-700">
+            <input type="checkbox" className="mt-1" disabled={!canEdit} checked={form.payUnworkedRegularHoliday} onChange={(e) => setForm({ ...form, payUnworkedRegularHoliday: e.target.checked })} />
+            <span>Pay daily-rate employees for unworked regular holidays (100%)</span>
+          </label>
+        </div>
+
+        <h2 className="mt-6 text-sm font-medium text-neutral-800">Posting accounts</h2>
+        <p className="text-xs text-neutral-500">A posted payroll run creates one General Journal entry using these accounts.</p>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {ACCOUNT_FIELDS.map((f) => (
+            <label key={f.key} className={label}>
+              {f.label}
+              <AccountSelect accounts={accounts} disabled={!canEdit} value={form[f.key] as string | null} onChange={(v) => setForm({ ...form, [f.key]: v })} />
+            </label>
+          ))}
+        </div>
+        {canEdit && (
+          <div className="mt-4 flex items-center gap-3">
+            <button onClick={saveSetup} disabled={busy} className={btn}>Save setup</button>
+            {msg && <span className={`text-xs ${msg.ok ? "text-green-700" : "text-red-600"}`}>{msg.text}</span>}
+          </div>
+        )}
+      </section>
+
+      <PayGroups groups={groups} canEdit={canEdit} />
+      <PayItems items={items} accounts={accounts} canEdit={canEdit} />
+    </div>
+  );
+}
+
+function PayGroups({ groups, canEdit }: { groups: Group[]; canEdit: boolean }) {
+  const router = useRouter();
+  const blank: Omit<Group, "id"> = { code: "", name: "", frequency: "SEMI_MONTHLY", deductSss: true, deductPhilhealth: true, deductHdmf: true, withholdTax: true, isActive: true };
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState(blank);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    const err = await send(editing === "new" ? "/api/payroll/pay-groups" : `/api/payroll/pay-groups/${editing}`, editing === "new" ? "POST" : "PATCH", form);
+    if (err) return setError(err);
+    setEditing(null); router.refresh();
+  }
+
+  const flags: ["deductSss" | "deductPhilhealth" | "deductHdmf" | "withholdTax", string][] = [["deductSss", "SSS"], ["deductPhilhealth", "PhilHealth"], ["deductHdmf", "Pag-IBIG"], ["withholdTax", "Withholding tax"]];
+  const editor = (
+    <div className="rounded-lg border border-brand-blue/30 bg-blue-50/40 p-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+        <label className={label}>Code<input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className={`${field} font-mono`} placeholder="CON-WK" /></label>
+        <label className={`${label} sm:col-span-2`}>Name<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={field} placeholder="Site contractuals" /></label>
+        <label className={label}>Pay frequency<select value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value as PayFrequency })} className={field}>{Object.entries(FREQUENCY_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></label>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-4 text-sm text-neutral-700">
+        <span className="text-xs text-neutral-500">Deduct:</span>
+        {flags.map(([k, t]) => (
+          <label key={k} className="flex items-center gap-1.5"><input type="checkbox" checked={form[k] as boolean} onChange={(e) => setForm({ ...form, [k]: e.target.checked })} /> {t}</label>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        <button onClick={save} className={btn}>{editing === "new" ? "Add pay group" : "Save"}</button>
+        <button onClick={() => setEditing(null)} className={btnGhost}>Cancel</button>
+        {error && <span className="text-xs text-red-600">{error}</span>}
+      </div>
+    </div>
+  );
+
+  return (
+    <section className="rounded-lg border border-neutral-200 p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-medium text-neutral-800">Pay groups</h2>
+          <p className="text-xs text-neutral-500">Employees paid on the same schedule and statutory rules, e.g. daily-rate contractuals paid weekly.</p>
+        </div>
+        {canEdit && editing !== "new" && <button onClick={() => { setForm(blank); setEditing("new"); setError(null); }} className="rounded border border-brand-blue px-3 py-1.5 text-xs font-medium text-brand-blue hover:bg-blue-50">+ Add pay group</button>}
+      </div>
+      {editing === "new" && <div className="mt-3">{editor}</div>}
+      <table className="mt-3 w-full text-sm">
+        <thead><tr className="border-b border-neutral-200 text-left text-xs uppercase tracking-wide text-neutral-500"><th className="py-2 pr-3">Code</th><th className="py-2 pr-3">Name</th><th className="py-2 pr-3">Frequency</th><th className="py-2 pr-3">Deductions</th><th className="py-2"></th></tr></thead>
+        <tbody className="divide-y divide-neutral-100">
+          {groups.map((g) => editing === g.id ? (
+            <tr key={g.id}><td colSpan={5} className="py-2">{editor}</td></tr>
+          ) : (
+            <tr key={g.id} className={g.isActive ? "" : "text-neutral-400"}>
+              <td className="py-1.5 pr-3 font-mono text-xs">{g.code}</td>
+              <td className="py-1.5 pr-3">{g.name}</td>
+              <td className="py-1.5 pr-3 text-xs">{FREQUENCY_LABEL[g.frequency]}</td>
+              <td className="py-1.5 pr-3 text-xs">{flags.filter(([k]) => g[k]).map(([, t]) => t).join(", ") || "None"}</td>
+              <td className="py-1.5 text-right">{canEdit && <>
+                <button onClick={() => { const { id: _id, ...rest } = g; setForm(rest); setEditing(g.id); setError(null); }} className="rounded px-2 py-1 text-xs text-brand-blue hover:bg-blue-50">Edit</button>
+                <button onClick={async () => { await send(`/api/payroll/pay-groups/${g.id}`, "PATCH", { isActive: !g.isActive }); router.refresh(); }} className="rounded px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100">{g.isActive ? "Deactivate" : "Activate"}</button>
+              </>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function PayItems({ items, accounts, canEdit }: { items: Item[]; accounts: Account[]; canEdit: boolean }) {
+  const router = useRouter();
+  const blank: Omit<Item, "id"> = { code: "", name: "", kind: "EARNING", taxable: true, accountId: null, isActive: true };
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState(blank);
+  const [error, setError] = useState<string | null>(null);
+  const acctLabel = (id: string | null) => { const a = accounts.find((x) => x.id === id); return a ? `${a.code} ${a.title}` : "Default"; };
+
+  async function save() {
+    const err = await send(editing === "new" ? "/api/payroll/pay-items" : `/api/payroll/pay-items/${editing}`, editing === "new" ? "POST" : "PATCH", form);
+    if (err) return setError(err);
+    setEditing(null); router.refresh();
+  }
+
+  const editor = (
+    <div className="rounded-lg border border-brand-blue/30 bg-blue-50/40 p-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+        <label className={label}>Code<input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className={`${field} font-mono`} /></label>
+        <label className={label}>Name<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={field} /></label>
+        <label className={label}>Type<select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as Item["kind"] })} className={field}><option value="EARNING">Earning</option><option value="DEDUCTION">Deduction</option></select></label>
+        <label className={label}>Account<AccountSelect accounts={accounts} value={form.accountId} onChange={(v) => setForm({ ...form, accountId: v })} placeholder="Use setup default" /></label>
+      </div>
+      {form.kind === "EARNING" && (
+        <label className="mt-3 flex items-center gap-1.5 text-sm text-neutral-700"><input type="checkbox" checked={form.taxable} onChange={(e) => setForm({ ...form, taxable: e.target.checked })} /> Taxable</label>
+      )}
+      <div className="mt-3 flex items-center gap-2">
+        <button onClick={save} className={btn}>{editing === "new" ? "Add pay item" : "Save"}</button>
+        <button onClick={() => setEditing(null)} className={btnGhost}>Cancel</button>
+        {error && <span className="text-xs text-red-600">{error}</span>}
+      </div>
+    </div>
+  );
+
+  return (
+    <section className="rounded-lg border border-neutral-200 p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-medium text-neutral-800">Earnings & deductions</h2>
+          <p className="text-xs text-neutral-500">Allowances, commissions, loans and cash advances encoded on a run or set as recurring per employee.</p>
+        </div>
+        {canEdit && editing !== "new" && <button onClick={() => { setForm(blank); setEditing("new"); setError(null); }} className="rounded border border-brand-blue px-3 py-1.5 text-xs font-medium text-brand-blue hover:bg-blue-50">+ Add pay item</button>}
+      </div>
+      {editing === "new" && <div className="mt-3">{editor}</div>}
+      <table className="mt-3 w-full text-sm">
+        <thead><tr className="border-b border-neutral-200 text-left text-xs uppercase tracking-wide text-neutral-500"><th className="py-2 pr-3">Code</th><th className="py-2 pr-3">Name</th><th className="py-2 pr-3">Type</th><th className="py-2 pr-3">Account</th><th className="py-2"></th></tr></thead>
+        <tbody className="divide-y divide-neutral-100">
+          {items.map((it) => editing === it.id ? (
+            <tr key={it.id}><td colSpan={5} className="py-2">{editor}</td></tr>
+          ) : (
+            <tr key={it.id} className={it.isActive ? "" : "text-neutral-400"}>
+              <td className="py-1.5 pr-3 font-mono text-xs">{it.code}</td>
+              <td className="py-1.5 pr-3">{it.name}</td>
+              <td className="py-1.5 pr-3 text-xs">{it.kind === "EARNING" ? `Earning${it.taxable ? "" : " (non-taxable)"}` : "Deduction"}</td>
+              <td className="py-1.5 pr-3 text-xs">{acctLabel(it.accountId)}</td>
+              <td className="py-1.5 text-right">{canEdit && <>
+                <button onClick={() => { const { id: _id, ...rest } = it; setForm(rest); setEditing(it.id); setError(null); }} className="rounded px-2 py-1 text-xs text-brand-blue hover:bg-blue-50">Edit</button>
+                <button onClick={async () => { await send(`/api/payroll/pay-items/${it.id}`, "PATCH", { isActive: !it.isActive }); router.refresh(); }} className="rounded px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100">{it.isActive ? "Deactivate" : "Activate"}</button>
+              </>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
