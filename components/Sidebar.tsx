@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   ChevronDown,
+  BookOpen,
   X,
   Building2,
   ReceiptText,
@@ -135,6 +136,7 @@ const LINK_ICONS: Record<NavIcon, LucideIcon> = {
   payroll: Banknote,
   payrollSetup: SlidersHorizontal,
   leave: CalendarDays,
+  manual: BookOpen,
 };
 
 function SidebarBrand() {
@@ -171,11 +173,12 @@ function NavList({
   const renderLink = (link: NavLink) => {
     const Icon = LINK_ICONS[link.icon];
     const active = pathname === link.href;
-    const stackable = Boolean(pageStack);
+    const stackable = Boolean(pageStack) && !link.external;
     return (
       <li key={link.href}>
         <a
           href={link.href}
+          {...(link.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
           onClick={(e) => {
             if (stackable) {
               e.preventDefault();

@@ -34,9 +34,11 @@ export type NavIcon =
   | "contacts"
   | "payroll"
   | "payrollSetup"
-  | "leave";
+  | "leave"
+  | "manual";
 
-export type NavLink = { href: string; label: string; icon: NavIcon };
+// external: opens in a new browser tab instead of the in-app page stack.
+export type NavLink = { href: string; label: string; icon: NavIcon; external?: boolean };
 // A collapsible sub-group of links nested inside a section (e.g. "Relief Files"
 // under BIR Reports).
 export type NavGroup = { group: string; links: NavLink[] };
@@ -152,6 +154,9 @@ export function appForPath(pathname: string, cookieApp: AppKey | null): AppKey {
   return cookieApp ?? "accounting";
 }
 
+// ARbixo Payroll User Manual (a Claude Docs page; viewers need it shared with them).
+export const PAYROLL_MANUAL_URL = "https://claude.ai/artifact/XSwn49zUgsKQhWqDd4ypVB";
+
 export const PAYROLL_NAV_SECTIONS: NavSection[] = [
   {
     title: "Payroll",
@@ -171,6 +176,7 @@ export const PAYROLL_NAV_SECTIONS: NavSection[] = [
       { href: "/agents/employees", label: "Employees", icon: "employees" },
       { href: "/company/branches", label: "Branches", icon: "companies" },
       { href: "/company/setup", label: "Company details", icon: "company" },
+      { href: PAYROLL_MANUAL_URL, label: "User manual", icon: "manual", external: true },
     ],
   },
 ];
