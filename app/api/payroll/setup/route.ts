@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateSetup, payrollAuth } from "@/lib/payroll/server";
 
-const NUMBER_FIELDS = ["workDaysPerYear", "hoursPerDay", "otMultiplier", "restDayMultiplier", "specialHolidayMultiplier", "regularHolidayMultiplier", "nightDiffRate"] as const;
+const NUMBER_FIELDS = [
+  "workDaysPerYear", "hoursPerDay", "otMultiplier", "premiumOtMultiplier", "restDayMultiplier", "specialHolidayMultiplier", "specialRestDayMultiplier",
+  "doubleSpecialMultiplier", "doubleSpecialRestDayMultiplier", "regularHolidayMultiplier", "regularHolidayRestDayMultiplier",
+  "doubleHolidayMultiplier", "doubleHolidayRestDayMultiplier", "nightDiffRate", "benefitsExemptCap",
+] as const;
+const BOOLEAN_FIELDS = ["payUnworkedRegularHoliday", "holidayRequiresPriorPresence", "monthlyIncludesRestDays", "monthlyIncludesSpecialDays"] as const;
 const ACCOUNT_FIELDS = [
   "salariesExpenseAccountId", "contributionsExpenseAccountId", "sssPayableAccountId", "philhealthPayableAccountId",
-  "hdmfPayableAccountId", "withholdingTaxPayableAccountId", "otherDeductionsAccountId", "netPayAccountId",
+  "hdmfPayableAccountId", "withholdingTaxPayableAccountId", "otherDeductionsAccountId", "netPayAccountId", "thirteenthMonthAccountId",
 ] as const;
 
 export async function PUT(request: NextRequest) {
@@ -21,7 +26,7 @@ export async function PUT(request: NextRequest) {
     if (!Number.isFinite(v) || v < 0) return NextResponse.json({ error: `Invalid value for ${f}.` }, { status: 400 });
     data[f] = f === "workDaysPerYear" ? Math.round(v) : v;
   }
-  if (typeof body.payUnworkedRegularHoliday === "boolean") data.payUnworkedRegularHoliday = body.payUnworkedRegularHoliday;
+  for (const f of BOOLEAN_FIELDS) if (typeof body[f] === "boolean") data[f] = body[f];
   if ("restWeekdays" in body) {
     const days = Array.isArray(body.restWeekdays) ? [...new Set((body.restWeekdays as unknown[]).map(Number))] : [];
     if (days.some((d) => !Number.isInteger(d) || d < 0 || d > 6) || days.length > 6) return NextResponse.json({ error: "Invalid rest days." }, { status: 400 });

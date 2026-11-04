@@ -6,29 +6,41 @@ import { FREQUENCY_LABEL, type PayFrequency } from "@/lib/payroll/compute";
 
 type Account = { id: string; code: string; title: string };
 type Setup = {
-  workDaysPerYear: number; hoursPerDay: number; otMultiplier: number; restDayMultiplier: number;
-  specialHolidayMultiplier: number; regularHolidayMultiplier: number; nightDiffRate: number; payUnworkedRegularHoliday: boolean;
-  restWeekdays: number[];
+  workDaysPerYear: number; hoursPerDay: number; otMultiplier: number; premiumOtMultiplier: number; restDayMultiplier: number;
+  specialHolidayMultiplier: number; specialRestDayMultiplier: number; doubleSpecialMultiplier: number; doubleSpecialRestDayMultiplier: number;
+  regularHolidayMultiplier: number; regularHolidayRestDayMultiplier: number; doubleHolidayMultiplier: number; doubleHolidayRestDayMultiplier: number;
+  nightDiffRate: number; payUnworkedRegularHoliday: boolean; holidayRequiresPriorPresence: boolean;
+  monthlyIncludesRestDays: boolean; monthlyIncludesSpecialDays: boolean; benefitsExemptCap: number;
+  restWeekdays: number[]; thirteenthMonthAccountId: string | null;
   salariesExpenseAccountId: string | null; contributionsExpenseAccountId: string | null; sssPayableAccountId: string | null;
   philhealthPayableAccountId: string | null; hdmfPayableAccountId: string | null; withholdingTaxPayableAccountId: string | null;
   otherDeductionsAccountId: string | null; netPayAccountId: string | null;
 };
 type Group = { id: string; code: string; name: string; frequency: PayFrequency; deductSss: boolean; deductPhilhealth: boolean; deductHdmf: boolean; withholdTax: boolean; isActive: boolean };
-type Item = { id: string; code: string; name: string; kind: "EARNING" | "DEDUCTION"; taxable: boolean; accountId: string | null; isActive: boolean };
+type Item = { id: string; code: string; name: string; kind: "EARNING" | "DEDUCTION"; taxable: boolean; isOtherBenefit: boolean; accountId: string | null; isActive: boolean };
 
 const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm disabled:bg-neutral-100";
 const label = "block text-xs text-neutral-500";
 const btn = "rounded bg-brand-navy px-3 py-1.5 text-sm text-white hover:bg-brand-navyLight disabled:opacity-50";
 const btnGhost = "rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50";
 
+// Defaults are the minimum rates in the DOLE Handbook on Workers' Statutory Monetary Benefits (2024).
 const RULE_FIELDS: { key: keyof Setup; label: string; hint: string }[] = [
-  { key: "workDaysPerYear", label: "Work days per year", hint: "261 = 5-day week, 313 = 6-day week. Converts monthly salary to a daily rate." },
-  { key: "hoursPerDay", label: "Hours per day", hint: "Hourly rate = daily rate ÷ this." },
-  { key: "otMultiplier", label: "Overtime multiplier", hint: "1.25 = 125% of the hourly rate." },
+  { key: "workDaysPerYear", label: "Salary factor (days per year)", hint: "365 = paid every day; 313 = 6-day week; 261 = 5-day week; 305/253 if special days aren't paid. Daily rate = monthly × 12 ÷ this." },
+  { key: "hoursPerDay", label: "Hours per day", hint: "Hourly rate = daily rate ÷ this (normal hours: 8)." },
+  { key: "otMultiplier", label: "OT, ordinary day", hint: "1.25 = 125% of the hourly rate." },
+  { key: "premiumOtMultiplier", label: "OT, rest day / special day / holiday", hint: "1.30 = 130% of that day's hourly rate (e.g. holiday OT = 2 × 1.3)." },
+  { key: "nightDiffRate", label: "Night shift differential", hint: "0.10 = +10% of the hour's rate, 10pm–6am." },
   { key: "restDayMultiplier", label: "Rest day worked", hint: "1.30 = 130% of the daily rate." },
-  { key: "specialHolidayMultiplier", label: "Special holiday worked", hint: "1.30 = 130%." },
-  { key: "regularHolidayMultiplier", label: "Regular holiday worked", hint: "2.00 = 200%." },
-  { key: "nightDiffRate", label: "Night differential rate", hint: "0.10 = +10% of the hourly rate." },
+  { key: "specialHolidayMultiplier", label: "Special day worked", hint: "1.30." },
+  { key: "specialRestDayMultiplier", label: "Special day on rest day", hint: "1.50." },
+  { key: "doubleSpecialMultiplier", label: "Double special day", hint: "1.50." },
+  { key: "doubleSpecialRestDayMultiplier", label: "Double special day on rest day", hint: "1.95." },
+  { key: "regularHolidayMultiplier", label: "Regular holiday worked", hint: "2.00." },
+  { key: "regularHolidayRestDayMultiplier", label: "Regular holiday on rest day", hint: "2.60." },
+  { key: "doubleHolidayMultiplier", label: "Double regular holiday", hint: "3.00 worked; 2.00 if unworked." },
+  { key: "doubleHolidayRestDayMultiplier", label: "Double holiday on rest day", hint: "3.90." },
+  { key: "benefitsExemptCap", label: "Tax-exempt 13th month + bonuses / year", hint: "₱90,000 under TRAIN; only the excess is taxed." },
 ];
 
 const ACCOUNT_FIELDS: { key: keyof Setup; label: string }[] = [
@@ -89,6 +101,18 @@ export function SetupClient({ setup, groups, items, accounts, canEdit }: { setup
             <input type="checkbox" className="mt-1" disabled={!canEdit} checked={form.payUnworkedRegularHoliday} onChange={(e) => setForm({ ...form, payUnworkedRegularHoliday: e.target.checked })} />
             <span>Pay daily-rate employees for unworked regular holidays (100%)</span>
           </label>
+          <label className="flex items-start gap-2 pt-5 text-sm text-neutral-700">
+            <input type="checkbox" className="mt-1" disabled={!canEdit} checked={form.holidayRequiresPriorPresence} onChange={(e) => setForm({ ...form, holidayRequiresPriorPresence: e.target.checked })} />
+            <span>Holiday pay only if present or on paid leave the workday before</span>
+          </label>
+          <label className="flex items-start gap-2 pt-5 text-sm text-neutral-700">
+            <input type="checkbox" className="mt-1" disabled={!canEdit} checked={form.monthlyIncludesSpecialDays} onChange={(e) => setForm({ ...form, monthlyIncludesSpecialDays: e.target.checked })} />
+            <span>Monthly salary already pays special days (factor 365/313/261)</span>
+          </label>
+          <label className="flex items-start gap-2 pt-5 text-sm text-neutral-700">
+            <input type="checkbox" className="mt-1" disabled={!canEdit} checked={form.monthlyIncludesRestDays} onChange={(e) => setForm({ ...form, monthlyIncludesRestDays: e.target.checked })} />
+            <span>Monthly salary already pays rest days (factor 365)</span>
+          </label>
         </div>
         <div className="mt-4">
           <span className={label}>Rest days <span className="text-neutral-400">(skipped when counting leave days)</span></span>
@@ -112,6 +136,10 @@ export function SetupClient({ setup, groups, items, accounts, canEdit }: { setup
               <AccountSelect accounts={accounts} disabled={!canEdit} value={form[f.key] as string | null} onChange={(v) => setForm({ ...form, [f.key]: v })} />
             </label>
           ))}
+          <label className={label}>
+            13th-month pay expense (Dr)
+            <AccountSelect accounts={accounts} disabled={!canEdit} value={form.thirteenthMonthAccountId} onChange={(v) => setForm({ ...form, thirteenthMonthAccountId: v })} placeholder="Same as salaries & wages" />
+          </label>
         </div>
         {canEdit && (
           <div className="mt-4 flex items-center gap-3">
@@ -197,7 +225,7 @@ function PayGroups({ groups, canEdit }: { groups: Group[]; canEdit: boolean }) {
 
 function PayItems({ items, accounts, canEdit }: { items: Item[]; accounts: Account[]; canEdit: boolean }) {
   const router = useRouter();
-  const blank: Omit<Item, "id"> = { code: "", name: "", kind: "EARNING", taxable: true, accountId: null, isActive: true };
+  const blank: Omit<Item, "id"> = { code: "", name: "", kind: "EARNING", taxable: true, isOtherBenefit: false, accountId: null, isActive: true };
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState(blank);
   const [error, setError] = useState<string | null>(null);
@@ -218,7 +246,10 @@ function PayItems({ items, accounts, canEdit }: { items: Item[]; accounts: Accou
         <label className={label}>Account<AccountSelect accounts={accounts} value={form.accountId} onChange={(v) => setForm({ ...form, accountId: v })} placeholder="Use setup default" /></label>
       </div>
       {form.kind === "EARNING" && (
-        <label className="mt-3 flex items-center gap-1.5 text-sm text-neutral-700"><input type="checkbox" checked={form.taxable} onChange={(e) => setForm({ ...form, taxable: e.target.checked })} /> Taxable</label>
+        <div className="mt-3 flex flex-wrap gap-4 text-sm text-neutral-700">
+          <label className="flex items-center gap-1.5" title="Counted in taxable compensation, SSS compensation and Pag-IBIG fund salary"><input type="checkbox" checked={form.taxable} disabled={form.isOtherBenefit} onChange={(e) => setForm({ ...form, taxable: e.target.checked })} /> Taxable</label>
+          <label className="flex items-center gap-1.5" title="Christmas bonus, productivity incentive, loyalty award… Tax-exempt together with 13th-month pay up to the yearly cap; not part of SSS/PhilHealth/Pag-IBIG"><input type="checkbox" checked={form.isOtherBenefit} onChange={(e) => setForm({ ...form, isOtherBenefit: e.target.checked })} /> Bonus / other benefit (shares the ₱90k exemption)</label>
+        </div>
       )}
       <div className="mt-3 flex items-center gap-2">
         <button onClick={save} className={btn}>{editing === "new" ? "Add pay item" : "Save"}</button>
@@ -247,7 +278,7 @@ function PayItems({ items, accounts, canEdit }: { items: Item[]; accounts: Accou
             <tr key={it.id} className={it.isActive ? "" : "text-neutral-400"}>
               <td className="py-1.5 pr-3 font-mono text-xs">{it.code}</td>
               <td className="py-1.5 pr-3">{it.name}</td>
-              <td className="py-1.5 pr-3 text-xs">{it.kind === "EARNING" ? `Earning${it.taxable ? "" : " (non-taxable)"}` : "Deduction"}</td>
+              <td className="py-1.5 pr-3 text-xs">{it.kind === "EARNING" ? `Earning${it.isOtherBenefit ? " (bonus/benefit)" : it.taxable ? "" : " (non-taxable)"}` : "Deduction"}</td>
               <td className="py-1.5 pr-3 text-xs">{acctLabel(it.accountId)}</td>
               <td className="py-1.5 text-right">{canEdit && <>
                 <button onClick={() => { const { id: _id, ...rest } = it; setForm(rest); setEditing(it.id); setError(null); }} className="rounded px-2 py-1 text-xs text-brand-blue hover:bg-blue-50">Edit</button>

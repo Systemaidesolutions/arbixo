@@ -21,13 +21,20 @@ const ACCRUALS: LeaveAccrual[] = ["UPFRONT", "MONTHLY"];
 const ELIGIBILITY: LeaveEligibility[] = ["ANY", "FEMALE", "MALE"];
 const EMPLOYMENT: EmploymentType[] = ["REGULAR", "PROBATIONARY", "CONTRACTUAL", "PROJECT_BASED", "CASUAL"];
 
-/** Seeds the PH statutory + common leave types the first time a company opens Leave. */
+/**
+ * Seeds the PH statutory + common leave types, adds any default a company is
+ * missing (matched by code), and fills statutory limits added later on rows
+ * that still have none. Company edits are otherwise left alone.
+ */
 export async function ensureLeaveTypes(companyId: string) {
-  if ((await prisma.leaveType.count({ where: { companyId } })) > 0) return;
-  await prisma.leaveType.createMany({
-    skipDuplicates: true,
-    data: PH_LEAVE_DEFAULTS.map((t, i) => ({ ...t, companyId, sortOrder: i })),
-  });
+  const have = new Set((await prisma.leaveType.findMany({ where: { companyId }, select: { code: true } })).map((t) => t.code));
+  const missing = PH_LEAVE_DEFAULTS.map((t, i) => ({ ...t, companyId, sortOrder: i })).filter((t) => !have.has(t.code));
+  if (missing.length) await prisma.leaveType.createMany({ skipDuplicates: true, data: missing });
+  if (have.size) {
+    await prisma.leaveType.updateMany({ where: { companyId, code: "ML", isStatutory: true, soloParentExtraDays: 0 }, data: { soloParentExtraDays: 15 } });
+    await prisma.leaveType.updateMany({ where: { companyId, code: "PL", isStatutory: true, maxFilings: null }, data: { maxFilings: 4 } });
+    await prisma.leaveType.updateMany({ where: { companyId, code: "SLW", isStatutory: true, maxDaysPerYear: null }, data: { maxDaysPerYear: 60 } });
+  }
 }
 
 export function toLeaveRules(t: LeaveType): LeaveTypeRules {
@@ -36,6 +43,7 @@ export function toLeaveRules(t: LeaveType): LeaveTypeRules {
     countCalendarDays: t.countCalendarDays, allowHalfDay: t.allowHalfDay, allowNegative: t.allowNegative,
     minServiceMonths: t.minServiceMonths, eligibility: t.eligibility, soloParentOnly: t.soloParentOnly,
     employmentTypes: t.employmentTypes, maxCarryOver: n(t.maxCarryOver), convertibleToCash: t.convertibleToCash,
+    soloParentExtraDays: n(t.soloParentExtraDays), maxFilings: t.maxFilings, maxDaysPerYear: t.maxDaysPerYear == null ? null : n(t.maxDaysPerYear),
   };
 }
 
@@ -48,8 +56,18 @@ export async function saveLeaveType(companyId: string, id: string | null, raw: R
   if ("creditBasis" in raw) { if (!BASES.includes(raw.creditBasis as LeaveCreditBasis)) return { status: 400, error: "Invalid credit basis." }; data.creditBasis = raw.creditBasis as LeaveCreditBasis; }
   if ("accrual" in raw) { if (!ACCRUALS.includes(raw.accrual as LeaveAccrual)) return { status: 400, error: "Invalid accrual." }; data.accrual = raw.accrual as LeaveAccrual; }
   if ("eligibility" in raw) { if (!ELIGIBILITY.includes(raw.eligibility as LeaveEligibility)) return { status: 400, error: "Invalid eligibility." }; data.eligibility = raw.eligibility as LeaveEligibility; }
-  for (const f of ["days", "maxCarryOver"] as const) {
+  for (const f of ["days", "maxCarryOver", "soloParentExtraDays"] as const) {
     if (f in raw) { const v = Number(raw[f]); if (!Number.isFinite(v) || v < 0 || v > 366) return { status: 400, error: "Days must be between 0 and 366." }; data[f] = v; }
+  }
+  if ("maxFilings" in raw) {
+    const v = raw.maxFilings === null || raw.maxFilings === "" ? null : Math.floor(Number(raw.maxFilings));
+    if (v !== null && (!Number.isFinite(v) || v < 1 || v > 100)) return { status: 400, error: "Invalid max number of filings." };
+    data.maxFilings = v;
+  }
+  if ("maxDaysPerYear" in raw) {
+    const v = raw.maxDaysPerYear === null || raw.maxDaysPerYear === "" ? null : Number(raw.maxDaysPerYear);
+    if (v !== null && (!Number.isFinite(v) || v <= 0 || v > 366)) return { status: 400, error: "Invalid max days per year." };
+    data.maxDaysPerYear = v;
   }
   if ("minServiceMonths" in raw) { const v = Math.floor(Number(raw.minServiceMonths)); if (!Number.isFinite(v) || v < 0 || v > 600) return { status: 400, error: "Invalid months of service." }; data.minServiceMonths = v; }
   if ("employmentTypes" in raw) {
@@ -133,7 +151,7 @@ export async function fileLeave(companyId: string, userId: string, raw: FileLeav
 
   // Overlap with the employee's other open filings.
   const others = await prisma.leaveRequest.findMany({
-    where: { companyId, employeeId: raw.employeeId, status: { in: ["PENDING", "APPROVED"] }, startDate: { lte: utc(raw.endDate) }, endDate: { gte: utc(raw.startDate) } },
+    where: { companyId, employeeId: raw.employeeId, kind: "FILING", status: { in: ["PENDING", "APPROVED"] }, startDate: { lte: utc(raw.endDate) }, endDate: { gte: utc(raw.startDate) } },
     include: { leaveType: { select: { code: true } } },
   });
   const mine = new Set(dates.map((d) => d.date));
@@ -142,8 +160,21 @@ export async function fileLeave(companyId: string, userId: string, raw: FileLeav
     if (clash) return { status: 409, error: `Already on ${o.leaveType.code} leave on ${clash.date}.` };
   }
 
+  if (t.maxFilings) {
+    const filed = await prisma.leaveRequest.count({ where: { employeeId: raw.employeeId, leaveTypeId: t.id, kind: "FILING", status: { in: ["PENDING", "APPROVED"] } } });
+    if (filed >= t.maxFilings) return { status: 400, error: `${t.name} can be filed at most ${t.maxFilings} times (already ${filed}).` };
+  }
+  if (t.maxDaysPerYear != null) {
+    const perYear = daysByYear(dates);
+    const used = await usedByYear(raw.employeeId, t.id, [...perYear.keys()]);
+    for (const [year, want] of perYear) {
+      const left = n(t.maxDaysPerYear) - (used.get(year) ?? 0);
+      if (want > left + 1e-9) return { status: 400, error: `${t.name} is limited to ${n(t.maxDaysPerYear)} days a year; ${Math.max(0, left)} left for ${year}.` };
+    }
+  }
   if (!t.allowNegative) {
-    if (t.creditBasis === "PER_EVENT" && days > n(t.days)) return { status: 400, error: `${t.name} allows up to ${n(t.days)} days per filing.` };
+    const perFiling = n(t.days) + (facts.isSoloParent ? n(t.soloParentExtraDays) : 0);
+    if (t.creditBasis === "PER_EVENT" && days > perFiling) return { status: 400, error: `${t.name} allows up to ${perFiling} days per filing.` };
     if (t.creditBasis === "ANNUAL") {
       const perYear = daysByYear(dates);
       const used = await usedByYear(raw.employeeId, t.id, [...perYear.keys()]);
@@ -187,7 +218,9 @@ export async function decideLeave(companyId: string, userId: string, id: string,
   if (action === "cancel") {
     if (req.status !== "PENDING" && req.status !== "APPROVED") return { status: 400, error: "This filing is already closed." };
     if (req.status === "APPROVED") {
-      const paid = await postedDates(companyId, req.employeeId, req.dates as LeaveDate[]);
+      // A conversion is paid on its startDate; a filing on each leave date.
+      const paidOn = req.kind === "CONVERSION" ? [{ date: isoDate(req.startDate), days: n(req.days) }] : (req.dates as LeaveDate[]);
+      const paid = await postedDates(companyId, req.employeeId, paidOn);
       if (paid.length) return { status: 400, error: `Can't cancel: ${paid.join(", ")} already went through a posted payroll run.` };
     }
     return { status: 200, record: await prisma.leaveRequest.update({ where: { id }, data: { status: "CANCELLED", ...decided } }) };
@@ -253,7 +286,7 @@ export async function leaveForRun(companyId: string, employeeIds: string[], star
   const out = new Map<string, RunLeave[]>();
   if (employeeIds.length === 0) return out;
   const reqs = await prisma.leaveRequest.findMany({
-    where: { companyId, employeeId: { in: employeeIds }, status: "APPROVED", startDate: { lte: utc(end) }, endDate: { gte: utc(start) } },
+    where: { companyId, employeeId: { in: employeeIds }, kind: "FILING", status: "APPROVED", startDate: { lte: utc(end) }, endDate: { gte: utc(start) } },
     include: { leaveType: { select: { code: true } } },
     orderBy: { startDate: "asc" },
   });
@@ -265,4 +298,47 @@ export async function leaveForRun(companyId: string, employeeIds: string[], star
     out.set(r.employeeId, list);
   }
   return out;
+}
+
+/** Unused leave converted to cash and due in this period, in days per employee. */
+export async function conversionsForRun(companyId: string, employeeIds: string[], start: string, end: string): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (employeeIds.length === 0) return out;
+  const rows = await prisma.leaveRequest.findMany({
+    where: { companyId, employeeId: { in: employeeIds }, kind: "CONVERSION", status: "APPROVED", startDate: { gte: utc(start), lte: utc(end) } },
+    select: { employeeId: true, days: true },
+  });
+  for (const r of rows) out.set(r.employeeId, (out.get(r.employeeId) ?? 0) + n(r.days));
+  return out;
+}
+
+/**
+ * Commutes each employee's unused credits of a cash-convertible leave type for
+ * a year (SIL: at year end or on separation). Creates an approved conversion
+ * per employee that the draft run covering `payOn` pays at the daily rate.
+ */
+export async function convertLeave(companyId: string, userId: string, raw: { leaveTypeId?: string; year?: number; payOn?: string; employeeIds?: string[] }): Promise<LeaveResult> {
+  const year = Number(raw.year);
+  if (!raw.leaveTypeId || !Number.isInteger(year) || !isDate(raw.payOn)) return { status: 400, error: "Leave type, year and pay date are required." };
+  const t = await prisma.leaveType.findFirst({ where: { id: raw.leaveTypeId, companyId } });
+  if (!t) return { status: 404, error: "Leave type not found." };
+  if (!t.convertibleToCash || t.creditBasis !== "ANNUAL") return { status: 400, error: `${t.name} isn't convertible to cash.` };
+  const credits = await prisma.leaveCredit.findMany({
+    where: { companyId, leaveTypeId: t.id, year, ...(raw.employeeIds?.length ? { employeeId: { in: raw.employeeIds } } : {}) },
+  });
+  let created = 0;
+  for (const c of credits) {
+    const used = (await usedByYear(c.employeeId, t.id, [year])).get(year) ?? 0;
+    const left = Math.round(((await creditTotal(c.employeeId, t, year, 12)) - used) * 100) / 100;
+    if (left <= 0) continue;
+    await prisma.leaveRequest.create({
+      data: {
+        companyId, employeeId: c.employeeId, leaveTypeId: t.id, kind: "CONVERSION", startDate: utc(raw.payOn), endDate: utc(raw.payOn),
+        dates: [{ date: `${year}-12-31`, days: left }], days: left, isPaid: true, status: "APPROVED",
+        reason: `Unused ${t.code} ${year} converted to cash`, filedById: userId, decidedById: userId, decidedAt: new Date(),
+      },
+    });
+    created++;
+  }
+  return { status: 200, created };
 }

@@ -78,6 +78,7 @@ export default async function LeavesPage({ searchParams }: { searchParams: { yea
             accrual: t.accrual, countCalendarDays: t.countCalendarDays, allowHalfDay: t.allowHalfDay, allowNegative: t.allowNegative,
             minServiceMonths: t.minServiceMonths, eligibility: t.eligibility, soloParentOnly: t.soloParentOnly, employmentTypes: t.employmentTypes,
             maxCarryOver: Number(t.maxCarryOver), convertibleToCash: t.convertibleToCash,
+            soloParentExtraDays: Number(t.soloParentExtraDays), maxFilings: t.maxFilings, maxDaysPerYear: t.maxDaysPerYear == null ? null : Number(t.maxDaysPerYear),
           }))}
           employees={profiles
             .map((p) => ({
@@ -88,7 +89,7 @@ export default async function LeavesPage({ searchParams }: { searchParams: { yea
           requests={requests.map((r) => ({
             id: r.id, employeeId: r.employeeId, employee: name(r.employee), code: r.leaveType.code, typeName: r.leaveType.name,
             startDate: isoDate(r.startDate), endDate: isoDate(r.endDate), days: Number(r.days), isPaid: r.isPaid, reason: r.reason ?? "",
-            status: r.status, decisionNote: r.decisionNote ?? "",
+            status: r.status, decisionNote: r.decisionNote ?? "", kind: r.kind,
           }))}
           balances={balances}
         />

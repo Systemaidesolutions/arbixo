@@ -29,11 +29,14 @@ export default async function PayslipsPage({ params, searchParams }: { params: {
         const named = adj.flatMap((a) => { const it = items.find((i) => i.id === a.payItemId); return it ? [{ ...it, amount: Math.abs(Number(a.amount) || 0) }] : []; });
         const earnings: [string, number][] = [
           [l.payBasis === "DAILY" ? `Basic pay (${n(l.daysWorked)} day/s × ${formatPeso(n(l.rate))})` : `Basic pay${n(l.unpaidLeaveDays) ? ` (less ${n(l.unpaidLeaveDays)} day/s leave without pay)` : ""}`, n(l.basicPay)],
+          ["Holiday pay (unworked regular holiday)", n(l.holidayPay)],
           [`Paid leave (${n(l.leaveDays)} day/s)`, n(l.leavePay)],
-          ["Rest day / holiday premium", n(l.premiumPay)],
+          ["Rest day / special day / holiday premium", n(l.premiumPay)],
           ["Overtime", n(l.otPay)],
           ["Night differential", n(l.nightDiffPay)],
           ["Late / undertime", -n(l.lateDeduction)],
+          [`Unused leave converted to cash (${n(l.leaveConversionDays)} day/s)`, n(l.leaveConversionPay)],
+          [`13th-month pay (1/12 of ${formatPeso(n(l.thirteenthMonthBasis))})`, n(l.thirteenthMonthPay)],
           ...named.filter((x) => x.kind === "EARNING").map((x) => [x.name, x.amount] as [string, number]),
         ];
         const deductions: [string, number][] = [
@@ -51,13 +54,13 @@ export default async function PayslipsPage({ params, searchParams }: { params: {
                 <div className="text-neutral-500">{company.businessAddress}</div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-semibold">PAYSLIP</div>
+                <div className="text-sm font-semibold">{run.kind === "THIRTEENTH_MONTH" ? "13TH-MONTH PAY SLIP" : "PAYSLIP"}</div>
                 <div>{run.runNo}</div>
               </div>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-0.5">
               <div>Employee: <b>{l.employee.lastName}, {l.employee.firstName}</b> ({l.employee.code})</div>
-              <div>Period: <b>{mdy(run.periodStart)} – {mdy(run.periodEnd)}</b></div>
+              <div>Period: <b>{run.kind === "THIRTEENTH_MONTH" ? `Year ${run.periodStart.getUTCFullYear()}` : `${mdy(run.periodStart)} – ${mdy(run.periodEnd)}`}</b></div>
               <div>Position: {l.employee.position ?? "—"}</div>
               <div>Pay date: <b>{mdy(run.payDate)}</b></div>
             </div>

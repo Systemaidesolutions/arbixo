@@ -40,6 +40,7 @@ export async function savePayItem(companyId: string, id: string | null, raw: Rec
   if ("name" in raw || !id) { const nm = clean(raw.name); if (!nm) return { status: 400, error: "Name is required." }; data.name = nm; }
   if ("kind" in raw || !id) { if (!KINDS.includes(raw.kind as PayItemKind)) return { status: 400, error: "Choose Earning or Deduction." }; data.kind = raw.kind as PayItemKind; }
   if (typeof raw.taxable === "boolean") data.taxable = raw.taxable;
+  if (typeof raw.isOtherBenefit === "boolean") data.isOtherBenefit = raw.isOtherBenefit;
   if (typeof raw.isActive === "boolean") data.isActive = raw.isActive;
   if ("accountId" in raw) {
     if (!(await validAccount(companyId, raw.accountId))) return { status: 400, error: "Choose a posting account." };
@@ -84,6 +85,7 @@ export async function saveProfile(companyId: string, employeeId: string, raw: Re
     isMinimumWage: raw.isMinimumWage === true,
     sex: raw.sex === "MALE" || raw.sex === "FEMALE" ? (raw.sex as Sex) : null,
     isSoloParent: raw.isSoloParent === true,
+    thirteenthMonthEligible: raw.thirteenthMonthEligible !== false,
     recurring,
     bankName: clean(raw.bankName),
     bankAccountNo: clean(raw.bankAccountNo),

@@ -1129,6 +1129,13 @@ enum PayItemKind {
   DEDUCTION
 }
 
+// REGULAR = a pay period's salaries; THIRTEENTH_MONTH = PD 851 13th-month pay
+// (1/12 of basic salary earned in the calendar year, less any already paid).
+enum PayrollRunKind {
+  REGULAR
+  THIRTEENTH_MONTH
+}
+
 enum PayrollRunStatus {
   DRAFT
   POSTED
@@ -1152,6 +1159,26 @@ model PayrollSetup {
   specialHolidayMultiplier  Decimal @default(1.30) @db.Decimal(6, 4)
   regularHolidayMultiplier  Decimal @default(2.00) @db.Decimal(6, 4)
   nightDiffRate             Decimal @default(0.10) @db.Decimal(6, 4)
+  // DOLE Handbook on Workers' Statutory Monetary Benefits (2024) rates for
+  // combined days, and the OT rate on rest days / special days / holidays
+  // (130% of that day's hourly rate; 125% is for ordinary days only).
+  specialRestDayMultiplier       Decimal @default(1.50) @db.Decimal(6, 4)
+  doubleSpecialMultiplier        Decimal @default(1.50) @db.Decimal(6, 4)
+  doubleSpecialRestDayMultiplier Decimal @default(1.95) @db.Decimal(6, 4)
+  regularHolidayRestDayMultiplier Decimal @default(2.60) @db.Decimal(6, 4)
+  doubleHolidayMultiplier        Decimal @default(3.00) @db.Decimal(6, 4)
+  doubleHolidayRestDayMultiplier Decimal @default(3.90) @db.Decimal(6, 4)
+  premiumOtMultiplier            Decimal @default(1.30) @db.Decimal(6, 4)
+  // Holiday pay only if present (or on paid leave) on the workday before the
+  // regular holiday (Art. 94 rules, handbook "Absences").
+  holidayRequiresPriorPresence   Boolean @default(true)
+  // What a monthly salary already covers: 365 factor = rest days + special
+  // days; 313/261 = special days; 305/253 = neither. Work on a covered day
+  // earns only the premium portion.
+  monthlyIncludesRestDays        Boolean @default(false)
+  monthlyIncludesSpecialDays     Boolean @default(true)
+  // 13th-month pay + other benefits exempt from tax up to this amount a year.
+  benefitsExemptCap              Decimal @default(90000) @db.Decimal(18, 2)
   // Daily-paid employees still get 100% of the daily rate on an unworked regular holiday.
   payUnworkedRegularHoliday Boolean @default(true)
   // Weekdays that are rest days (0 = Sunday … 6 = Saturday). Leave filings
@@ -1167,6 +1194,7 @@ model PayrollSetup {
   withholdingTaxPayableAccountId String?
   otherDeductionsAccountId       String? // fallback for deduction pay items without their own account
   netPayAccountId                String? // Salaries payable (or Cash in bank)
+  thirteenthMonthAccountId       String? // 13th-month pay expense (falls back to salaries)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1206,6 +1234,9 @@ model PayItem {
   name      String
   kind      PayItemKind
   taxable   Boolean     @default(true) // EARNING only: counted in taxable compensation
+  // EARNING only: a bonus/benefit (Christmas bonus, productivity incentive…)
+  // that shares the yearly tax exemption cap with the 13th-month pay.
+  isOtherBenefit Boolean @default(false)
   accountId String? // expense (earning) / liability or receivable (deduction)
   isActive  Boolean     @default(true)
   createdAt DateTime    @default(now())
@@ -1239,6 +1270,8 @@ model PayrollProfile {
   // Used for leave eligibility (maternity, paternity, solo parent, VAWC…).
   sex           Sex?
   isSoloParent  Boolean @default(false)
+  // Rank-and-file employees get 13th-month pay (PD 851); managerial don't.
+  thirteenthMonthEligible Boolean @default(true)
 
   // Recurring earnings/deductions copied into every new run: [{ payItemId, amount }].
   recurring Json?
@@ -1265,6 +1298,7 @@ model PayrollRun {
   periodEnd   DateTime
   payDate     DateTime
   status      PayrollRunStatus @default(DRAFT)
+  kind        PayrollRunKind   @default(REGULAR)
   remarks     String?
 
   // Day type per date in the period: { "2026-11-01": "RD", "2026-11-30": "RH" }.
@@ -1307,6 +1341,10 @@ model PayrollRunLine {
   lateMinutes    Decimal @default(0) @db.Decimal(10, 2) // late + undertime
   otHours        Decimal @default(0) @db.Decimal(8, 2)
   nightDiffHours Decimal @default(0) @db.Decimal(8, 2)
+  // Work, OT and night hours on specific dates, priced at that date's day
+  // type: { "2026-11-30": { days: 1, ot: 2, nd: 0, ndOt: 0 } }. `days` is for
+  // monthly-paid staff working a rest day/holiday (daily-rate use the grid).
+  dayHours       Json?
   // This run's earnings/deductions: [{ payItemId, amount }].
   adjustments    Json?
   // Approved leave falling in the period, refreshed on every recompute while
@@ -1320,6 +1358,12 @@ model PayrollRunLine {
   leaveDays       Decimal @default(0) @db.Decimal(8, 2) // paid leave days
   leavePay        Decimal @default(0) @db.Decimal(18, 2) // DAILY basis: paid leave at the daily rate
   unpaidLeaveDays Decimal @default(0) @db.Decimal(8, 2)
+  holidayPay      Decimal @default(0) @db.Decimal(18, 2) // DAILY basis: unworked regular holidays
+  leaveConversionDays Decimal @default(0) @db.Decimal(8, 2) // unused leave converted to cash
+  leaveConversionPay  Decimal @default(0) @db.Decimal(18, 2)
+  exemptBenefits  Decimal @default(0) @db.Decimal(18, 2) // 13th month/benefits counted against the yearly cap
+  thirteenthMonthBasis Decimal @default(0) @db.Decimal(18, 2) // basic salary earned this year (13th-month runs)
+  thirteenthMonthPay   Decimal @default(0) @db.Decimal(18, 2)
   otPay           Decimal @default(0) @db.Decimal(18, 2)
   nightDiffPay    Decimal @default(0) @db.Decimal(18, 2)
   lateDeduction   Decimal @default(0) @db.Decimal(18, 2)
@@ -1371,6 +1415,11 @@ enum LeaveEligibility {
   MALE
 }
 
+enum LeaveRequestKind {
+  FILING
+  CONVERSION
+}
+
 enum LeaveStatus {
   PENDING
   APPROVED
@@ -1404,6 +1453,11 @@ model LeaveType {
 
   // Year-end
   maxCarryOver      Decimal @default(0) @db.Decimal(8, 2)
+
+  // Limits from the statutes
+  soloParentExtraDays Decimal @default(0) @db.Decimal(8, 2) // maternity: +15 days for solo parents
+  maxFilings          Int? // lifetime filings, e.g. paternity: first 4 deliveries
+  maxDaysPerYear      Decimal? @db.Decimal(8, 2) // e.g. special leave for women: 60 days a year
   convertibleToCash Boolean @default(false)
 
   sortOrder Int      @default(0)
@@ -1453,6 +1507,9 @@ model LeaveRequest {
   isPaid      Boolean // snapshot of the leave type when filed
   reason      String?
   status      LeaveStatus @default(PENDING)
+  // CONVERSION = unused credits paid in cash (SIL commutation). `dates` holds
+  // one entry dated Dec 31 of the converted year; startDate = date to pay it.
+  kind        LeaveRequestKind @default(FILING)
 
   filedById    String?
   decidedById  String?

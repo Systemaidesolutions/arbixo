@@ -37,16 +37,23 @@ export default async function PayrollSetupPage() {
           accounts={accounts}
           setup={{
             workDaysPerYear: setup.workDaysPerYear, hoursPerDay: n(setup.hoursPerDay), otMultiplier: n(setup.otMultiplier),
+            premiumOtMultiplier: n(setup.premiumOtMultiplier),
             restDayMultiplier: n(setup.restDayMultiplier), specialHolidayMultiplier: n(setup.specialHolidayMultiplier),
-            regularHolidayMultiplier: n(setup.regularHolidayMultiplier), nightDiffRate: n(setup.nightDiffRate),
-            payUnworkedRegularHoliday: setup.payUnworkedRegularHoliday, restWeekdays: setup.restWeekdays,
+            specialRestDayMultiplier: n(setup.specialRestDayMultiplier), doubleSpecialMultiplier: n(setup.doubleSpecialMultiplier),
+            doubleSpecialRestDayMultiplier: n(setup.doubleSpecialRestDayMultiplier),
+            regularHolidayMultiplier: n(setup.regularHolidayMultiplier), regularHolidayRestDayMultiplier: n(setup.regularHolidayRestDayMultiplier),
+            doubleHolidayMultiplier: n(setup.doubleHolidayMultiplier), doubleHolidayRestDayMultiplier: n(setup.doubleHolidayRestDayMultiplier),
+            nightDiffRate: n(setup.nightDiffRate), benefitsExemptCap: n(setup.benefitsExemptCap),
+            payUnworkedRegularHoliday: setup.payUnworkedRegularHoliday, holidayRequiresPriorPresence: setup.holidayRequiresPriorPresence,
+            monthlyIncludesRestDays: setup.monthlyIncludesRestDays, monthlyIncludesSpecialDays: setup.monthlyIncludesSpecialDays,
+            restWeekdays: setup.restWeekdays, thirteenthMonthAccountId: setup.thirteenthMonthAccountId,
             salariesExpenseAccountId: setup.salariesExpenseAccountId, contributionsExpenseAccountId: setup.contributionsExpenseAccountId,
             sssPayableAccountId: setup.sssPayableAccountId, philhealthPayableAccountId: setup.philhealthPayableAccountId,
             hdmfPayableAccountId: setup.hdmfPayableAccountId, withholdingTaxPayableAccountId: setup.withholdingTaxPayableAccountId,
             otherDeductionsAccountId: setup.otherDeductionsAccountId, netPayAccountId: setup.netPayAccountId,
           }}
           groups={groups.map((g) => ({ id: g.id, code: g.code, name: g.name, frequency: g.frequency, deductSss: g.deductSss, deductPhilhealth: g.deductPhilhealth, deductHdmf: g.deductHdmf, withholdTax: g.withholdTax, isActive: g.isActive }))}
-          items={items.map((i) => ({ id: i.id, code: i.code, name: i.name, kind: i.kind, taxable: i.taxable, accountId: i.accountId, isActive: i.isActive }))}
+          items={items.map((i) => ({ id: i.id, code: i.code, name: i.name, kind: i.kind, taxable: i.taxable, isOtherBenefit: i.isOtherBenefit, accountId: i.accountId, isActive: i.isActive }))}
         />
       </div>
     </main>

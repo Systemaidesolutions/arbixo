@@ -12,7 +12,7 @@ type Employee = { id: string; code: string; name: string; active: boolean; facts
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
 type Request = {
   id: string; employeeId: string; employee: string; code: string; typeName: string; startDate: string; endDate: string;
-  days: number; isPaid: boolean; reason: string; status: Status; decisionNote: string;
+  days: number; isPaid: boolean; reason: string; status: Status; decisionNote: string; kind: "FILING" | "CONVERSION";
 };
 export type Balance = { employeeId: string; leaveTypeId: string; granted: number; carriedOver: number; adjustment: number; earned: number; used: number };
 
@@ -152,7 +152,9 @@ function Filings({ canEdit, year, restWeekdays, types, employees, requests, bala
             <div className="mt-3 rounded border border-neutral-200 bg-white p-2 text-xs text-neutral-600">
               <div className="flex flex-wrap gap-x-5 gap-y-1">
                 <span><b>{days}</b> {type.countCalendarDays ? "calendar" : "working"} day(s){type.isPaid ? " with pay" : " without pay"}</span>
-                {type.creditBasis === "PER_EVENT" && <span>Up to {type.days} days per filing</span>}
+                {type.creditBasis === "PER_EVENT" && <span>Up to {type.days + (emp?.facts.isSoloParent ? type.soloParentExtraDays : 0)} days per filing{type.soloParentExtraDays ? ` (+${type.soloParentExtraDays} for solo parents)` : ""}</span>}
+                {type.maxDaysPerYear != null && <span>Max {type.maxDaysPerYear} days a year</span>}
+                {type.maxFilings != null && <span>Max {type.maxFilings} filings in total</span>}
                 {type.creditBasis === "ANNUAL" && emp && (
                   bal && yearOfStart === year
                     ? <span>Balance {year}: <b>{r2(bal.earned - bal.used)}</b> of {r2(bal.earned)} available</span>
@@ -194,8 +196,8 @@ function Filings({ canEdit, year, restWeekdays, types, employees, requests, bala
             {rows.map((r) => (
               <tr key={r.id} className="align-top">
                 <td className="py-1.5 pr-3">{r.employee}</td>
-                <td className="py-1.5 pr-3"><span className="font-mono text-xs">{r.code}</span> <span className="text-xs text-neutral-500">{r.typeName}{r.isPaid ? "" : " (no pay)"}</span></td>
-                <td className="py-1.5 pr-3 text-xs">{r.startDate === r.endDate ? mdy(r.startDate) : `${mdy(r.startDate)} – ${mdy(r.endDate)}`}</td>
+                <td className="py-1.5 pr-3"><span className="font-mono text-xs">{r.code}</span> <span className="text-xs text-neutral-500">{r.typeName}{r.isPaid ? "" : " (no pay)"}</span>{r.kind === "CONVERSION" && <span className="ml-1 rounded bg-blue-50 px-1 text-[10px] text-brand-blue">cash conversion</span>}</td>
+                <td className="py-1.5 pr-3 text-xs">{r.kind === "CONVERSION" ? `Paid in run covering ${mdy(r.startDate)}` : r.startDate === r.endDate ? mdy(r.startDate) : `${mdy(r.startDate)} – ${mdy(r.endDate)}`}</td>
                 <td className="py-1.5 pr-3 text-right font-mono">{r.days}</td>
                 <td className="py-1.5 pr-3 text-xs text-neutral-600">{r.reason}{r.decisionNote && <div className="text-neutral-400">Note: {r.decisionNote}</div>}</td>
                 <td className="py-1.5 pr-3"><span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE[r.status]}`}>{r.status}</span></td>
@@ -232,6 +234,17 @@ function Balances({ canEdit, year, types, employees, balances }: { canEdit: bool
     if (res.ok) router.refresh();
   }
 
+  async function convert(t: LeaveType) {
+    const payOn = prompt(`Convert every employee's unused ${t.code} ${year} credits to cash, paid at the daily rate in the draft payroll run that covers this date (YYYY-MM-DD):`, new Date().toISOString().slice(0, 10));
+    if (!payOn) return;
+    setBusy(true); setMsg(null);
+    const res = await fetch("/api/payroll/leave-credits/convert", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ leaveTypeId: t.id, year, payOn }) });
+    const d = await res.json().catch(() => ({}));
+    setBusy(false);
+    setMsg(res.ok ? `Converted unused ${t.code} for ${d.created} employee(s).` : d.error ?? "Could not convert.");
+    if (res.ok) router.refresh();
+  }
+
   async function saveEdit() {
     if (!edit) return;
     const err = await send("/api/payroll/leave-credits", "PUT", { ...edit, year });
@@ -250,6 +263,9 @@ function Balances({ canEdit, year, types, employees, balances }: { canEdit: bool
         </div>
         <div className="flex items-center gap-2">
           {msg && <span className="text-xs text-neutral-600">{msg}</span>}
+          {canEdit && annual.filter((t) => t.convertibleToCash).map((t) => (
+            <button key={t.id} onClick={() => convert(t)} disabled={busy} title="Commute unused credits to cash (e.g. SIL at year end)" className="rounded border border-brand-blue px-3 py-1 text-sm text-brand-blue hover:bg-blue-50 disabled:opacity-50">Convert unused {t.code} to cash</button>
+          ))}
           {canEdit && <button onClick={grant} disabled={busy} className="rounded bg-brand-navy px-3 py-1 text-sm text-white hover:bg-brand-navyLight disabled:opacity-50">Grant {year} credits</button>}
         </div>
       </div>

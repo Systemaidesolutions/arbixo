@@ -1,33 +1,67 @@
 // Pure payroll computation — no DB access, so it runs the same on the server
 // (when saving/posting a run) and in the browser (live preview while encoding).
 //
-// Statutory tables are the 2025 rates. They're kept here as plain functions so
-// a future rate change is a one-file edit (or can be moved into PayrollSetup).
+// Pay rules follow the DOLE "Handbook on Workers' Statutory Monetary Benefits"
+// (2024 edition): holiday pay (Art. 94), premium pay (Arts. 91-93), overtime
+// (Art. 87), night shift differential (Art. 86), 13th-month pay (PD 851) and
+// the withholding-tax exemptions it summarizes. Multipliers are company
+// settings (PayrollSetup) defaulting to the handbook's minimum rates.
+//
+// Statutory contribution tables are the 2025 rates. They're kept here as
+// plain functions so a future rate change is a one-file edit.
 
 export type PayBasis = "MONTHLY" | "DAILY";
 export type PayFrequency = "MONTHLY" | "SEMI_MONTHLY" | "WEEKLY" | "DAILY";
-export type DayType = "REG" | "RD" | "SH" | "RH";
+
+/**
+ * Day type of a date in the run. RD suffix = falls on the rest day.
+ *   REG ordinary day · RD rest day · SH special (non-working) day ·
+ *   DSH double special day · RH regular holiday · DH double regular holiday.
+ * A special (working) day is paid as an ordinary day, so it's REG.
+ */
+export type DayType = "REG" | "RD" | "SH" | "SHRD" | "DSH" | "DSHRD" | "RH" | "RHRD" | "DH" | "DHRD";
+export const DAY_TYPES: DayType[] = ["REG", "RD", "SH", "SHRD", "DSH", "DSHRD", "RH", "RHRD", "DH", "DHRD"];
 
 export type PayrollRules = {
   workDaysPerYear: number;
   hoursPerDay: number;
-  otMultiplier: number;
+  otMultiplier: number; // OT on an ordinary day (125%)
+  premiumOtMultiplier: number; // OT on a rest day / special day / holiday (130% of that day's rate)
   restDayMultiplier: number;
   specialHolidayMultiplier: number;
+  specialRestDayMultiplier: number;
+  doubleSpecialMultiplier: number;
+  doubleSpecialRestDayMultiplier: number;
   regularHolidayMultiplier: number;
+  regularHolidayRestDayMultiplier: number;
+  doubleHolidayMultiplier: number;
+  doubleHolidayRestDayMultiplier: number;
   nightDiffRate: number;
   payUnworkedRegularHoliday: boolean;
+  holidayRequiresPriorPresence: boolean;
+  monthlyIncludesRestDays: boolean;
+  monthlyIncludesSpecialDays: boolean;
 };
 
 export const DEFAULT_RULES: PayrollRules = {
   workDaysPerYear: 313,
   hoursPerDay: 8,
   otMultiplier: 1.25,
+  premiumOtMultiplier: 1.3,
   restDayMultiplier: 1.3,
   specialHolidayMultiplier: 1.3,
+  specialRestDayMultiplier: 1.5,
+  doubleSpecialMultiplier: 1.5,
+  doubleSpecialRestDayMultiplier: 1.95,
   regularHolidayMultiplier: 2,
+  regularHolidayRestDayMultiplier: 2.6,
+  doubleHolidayMultiplier: 3,
+  doubleHolidayRestDayMultiplier: 3.9,
   nightDiffRate: 0.1,
   payUnworkedRegularHoliday: true,
+  holidayRequiresPriorPresence: true,
+  monthlyIncludesRestDays: false,
+  monthlyIncludesSpecialDays: true,
 };
 
 export type GroupRules = {
@@ -38,7 +72,13 @@ export type GroupRules = {
   withholdTax: boolean;
 };
 
-export type Adjustment = { payItemId: string; code: string; name: string; kind: "EARNING" | "DEDUCTION"; taxable: boolean; amount: number };
+export type Adjustment = {
+  payItemId: string; code: string; name: string; kind: "EARNING" | "DEDUCTION"; taxable: boolean;
+  isOtherBenefit?: boolean; amount: number;
+};
+
+/** Work on a specific date, priced at that date's day type. */
+export type DayHours = { days?: number; ot?: number; nd?: number; ndOt?: number };
 
 export type LineInput = {
   payBasis: PayBasis;
@@ -47,11 +87,14 @@ export type LineInput = {
   attendance?: Record<string, number> | null; // DAILY: days worked per ISO date
   absentDays?: number; // MONTHLY
   lateMinutes?: number;
-  otHours?: number;
-  nightDiffHours?: number;
+  otHours?: number; // ordinary-day OT (dated OT goes in dayHours)
+  nightDiffHours?: number; // ordinary-day night hours
+  dayHours?: Record<string, DayHours> | null;
   adjustments?: Adjustment[];
   // Approved leave in the period, one entry per date (see lib/payroll/leave.ts).
   leaves?: { date: string; days: number; paid: boolean }[] | null;
+  leaveConversionDays?: number; // unused leave paid in cash this run
+  benefitsExemptRemaining?: number; // what's left of the yearly 13th-month/benefits exemption
 };
 
 export type RunContext = {
@@ -65,14 +108,18 @@ export type RunContext = {
 export type LineResult = {
   daysWorked: number;
   basicPay: number;
+  holidayPay: number;
   premiumPay: number;
   leaveDays: number;
   leavePay: number;
   unpaidLeaveDays: number;
+  leaveConversionDays: number;
+  leaveConversionPay: number;
   otPay: number;
   nightDiffPay: number;
   lateDeduction: number;
   otherEarnings: number;
+  exemptBenefits: number;
   grossPay: number;
   sssEe: number;
   sssEr: number;
@@ -111,9 +158,49 @@ export function periodsPerYear(frequency: PayFrequency, periodDayCount: number):
   }
 }
 
+// ---------------- Day types ----------------
+
+export const isRestDayType = (t: DayType) => t === "RD" || t.endsWith("RD");
+export const isSpecialDayType = (t: DayType) => t === "SH" || t === "SHRD" || t === "DSH" || t === "DSHRD";
+/** Regular holidays on this date: 0, 1, or 2 for a double holiday. */
+export const regularHolidayCount = (t: DayType) => (t === "DH" || t === "DHRD" ? 2 : t === "RH" || t === "RHRD" ? 1 : 0);
+
+/** Pay for work on this day type, as a multiple of the daily rate (first 8 hours). */
+export function dayMultiplier(t: DayType, r: PayrollRules): number {
+  switch (t) {
+    case "REG": return 1;
+    case "RD": return r.restDayMultiplier;
+    case "SH": return r.specialHolidayMultiplier;
+    case "SHRD": return r.specialRestDayMultiplier;
+    case "DSH": return r.doubleSpecialMultiplier;
+    case "DSHRD": return r.doubleSpecialRestDayMultiplier;
+    case "RH": return r.regularHolidayMultiplier;
+    case "RHRD": return r.regularHolidayRestDayMultiplier;
+    case "DH": return r.doubleHolidayMultiplier;
+    case "DHRD": return r.doubleHolidayRestDayMultiplier;
+  }
+}
+
+/** OT hour = hourly rate × day multiplier × (125% on ordinary days, 130% otherwise). */
+export const otFactor = (t: DayType, r: PayrollRules) => (t === "REG" ? r.otMultiplier : r.premiumOtMultiplier);
+
+/**
+ * How many days' pay a monthly salary already includes for this date, so
+ * work on it earns only the rest. Regular holidays are always paid (twice on
+ * a double holiday); special and rest days depend on the salary factor.
+ */
+export function monthlyCoveredDays(t: DayType, r: PayrollRules): number {
+  const rh = regularHolidayCount(t);
+  if (rh) return rh;
+  if (t === "REG") return 1;
+  if (isSpecialDayType(t) && r.monthlyIncludesSpecialDays) return 1;
+  if (isRestDayType(t) && r.monthlyIncludesRestDays) return 1;
+  return 0;
+}
+
 // ---------------- Statutory contributions (monthly amounts) ----------------
 
-/** SSS 2025: 15% of the Monthly Salary Credit (EE 5%, ER 10%), MSC 5,000–35,000 in 500 steps, plus employer EC. */
+/** SSS 2025: 15% of the Monthly Salary Credit (EE 5%, ER 10%), MSC 5,000–35,000 in 500 steps, plus employer EC (₱10 below ₱14,750 compensation, ₱30 from there). */
 export function sssMonthly(monthlyComp: number): { ee: number; er: number } {
   if (monthlyComp <= 0) return { ee: 0, er: 0 };
   const msc = Math.min(35000, Math.max(5000, Math.floor((monthlyComp + 250) / 500) * 500));
@@ -121,7 +208,7 @@ export function sssMonthly(monthlyComp: number): { ee: number; er: number } {
   return { ee: round2(msc * 0.05), er: round2(msc * 0.1 + ec) };
 }
 
-/** PhilHealth 2025: 5% of monthly basic salary (floor 10,000, ceiling 100,000), shared equally. */
+/** PhilHealth 2024–2025: 5% of monthly basic salary (floor 10,000, ceiling 100,000), shared equally. */
 export function philhealthMonthly(monthlyBasic: number): { ee: number; er: number } {
   if (monthlyBasic <= 0) return { ee: 0, er: 0 };
   const base = Math.min(100000, Math.max(10000, monthlyBasic));
@@ -129,14 +216,14 @@ export function philhealthMonthly(monthlyBasic: number): { ee: number; er: numbe
   return { ee: half, er: half };
 }
 
-/** Pag-IBIG: EE 1% (≤1,500) or 2%, ER 2%, on a fund salary capped at 10,000. */
+/** Pag-IBIG (Circular 460): EE 1% (fund salary ≤1,500) or 2%, ER 2%, on a fund salary capped at 10,000. */
 export function hdmfMonthly(monthlyComp: number): { ee: number; er: number } {
   if (monthlyComp <= 0) return { ee: 0, er: 0 };
   const base = Math.min(10000, monthlyComp);
   return { ee: round2(base * (monthlyComp <= 1500 ? 0.01 : 0.02)), er: round2(base * 0.02) };
 }
 
-/** Annual income tax on compensation (TRAIN table, 2023 onward). */
+/** Annual income tax on compensation (TRAIN table, 2023 onward). ₱250,000 and below is exempt. */
 export function annualIncomeTax(annualTaxable: number): number {
   const t = annualTaxable;
   if (t <= 250000) return 0;
@@ -147,6 +234,10 @@ export function annualIncomeTax(annualTaxable: number): number {
   return 2202500 + (t - 8000000) * 0.35;
 }
 
+export function dailyRateOf(payBasis: PayBasis, rate: number, rules: PayrollRules): number {
+  return payBasis === "DAILY" ? rate : (rate * 12) / (rules.workDaysPerYear || 313);
+}
+
 // ---------------- Line computation ----------------
 
 export function computeLine(input: LineInput, ctx: RunContext): LineResult {
@@ -154,88 +245,149 @@ export function computeLine(input: LineInput, ctx: RunContext): LineResult {
   const dates = periodDates(ctx.periodStart, ctx.periodEnd);
   const ppy = periodsPerYear(group.frequency, dates.length);
   const runsPerMonth = ppy / 12;
-  const dayTypes = ctx.dayTypes ?? {};
+  const typeOf = (d: string): DayType => ctx.dayTypes?.[d] ?? "REG";
 
-  const dailyRate = input.payBasis === "DAILY" ? input.rate : (input.rate * 12) / rules.workDaysPerYear;
+  const dailyRate = dailyRateOf(input.payBasis, input.rate, rules);
   const hourlyRate = dailyRate / (rules.hoursPerDay || 8);
 
-  let daysWorked = 0;
-  let basicPay = 0;
-  let premiumPay = 0;
-  let leavePay = 0;
   const leaves = input.leaves ?? [];
   const leaveDays = leaves.filter((l) => l.paid).reduce((s, l) => s + (Number(l.days) || 0), 0);
   const unpaidLeaveDays = leaves.filter((l) => !l.paid).reduce((s, l) => s + (Number(l.days) || 0), 0);
+  const paidLeave = new Map<string, number>();
+  for (const l of leaves) if (l.paid) paidLeave.set(l.date, (paidLeave.get(l.date) ?? 0) + (Number(l.days) || 0));
+  const dayHours = input.dayHours ?? {};
+
+  let daysWorked = 0;
+  let basicPay = 0;
+  let holidayPay = 0;
+  let premiumPay = 0;
+  let leavePay = 0;
 
   if (input.payBasis === "DAILY") {
-    // Pay per date actually worked; the date's day type sets the multiplier.
-    // The 100% part goes to basic pay, anything above it to premium pay.
+    // Daily-paid: paid for days actually worked and unworked regular holidays.
     const att = input.attendance ?? {};
-    const paidLeave = new Map<string, number>();
-    for (const l of leaves) if (l.paid) paidLeave.set(l.date, (paidLeave.get(l.date) ?? 0) + (Number(l.days) || 0));
-    for (const date of dates) {
-      const days = Math.max(0, Number(att[date]) || 0);
-      const type = dayTypes[date] ?? "REG";
-      // Paid leave pays the daily rate on a workday or special day. A rest day
-      // isn't paid anyway, and an unworked regular holiday is already paid below.
-      const onLeave = paidLeave.get(date) ?? 0;
-      if (onLeave > 0 && (type === "REG" || type === "SH")) leavePay += dailyRate * Math.min(1, onLeave);
-      if (days > 0) {
-        daysWorked += days;
-        const mult =
-          type === "RD" ? rules.restDayMultiplier
-          : type === "SH" ? rules.specialHolidayMultiplier
-          : type === "RH" ? rules.regularHolidayMultiplier
-          : 1;
-        basicPay += dailyRate * days;
-        premiumPay += dailyRate * days * (mult - 1);
-      } else if (type === "RH" && rules.payUnworkedRegularHoliday) {
-        basicPay += dailyRate;
+    const worked = (d: string) => Math.max(0, Number(att[d]) || 0);
+
+    // Holiday pay needs presence (or paid leave) on the workday before the
+    // holiday. Rest days and unworked special days in between are skipped; for
+    // successive holidays the earlier one decides (handbook, Holiday Pay E–F).
+    // Before the period starts we can't tell, so assume present.
+    const eligible = new Map<string, boolean>();
+    const holidayEligible = (idx: number): boolean => {
+      if (!rules.holidayRequiresPriorPresence) return true;
+      const key = dates[idx];
+      if (eligible.has(key)) return eligible.get(key)!;
+      let ok = true;
+      for (let j = idx - 1; j >= 0; j--) {
+        const d = dates[j];
+        const t = typeOf(d);
+        if (worked(d) > 0 || (paidLeave.get(d) ?? 0) > 0) { ok = true; break; }
+        if (regularHolidayCount(t)) { ok = holidayEligible(j); break; }
+        if (isRestDayType(t) || isSpecialDayType(t)) continue; // non-work day: look further back
+        ok = false; // absent on an ordinary workday
+        break;
       }
-    }
+      eligible.set(key, ok);
+      return ok;
+    };
+
+    dates.forEach((date, idx) => {
+      const days = worked(date);
+      const type = typeOf(date);
+      const onLeave = paidLeave.get(date) ?? 0;
+      if (days > 0) {
+        // Worked: 100% to basic, the rest of the day's multiplier to premium.
+        daysWorked += days;
+        basicPay += dailyRate * days;
+        premiumPay += dailyRate * days * (dayMultiplier(type, rules) - 1);
+      } else if (regularHolidayCount(type) && rules.payUnworkedRegularHoliday && holidayEligible(idx)) {
+        // Unworked regular holiday: 100% (200% on a double holiday).
+        holidayPay += dailyRate * regularHolidayCount(type);
+      } else if (onLeave > 0 && !isRestDayType(type) && !regularHolidayCount(type)) {
+        // Paid leave on a workday or special day.
+        leavePay += dailyRate * Math.min(1, onLeave);
+      }
+    });
   } else {
-    // Fixed salary split evenly across the month's runs, less absences and
-    // unpaid leave. Paid leave is already covered by the salary.
+    // Monthly-paid: fixed salary split evenly across the month's runs, less
+    // absences and unpaid leave. Paid leave and regular holidays are already
+    // covered by the salary.
     const absent = Math.max(0, input.absentDays ?? 0) + unpaidLeaveDays;
     basicPay = input.rate / runsPerMonth - dailyRate * absent;
     daysWorked = Math.max(0, rules.workDaysPerYear / ppy - absent - leaveDays);
   }
 
-  const otPay = hourlyRate * rules.otMultiplier * Math.max(0, input.otHours ?? 0);
-  const nightDiffPay = hourlyRate * rules.nightDiffRate * Math.max(0, input.nightDiffHours ?? 0);
+  // Work on rest days / special days / holidays entered by date. Daily-rate
+  // staff get the day itself from the grid; monthly-paid staff get the part
+  // of the day's rate their salary doesn't already include.
+  let otPay = hourlyRate * rules.otMultiplier * Math.max(0, input.otHours ?? 0);
+  let nightDiffPay = hourlyRate * rules.nightDiffRate * Math.max(0, input.nightDiffHours ?? 0);
+  for (const [date, h] of Object.entries(dayHours)) {
+    if (date < ctx.periodStart || date > ctx.periodEnd) continue;
+    const type = typeOf(date);
+    const mult = dayMultiplier(type, rules);
+    const ot = Math.max(0, Number(h.ot) || 0);
+    const nd = Math.max(0, Number(h.nd) || 0);
+    const ndOt = Math.max(0, Number(h.ndOt) || 0);
+    if (input.payBasis === "MONTHLY") {
+      const days = Math.min(1, Math.max(0, Number(h.days) || 0));
+      premiumPay += dailyRate * days * Math.max(0, mult - monthlyCoveredDays(type, rules));
+    }
+    otPay += hourlyRate * mult * otFactor(type, rules) * ot;
+    // Night shift: +10% of the hour's rate, including OT hours at night.
+    nightDiffPay += hourlyRate * mult * rules.nightDiffRate * nd + hourlyRate * mult * otFactor(type, rules) * rules.nightDiffRate * ndOt;
+  }
+
   const lateDeduction = (hourlyRate / 60) * Math.max(0, input.lateMinutes ?? 0);
+  const leaveConversionDays = Math.max(0, input.leaveConversionDays ?? 0);
+  // Commuted leave is paid at the salary rate on the date of commutation (SIL rules).
+  const leaveConversionPay = dailyRate * leaveConversionDays;
 
   const adjustments = input.adjustments ?? [];
   const earnings = adjustments.filter((a) => a.kind === "EARNING");
-  const otherEarnings = earnings.reduce((s, a) => s + (Number(a.amount) || 0), 0);
-  const nonTaxableEarnings = earnings.filter((a) => !a.taxable).reduce((s, a) => s + (Number(a.amount) || 0), 0);
-  const otherDeductions = adjustments.filter((a) => a.kind === "DEDUCTION").reduce((s, a) => s + (Number(a.amount) || 0), 0);
+  const amt = (a: Adjustment) => Number(a.amount) || 0;
+  const otherEarnings = earnings.reduce((s, a) => s + amt(a), 0);
+  const benefits = earnings.filter((a) => a.isOtherBenefit).reduce((s, a) => s + amt(a), 0);
+  const nonTaxableEarnings = earnings.filter((a) => !a.isOtherBenefit && !a.taxable).reduce((s, a) => s + amt(a), 0);
+  const taxableExtras = earnings.filter((a) => !a.isOtherBenefit && a.taxable).reduce((s, a) => s + amt(a), 0);
+  const otherDeductions = adjustments.filter((a) => a.kind === "DEDUCTION").reduce((s, a) => s + amt(a), 0);
 
   const r = {
     basicPay: round2(Math.max(0, basicPay)),
+    holidayPay: round2(holidayPay),
     premiumPay: round2(premiumPay),
     leavePay: round2(leavePay),
+    leaveConversionPay: round2(leaveConversionPay),
     otPay: round2(otPay),
     nightDiffPay: round2(nightDiffPay),
     lateDeduction: round2(lateDeduction),
   };
-  const grossPay = round2(r.basicPay + r.premiumPay + r.leavePay + r.otPay + r.nightDiffPay - r.lateDeduction + otherEarnings);
+  const grossPay = round2(r.basicPay + r.holidayPay + r.premiumPay + r.leavePay + r.leaveConversionPay + r.otPay + r.nightDiffPay - r.lateDeduction + otherEarnings);
 
-  // Contributions are computed on a monthly-equivalent of this run's basic pay
-  // and split evenly across the month's runs, so a weekly-paid contractual pays
-  // roughly the same monthly total as a monthly-paid employee on the same wage.
-  const monthlyBasic = Math.max(0, (r.basicPay + r.leavePay - r.lateDeduction) * runsPerMonth);
+  // Contributions on monthly equivalents, split evenly across the month's runs:
+  //   PhilHealth on basic salary; SSS on compensation and Pag-IBIG on fund
+  //   salary (pay for services incl. OT/premiums/taxable allowances), both
+  //   without 13th-month-type benefits, de minimis or commuted leave.
+  const basic = r.basicPay + r.holidayPay + r.leavePay - r.lateDeduction;
+  const compensation = basic + r.premiumPay + r.otPay + r.nightDiffPay + taxableExtras;
   const per = (m: { ee: number; er: number }, on: boolean) =>
     on ? { ee: round2(m.ee / runsPerMonth), er: round2(m.er / runsPerMonth) } : { ee: 0, er: 0 };
-  const sss = per(sssMonthly(monthlyBasic), group.deductSss);
-  const ph = per(philhealthMonthly(monthlyBasic), group.deductPhilhealth);
-  const hdmf = per(hdmfMonthly(monthlyBasic), group.deductHdmf);
+  const sss = per(sssMonthly(Math.max(0, compensation * runsPerMonth)), group.deductSss);
+  const ph = per(philhealthMonthly(Math.max(0, basic * runsPerMonth)), group.deductPhilhealth);
+  const hdmf = per(hdmfMonthly(Math.max(0, compensation * runsPerMonth)), group.deductHdmf);
 
-  // Taxable = gross less non-taxable earnings and employee contributions.
-  // Minimum wage earners are exempt on their compensation.
-  const taxableIncome = round2(Math.max(0, grossPay - nonTaxableEarnings - sss.ee - ph.ee - hdmf.ee));
-  const withholdingTax =
-    group.withholdTax && !input.isMinimumWage ? round2(annualIncomeTax(taxableIncome * ppy) / ppy) : 0;
+  // 13th-month-type benefits are tax-exempt up to the yearly cap (₱90,000).
+  const exemptBenefits = round2(Math.min(benefits, Math.max(0, input.benefitsExemptRemaining ?? Infinity)));
+  const benefitsExcess = benefits - exemptBenefits;
+
+  // Taxable compensation: gross less non-taxable items and employee
+  // contributions. A minimum wage earner is exempt on the minimum wage,
+  // holiday, OT and night shift pay, but not on other taxable pay
+  // (commissions, taxable allowances, benefits over the cap).
+  const taxableIncome = round2(Math.max(0, input.isMinimumWage
+    ? taxableExtras + benefitsExcess
+    : grossPay - nonTaxableEarnings - exemptBenefits - r.leaveConversionPay - sss.ee - ph.ee - hdmf.ee));
+  const withholdingTax = group.withholdTax ? round2(annualIncomeTax(taxableIncome * ppy) / ppy) : 0;
 
   const totalDeductions = round2(sss.ee + ph.ee + hdmf.ee + withholdingTax + otherDeductions);
   return {
@@ -243,7 +395,9 @@ export function computeLine(input: LineInput, ctx: RunContext): LineResult {
     ...r,
     leaveDays: round2(leaveDays),
     unpaidLeaveDays: round2(unpaidLeaveDays),
+    leaveConversionDays: round2(leaveConversionDays),
     otherEarnings: round2(otherEarnings),
+    exemptBenefits,
     grossPay,
     sssEe: sss.ee,
     sssEr: sss.er,
@@ -259,11 +413,46 @@ export function computeLine(input: LineInput, ctx: RunContext): LineResult {
   };
 }
 
+// ---------------- 13th-month pay (PD 851) ----------------
+
+/**
+ * Basic salary earned on a posted regular-run line, for the 13th-month base:
+ * basic pay incl. paid leave, less late/undertime. Excludes OT, premiums,
+ * night shift and holiday pay of daily-paid staff, commuted leave, and
+ * allowances (handbook, 13th-month C).
+ */
+export const thirteenthMonthBase = (l: { basicPay: number; leavePay: number; lateDeduction: number }) =>
+  Math.max(0, l.basicPay + l.leavePay - l.lateDeduction);
+
+export type ThirteenthInput = {
+  basis: number; // basic salary earned this calendar year
+  alreadyPaid: number; // 13th-month already paid this year (e.g. a mid-year half)
+  benefitsExemptRemaining: number;
+  ytdTaxable: number; // taxable compensation already paid this year
+  withholdTax: boolean;
+};
+
+/** 1/12 of the year's basic salary less what's been paid; tax only on the part above the exemption cap. */
+export function computeThirteenth(i: ThirteenthInput) {
+  const pay = round2(Math.max(0, i.basis / 12 - i.alreadyPaid));
+  const exempt = round2(Math.min(pay, Math.max(0, i.benefitsExemptRemaining)));
+  const taxable = round2(pay - exempt);
+  // Tax on the excess = tax on (year-to-date + excess) less tax on year-to-date.
+  const tax = i.withholdTax && taxable > 0 ? round2(annualIncomeTax(i.ytdTaxable + taxable) - annualIncomeTax(i.ytdTaxable)) : 0;
+  return { pay, exempt, taxable, tax, net: round2(pay - tax) };
+}
+
 export const DAY_TYPE_LABEL: Record<DayType, string> = {
-  REG: "Regular day",
+  REG: "Ordinary day",
   RD: "Rest day",
-  SH: "Special holiday",
+  SH: "Special (non-working) day",
+  SHRD: "Special day on rest day",
+  DSH: "Double special day",
+  DSHRD: "Double special day on rest day",
   RH: "Regular holiday",
+  RHRD: "Regular holiday on rest day",
+  DH: "Double regular holiday",
+  DHRD: "Double regular holiday on rest day",
 };
 
 export const FREQUENCY_LABEL: Record<PayFrequency, string> = {

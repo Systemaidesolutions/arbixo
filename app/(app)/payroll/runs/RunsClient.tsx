@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { formatPeso } from "@/lib/format";
 import { FREQUENCY_LABEL, type PayFrequency } from "@/lib/payroll/compute";
 
-type Run = { id: string; runNo: string; group: string; periodStart: string; periodEnd: string; payDate: string; status: "DRAFT" | "POSTED" | "CANCELLED"; employees: number; totalGross: number; totalNet: number; branch: string | null };
+type Run = { id: string; runNo: string; group: string; periodStart: string; periodEnd: string; payDate: string; status: "DRAFT" | "POSTED" | "CANCELLED"; employees: number; totalGross: number; totalNet: number; branch: string | null; kind: "REGULAR" | "THIRTEENTH_MONTH" };
 type Group = { id: string; name: string; frequency: PayFrequency };
 
 const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
@@ -38,7 +38,8 @@ function suggestPeriod(freq: PayFrequency): { start: string; end: string } {
 export function RunsClient({ runs, groups, branches, canEdit }: { runs: Run[]; groups: Group[]; branches: { id: string; name: string }[]; canEdit: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ payGroupId: "", periodStart: "", periodEnd: "", payDate: "", locationId: "", remarks: "" });
+  const [form, setForm] = useState({ kind: "REGULAR" as Run["kind"], year: new Date().getFullYear(), payGroupId: "", periodStart: "", periodEnd: "", payDate: "", locationId: "", remarks: "" });
+  const thirteenth = form.kind === "THIRTEENTH_MONTH";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +47,7 @@ export function RunsClient({ runs, groups, branches, canEdit }: { runs: Run[]; g
     const g = groups.find((x) => x.id === id);
     if (!g) return setForm({ ...form, payGroupId: id });
     const p = suggestPeriod(g.frequency);
-    setForm({ ...form, payGroupId: id, periodStart: p.start, periodEnd: p.end, payDate: form.payDate || p.end });
+    setForm({ ...form, payGroupId: id, periodStart: p.start, periodEnd: p.end, payDate: form.payDate || (thirteenth ? `${form.year}-12-24` : p.end) });
   }
 
   async function create() {
@@ -67,6 +68,11 @@ export function RunsClient({ runs, groups, branches, canEdit }: { runs: Run[]; g
           ) : (
             <>
               <h2 className="text-sm font-medium text-neutral-800">New payroll run</h2>
+              <div className="mt-2 flex gap-4 text-sm text-neutral-700">
+                <label className="flex items-center gap-1.5"><input type="radio" checked={!thirteenth} onChange={() => setForm({ ...form, kind: "REGULAR" })} /> Regular payroll</label>
+                <label className="flex items-center gap-1.5"><input type="radio" checked={thirteenth} onChange={() => setForm({ ...form, kind: "THIRTEENTH_MONTH", payDate: `${form.year}-12-24` })} /> 13th-month pay</label>
+              </div>
+              {thirteenth && <p className="mt-1 text-xs text-neutral-500">PD 851: 1/12 of the basic salary earned in the year from posted runs (excl. OT, premiums, night shift and holiday pay), less any 13th-month already paid this year, so a mid-year run pays about half and a December run pays the balance. Due by December 24. Exempt from tax up to the yearly cap together with other bonuses; not subject to SSS/PhilHealth/Pag-IBIG.</p>}
               <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-5">
                 <label className={`${label} sm:col-span-2`}>Pay group
                   <select value={form.payGroupId} onChange={(e) => pickGroup(e.target.value)} className={field}>
@@ -74,8 +80,13 @@ export function RunsClient({ runs, groups, branches, canEdit }: { runs: Run[]; g
                     {groups.map((g) => <option key={g.id} value={g.id}>{g.name} ({FREQUENCY_LABEL[g.frequency]})</option>)}
                   </select>
                 </label>
-                <label className={label}>Period from<input type="date" value={form.periodStart} onChange={(e) => setForm({ ...form, periodStart: e.target.value })} className={field} /></label>
-                <label className={label}>Period to<input type="date" value={form.periodEnd} onChange={(e) => setForm({ ...form, periodEnd: e.target.value })} className={field} /></label>
+                {thirteenth ? <>
+                  <label className={label}>Year<input type="number" value={form.year} onChange={(e) => setForm({ ...form, year: Number(e.target.value) })} className={field} /></label>
+                  <span />
+                </> : <>
+                  <label className={label}>Period from<input type="date" value={form.periodStart} onChange={(e) => setForm({ ...form, periodStart: e.target.value })} className={field} /></label>
+                  <label className={label}>Period to<input type="date" value={form.periodEnd} onChange={(e) => setForm({ ...form, periodEnd: e.target.value })} className={field} /></label>
+                </>}
                 <label className={label}>Pay date<input type="date" value={form.payDate} onChange={(e) => setForm({ ...form, payDate: e.target.value })} className={field} /></label>
                 <label className={`${label} sm:col-span-2`}>Branch (optional — only employees of this branch)
                   <select value={form.locationId} onChange={(e) => setForm({ ...form, locationId: e.target.value })} className={field}>
@@ -110,8 +121,8 @@ export function RunsClient({ runs, groups, branches, canEdit }: { runs: Run[]; g
               {runs.map((r) => (
                 <tr key={r.id} className="hover:bg-neutral-50">
                   <td className="py-1.5 pr-3 font-mono text-xs"><Link href={`/payroll/runs/${r.id}`} className="text-brand-blue hover:underline">{r.runNo}</Link></td>
-                  <td className="py-1.5 pr-3">{r.group}{r.branch && <span className="ml-1 text-xs text-neutral-400">· {r.branch}</span>}</td>
-                  <td className="py-1.5 pr-3 text-xs">{mdy(r.periodStart)} – {mdy(r.periodEnd)}</td>
+                  <td className="py-1.5 pr-3">{r.group}{r.branch && <span className="ml-1 text-xs text-neutral-400">· {r.branch}</span>}{r.kind === "THIRTEENTH_MONTH" && <span className="ml-1 rounded bg-blue-50 px-1 text-[10px] font-medium text-brand-blue">13th month</span>}</td>
+                  <td className="py-1.5 pr-3 text-xs">{r.kind === "THIRTEENTH_MONTH" ? `Year ${r.periodStart.slice(0, 4)}` : `${mdy(r.periodStart)} – ${mdy(r.periodEnd)}`}</td>
                   <td className="py-1.5 pr-3 text-xs">{mdy(r.payDate)}</td>
                   <td className="py-1.5 pr-3 text-right">{r.employees}</td>
                   <td className="py-1.5 pr-3 text-right font-mono">{formatPeso(r.totalGross)}</td>

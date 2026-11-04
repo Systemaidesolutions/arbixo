@@ -10,6 +10,7 @@ export type LeaveTypeRow = {
   isPaid: boolean; creditBasis: LeaveCreditBasis; days: number; accrual: LeaveAccrual; countCalendarDays: boolean;
   allowHalfDay: boolean; allowNegative: boolean; minServiceMonths: number; eligibility: LeaveEligibility;
   soloParentOnly: boolean; employmentTypes: EmploymentType[]; maxCarryOver: number; convertibleToCash: boolean; isActive: boolean;
+  soloParentExtraDays: number; maxFilings: number | null; maxDaysPerYear: number | null;
 };
 
 const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
@@ -19,13 +20,19 @@ const check = "flex items-center gap-2 text-sm text-neutral-700";
 const blank: Omit<LeaveTypeRow, "id"> = {
   code: "", name: "", description: "", legalBasis: "", isStatutory: false, isPaid: true, creditBasis: "ANNUAL", days: 5, accrual: "UPFRONT",
   countCalendarDays: false, allowHalfDay: true, allowNegative: false, minServiceMonths: 0, eligibility: "ANY", soloParentOnly: false,
-  employmentTypes: [], maxCarryOver: 0, convertibleToCash: false, isActive: true,
+  employmentTypes: [], maxCarryOver: 0, convertibleToCash: false, isActive: true, soloParentExtraDays: 0, maxFilings: null, maxDaysPerYear: null,
 };
 
 function summary(t: LeaveTypeRow): string {
   if (t.creditBasis === "UNLIMITED") return "No limit";
   const unit = t.countCalendarDays ? "calendar days" : "days";
-  return t.creditBasis === "ANNUAL" ? `${t.days} ${unit}/yr${t.accrual === "MONTHLY" ? ", earned monthly" : ""}` : `Up to ${t.days} ${unit} per filing`;
+  const base = t.creditBasis === "ANNUAL" ? `${t.days} ${unit}/yr${t.accrual === "MONTHLY" ? ", earned monthly" : ""}` : `Up to ${t.days} ${unit} per filing`;
+  return [
+    base,
+    t.soloParentExtraDays ? `+${t.soloParentExtraDays} for solo parents` : "",
+    t.maxDaysPerYear != null ? `max ${t.maxDaysPerYear}/yr` : "",
+    t.maxFilings != null ? `max ${t.maxFilings} filings` : "",
+  ].filter(Boolean).join(" · ");
 }
 
 function who(t: LeaveTypeRow): string {
@@ -55,7 +62,12 @@ export function LeaveTypesClient({ types, canEdit }: { types: LeaveTypeRow[]; ca
     const res = await fetch(editing === "new" ? "/api/payroll/leave-types" : `/api/payroll/leave-types/${editing}`, {
       method: editing === "new" ? "POST" : "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, days: Number(form.days) || 0, maxCarryOver: Number(form.maxCarryOver) || 0, minServiceMonths: Number(form.minServiceMonths) || 0 }),
+      body: JSON.stringify({
+        ...form, days: Number(form.days) || 0, maxCarryOver: Number(form.maxCarryOver) || 0, minServiceMonths: Number(form.minServiceMonths) || 0,
+        soloParentExtraDays: Number(form.soloParentExtraDays) || 0,
+        maxFilings: form.maxFilings === null || String(form.maxFilings) === "" ? null : Number(form.maxFilings),
+        maxDaysPerYear: form.maxDaysPerYear === null || String(form.maxDaysPerYear) === "" ? null : Number(form.maxDaysPerYear),
+      }),
     });
     setBusy(false);
     if (!res.ok) { const d = await res.json().catch(() => ({})); return setError(d.error ?? "Could not save."); }
@@ -88,6 +100,12 @@ export function LeaveTypesClient({ types, canEdit }: { types: LeaveTypeRow[]; ca
             <label className={label}>Max carry-over to next year<input value={String(form.maxCarryOver)} inputMode="decimal" onChange={(e) => set("maxCarryOver", e.target.value as unknown as number)} className={`${field} text-right font-mono`} /></label>
           </>}
 
+          {form.creditBasis === "PER_EVENT" && <>
+            <label className={label}>Extra days for solo parents<input value={String(form.soloParentExtraDays)} inputMode="decimal" onChange={(e) => set("soloParentExtraDays", e.target.value as unknown as number)} className={`${field} text-right font-mono`} /></label>
+            <label className={label}>Max days per year <span className="text-neutral-400">(blank = none)</span><input value={form.maxDaysPerYear == null ? "" : String(form.maxDaysPerYear)} inputMode="decimal" onChange={(e) => set("maxDaysPerYear", (e.target.value === "" ? null : e.target.value) as unknown as number | null)} className={`${field} text-right font-mono`} /></label>
+            <label className={label}>Max filings ever <span className="text-neutral-400">(blank = none)</span><input value={form.maxFilings == null ? "" : String(form.maxFilings)} inputMode="numeric" onChange={(e) => set("maxFilings", (e.target.value === "" ? null : e.target.value) as unknown as number | null)} className={`${field} text-right font-mono`} /></label>
+            <span />
+          </>}
           <label className={label}>For<select value={form.eligibility} onChange={(e) => set("eligibility", e.target.value as LeaveEligibility)} className={field}>
             <option value="ANY">All employees</option><option value="FEMALE">Female employees</option><option value="MALE">Male employees</option>
           </select></label>

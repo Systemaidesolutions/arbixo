@@ -24,6 +24,9 @@ export type LeaveTypeRules = {
   employmentTypes: EmploymentType[];
   maxCarryOver: number;
   convertibleToCash: boolean;
+  soloParentExtraDays: number; // added to the per-filing limit for solo parents (maternity +15)
+  maxFilings: number | null; // lifetime filings (paternity: first 4 deliveries)
+  maxDaysPerYear: number | null; // e.g. special leave for women: 60 days a year
 };
 
 export type LeaveTypeDefault = LeaveTypeRules & { description: string; legalBasis: string | null; isStatutory: boolean; isActive: boolean };
@@ -31,29 +34,36 @@ export type LeaveTypeDefault = LeaveTypeRules & { description: string; legalBasi
 const base = {
   isPaid: true, creditBasis: "ANNUAL", accrual: "UPFRONT", countCalendarDays: false, allowHalfDay: true, allowNegative: false,
   minServiceMonths: 0, eligibility: "ANY", soloParentOnly: false, employmentTypes: [] as EmploymentType[], maxCarryOver: 0, convertibleToCash: false,
+  soloParentExtraDays: 0, maxFilings: null, maxDaysPerYear: null,
   isStatutory: true, isActive: true, legalBasis: null,
 } as const;
 
-/** Starter leave types for a new company: the PH statutory leaves plus common company-policy ones. All editable. */
+/**
+ * Starter leave types for a new company: the PH statutory leaves as described
+ * in the DOLE Handbook on Workers' Statutory Monetary Benefits (2024), plus
+ * common company-policy ones. All editable.
+ */
 export const PH_LEAVE_DEFAULTS: LeaveTypeDefault[] = [
   { ...base, code: "SIL", name: "Service Incentive Leave", days: 5, minServiceMonths: 12, convertibleToCash: true, legalBasis: "Labor Code Art. 95",
-    description: "5 days with pay a year after at least 1 year of service. Unused days are convertible to cash at year end. Not required if company VL/SL already gives at least 5 days." },
+    description: "5 days with pay a year after 1 year of service (continuous or broken), for sick, vacation or other purposes. Unused days are commuted to cash at year end or on separation, at the daily rate on the date of commutation. Not required for those already given at least 5 days VL with pay, or in establishments regularly employing fewer than 10." },
   { ...base, code: "VL", name: "Vacation Leave", days: 5, isStatutory: false, employmentTypes: ["REGULAR"], maxCarryOver: 5, convertibleToCash: true,
-    description: "Company policy. Set the yearly credits, carry-over and who gets it." },
+    description: "Company policy. Set the yearly credits, carry-over and who gets it. At least 5 days with pay counts as compliance with SIL." },
   { ...base, code: "SL", name: "Sick Leave", days: 5, isStatutory: false, employmentTypes: ["REGULAR"], maxCarryOver: 5,
     description: "Company policy. Set the yearly credits, carry-over and who gets it." },
-  { ...base, code: "ML", name: "Maternity Leave", creditBasis: "PER_EVENT", days: 105, countCalendarDays: true, allowHalfDay: false, eligibility: "FEMALE", legalBasis: "RA 11210",
-    description: "105 calendar days with full pay per pregnancy (60 days for miscarriage or emergency termination; +15 days for solo parents). The SSS maternity benefit reimburses part of the pay; the employer pays the salary differential." },
-  { ...base, code: "PL", name: "Paternity Leave", creditBasis: "PER_EVENT", days: 7, allowHalfDay: false, eligibility: "MALE", legalBasis: "RA 8187",
-    description: "7 working days with full pay for a married male employee, for each of the first 4 deliveries of his legitimate spouse." },
-  { ...base, code: "SPL", name: "Solo Parent Leave", days: 7, minServiceMonths: 6, soloParentOnly: true, legalBasis: "RA 8972 as amended by RA 11861",
-    description: "7 working days with pay a year for solo parents with at least 6 months of service. Not convertible to cash." },
-  { ...base, code: "VAWC", name: "VAWC Leave", creditBasis: "PER_EVENT", days: 10, eligibility: "FEMALE", legalBasis: "RA 9262 Sec. 43",
-    description: "Up to 10 days with pay for women employees who are victims of violence, to attend to medical and legal concerns. Extendable when a protection order requires it." },
-  { ...base, code: "SLW", name: "Special Leave for Women", creditBasis: "PER_EVENT", days: 60, countCalendarDays: true, allowHalfDay: false, eligibility: "FEMALE", minServiceMonths: 6, legalBasis: "RA 9710 (Magna Carta of Women)",
-    description: "Up to 2 months with full pay after surgery for a gynecological disorder, for women with at least 6 months of service in the last 12 months." },
+  { ...base, code: "ML", name: "Maternity Leave", creditBasis: "PER_EVENT", days: 105, soloParentExtraDays: 15, countCalendarDays: true, allowHalfDay: false, eligibility: "FEMALE", legalBasis: "RA 11210",
+    description: "105 days with full pay for every pregnancy regardless of frequency (120 for solo parents; 60 days for miscarriage or emergency termination). Needs at least 3 SSS monthly contributions in the 12 months before the semester of childbirth, and notice to the employer. The employer pays the salary differential over the SSS benefit. An extra 30 days without pay may be taken after live childbirth: file it as Leave Without Pay. Up to 7 days may be allocated to the father (ML-ALLOC)." },
+  { ...base, code: "ML-ALLOC", name: "Allocated Maternity Leave (father)", creditBasis: "PER_EVENT", days: 7, allowHalfDay: false, eligibility: "MALE", legalBasis: "RA 11210 Sec. 6",
+    description: "Up to 7 days of the mother's maternity leave allocated to the child's father, married or not. Over and above paternity leave." },
+  { ...base, code: "PL", name: "Paternity Leave", creditBasis: "PER_EVENT", days: 7, maxFilings: 4, allowHalfDay: false, eligibility: "MALE", legalBasis: "RA 8187",
+    description: "7 days with full pay for a married male employee cohabiting with his wife, for each of the first 4 deliveries (incl. miscarriage). Applies whatever the employment status. Not convertible to cash." },
+  { ...base, code: "SPL", name: "Parental Leave for Solo Parents", days: 7, minServiceMonths: 6, soloParentOnly: true, legalBasis: "RA 8972 as amended by RA 11861",
+    description: "Up to 7 working days with pay every year for a solo parent with at least 6 months of service (continuous or broken) and a valid Solo Parent ID. Forfeitable, non-cumulative, and not convertible to cash unless agreed. Emergency leave doesn't count as compliance." },
+  { ...base, code: "VAWC", name: "Leave for VAWC Victims", creditBasis: "PER_EVENT", days: 10, eligibility: "FEMALE", legalBasis: "RA 9262 Sec. 43",
+    description: "Up to 10 days with full pay (basic salary and mandatory allowances) for a woman employee who is a victim of VAWC, on a certification that an action is pending. Extended when a protection order requires it. Not cumulative or convertible to cash." },
+  { ...base, code: "SLW", name: "Special Leave for Women", creditBasis: "PER_EVENT", days: 60, maxDaysPerYear: 60, countCalendarDays: true, allowHalfDay: false, eligibility: "FEMALE", minServiceMonths: 6, legalBasis: "RA 9710 (Magna Carta of Women)",
+    description: "Up to 2 months (60 calendar days a year) with full pay after surgery for a gynecological disorder, for women with at least 6 months of continuous aggregate service in the last 12 months. The physician's certified recuperation period controls. Not cumulative or convertible to cash." },
   { ...base, code: "LWOP", name: "Leave Without Pay", isPaid: false, creditBasis: "UNLIMITED", days: 0, isStatutory: false,
-    description: "Approved absence without pay. Deducted from monthly-paid employees; daily-rate employees simply aren't paid for the day." },
+    description: "Approved absence without pay. Deducted from monthly-paid employees; daily-rate employees aren't paid for the day. Leave without pay on the workday before a regular holiday forfeits that holiday's pay." },
 ];
 
 const dow = (iso: string) => new Date(`${iso}T00:00:00Z`).getUTCDay();

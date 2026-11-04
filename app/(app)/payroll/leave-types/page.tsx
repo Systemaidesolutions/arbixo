@@ -21,8 +21,8 @@ export default async function LeaveTypesPage() {
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-12">
       <h1 className="text-xl font-medium text-neutral-900">Leave types</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Starts with the Philippine statutory leaves (SIL, maternity, paternity, solo parent, VAWC, special leave for women) plus vacation, sick and
-        leave without pay. Adjust credits and eligibility to your company policy, or add your own (birthday, bereavement, emergency…).
+        Starts with the Philippine statutory leaves as summarized in the DOLE Handbook on Workers&apos; Statutory Monetary Benefits (SIL, maternity,
+        allocated maternity, paternity, solo parent, VAWC, special leave for women) plus vacation, sick and leave without pay. Adjust credits and eligibility to your company policy, or add your own (birthday, bereavement, emergency…).
       </p>
       <div className="mt-6">
         <LeaveTypesClient
@@ -33,6 +33,7 @@ export default async function LeaveTypesPage() {
             allowHalfDay: t.allowHalfDay, allowNegative: t.allowNegative, minServiceMonths: t.minServiceMonths, eligibility: t.eligibility,
             soloParentOnly: t.soloParentOnly, employmentTypes: t.employmentTypes, maxCarryOver: Number(t.maxCarryOver),
             convertibleToCash: t.convertibleToCash, isActive: t.isActive,
+            soloParentExtraDays: Number(t.soloParentExtraDays), maxFilings: t.maxFilings, maxDaysPerYear: t.maxDaysPerYear == null ? null : Number(t.maxDaysPerYear),
           }))}
         />
       </div>

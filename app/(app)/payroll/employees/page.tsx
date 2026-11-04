@@ -44,7 +44,7 @@ export default async function PayrollEmployeesPage() {
                 payGroupId: p.payGroupId, locationId: p.locationId, employmentType: p.employmentType, payBasis: p.payBasis, rate: Number(p.rate),
                 hireDate: p.hireDate ? isoDate(p.hireDate) : "", contractEnd: p.contractEnd ? isoDate(p.contractEnd) : "",
                 sssNo: p.sssNo ?? "", philhealthNo: p.philhealthNo ?? "", pagibigNo: p.pagibigNo ?? "", isMinimumWage: p.isMinimumWage,
-                sex: p.sex, isSoloParent: p.isSoloParent,
+                sex: p.sex, isSoloParent: p.isSoloParent, thirteenthMonthEligible: p.thirteenthMonthEligible,
                 recurring: (Array.isArray(p.recurring) ? p.recurring : []) as { payItemId: string; amount: number }[],
                 bankName: p.bankName ?? "", bankAccountNo: p.bankAccountNo ?? "", isActive: p.isActive,
               } : null,

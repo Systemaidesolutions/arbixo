@@ -35,7 +35,7 @@ export default async function PayrollRunsPage() {
           runs={runs.map((r) => ({
             id: r.id, runNo: r.runNo, group: r.payGroup.name, periodStart: isoDate(r.periodStart), periodEnd: isoDate(r.periodEnd),
             payDate: isoDate(r.payDate), status: r.status, employees: r._count.lines, totalGross: Number(r.totalGross), totalNet: Number(r.totalNet),
-            branch: branches.find((b) => b.id === r.locationId)?.name ?? null,
+            branch: branches.find((b) => b.id === r.locationId)?.name ?? null, kind: r.kind,
           }))}
         />
       </div>
