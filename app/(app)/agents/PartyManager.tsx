@@ -7,6 +7,7 @@ import { CUSTOMER_TYPE_LABELS, VENDOR_TYPE_LABELS, PARTY_LABELS, type PartyEntit
 import { formatSeriesCode } from "@/lib/numberSeries";
 import { TinInput } from "@/components/TinInput";
 import { AddressFields } from "@/components/AddressFields";
+import { RecordImport } from "@/components/RecordImport";
 
 // The four models (Customer/Vendor/Employee/Contact) share most fields but
 // not all — Employee has no taxClassification/tradeName/registrationType,
@@ -156,6 +157,7 @@ export function PartyManager({
 
   const { plural, apiBase, responseKey } = PARTY_LABELS[entityType];
   const isEmployee = entityType === "employee";
+  const [importing, setImporting] = useState(false);
 
   async function loadSeriesPreview() {
     try {
@@ -308,6 +310,12 @@ export function PartyManager({
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-medium uppercase tracking-wide text-neutral-500">{plural}</h2>
+          <div className="flex items-center gap-3">
+          {isEmployee && (
+            <button onClick={() => setImporting(!importing)} className="text-xs text-brand-blue hover:underline">
+              Import from Excel
+            </button>
+          )}
           <button
             onClick={() => {
               setError(null);
@@ -318,7 +326,17 @@ export function PartyManager({
           >
             + {PARTY_LABELS[entityType].singular.toLowerCase()}
           </button>
+          </div>
         </div>
+        {isEmployee && importing && (
+          <RecordImport
+            title="Import employees"
+            endpoint="/api/employees/import"
+            templateName="employee-import-template.xlsx"
+            onClose={() => setImporting(false)}
+            onDone={() => { void refresh(); }}
+          />
+        )}
 
         <div className="divide-y divide-neutral-100 rounded-lg border border-neutral-200">
           {items.length === 0 ? (

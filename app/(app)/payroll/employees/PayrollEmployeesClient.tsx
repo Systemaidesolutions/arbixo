@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatPeso } from "@/lib/format";
+import { RecordImport } from "@/components/RecordImport";
 
 type EmploymentType = "REGULAR" | "PROBATIONARY" | "CONTRACTUAL" | "PROJECT_BASED" | "CASUAL";
 type PayBasis = "MONTHLY" | "DAILY";
@@ -39,6 +40,7 @@ export function PayrollEmployeesClient({ employees, groups, items, branches, can
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<"all" | "setup" | "missing">("all");
   const [q, setQ] = useState("");
+  const [importing, setImporting] = useState(false);
 
   const rows = useMemo(() => employees.filter((e) => {
     if (filter === "setup" && !e.profile) return false;
@@ -143,12 +145,24 @@ export function PayrollEmployeesClient({ employees, groups, items, branches, can
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-medium text-neutral-800">Employees ({rows.length})</h2>
         <div className="flex items-center gap-2">
+          {canEdit && <button onClick={() => setImporting(!importing)} className="rounded border border-brand-blue px-2 py-1 text-sm text-brand-blue hover:bg-blue-50">Import from Excel</button>}
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or code" className="rounded border border-neutral-300 px-2 py-1 text-sm" />
           <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)} className="rounded border border-neutral-300 px-2 py-1 text-sm">
             <option value="all">All</option><option value="setup">With payroll profile</option><option value="missing">No payroll profile</option>
           </select>
         </div>
       </div>
+      {importing && (
+        <div className="mt-3">
+          <RecordImport
+            title="Import payroll employee records"
+            endpoint="/api/payroll/profiles/import"
+            templateName="payroll-employee-import-template.xlsx"
+            onClose={() => setImporting(false)}
+            onDone={() => router.refresh()}
+          />
+        </div>
+      )}
       <div className="mt-3 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
