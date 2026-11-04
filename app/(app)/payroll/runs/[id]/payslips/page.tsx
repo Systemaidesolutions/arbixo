@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { formatPeso } from "@/lib/format";
 import { isoDate } from "@/lib/payroll/server";
 import { PrintControls } from "@/components/PrintControls";
+import { payslipLeave, type PayslipLeave } from "@/lib/payroll/leaveServer";
 
 const mdy = (d: Date) => { const [y, m, dd] = isoDate(d).split("-"); return `${m}/${dd}/${y}`; };
 
@@ -19,6 +20,11 @@ export default async function PayslipsPage({ params, searchParams }: { params: {
   const items = await prisma.payItem.findMany({ where: { companyId: company.id } });
   const lines = [...run.lines].sort((a, b) => a.employee.lastName.localeCompare(b.employee.lastName));
   const n = (v: unknown) => Number(v);
+  const leave = run.kind === "THIRTEENTH_MONTH"
+    ? new Map<string, PayslipLeave>()
+    : await payslipLeave(company.id, lines.map((l) => l.employeeId), isoDate(run.periodStart), isoDate(run.periodEnd));
+  const md = (iso: string) => `${iso.slice(5, 7)}/${iso.slice(8, 10)}`;
+  const d2 = (v: number) => (Math.round(v * 100) / 100).toString();
 
   return (
     <div className="mx-auto max-w-3xl bg-white p-6 text-neutral-900 print:p-0">
@@ -76,6 +82,51 @@ export default async function PayslipsPage({ params, searchParams }: { params: {
                 <tfoot><tr className="border-t border-neutral-300 font-semibold"><td className="py-1">Total deductions</td><td className="py-1 text-right font-mono">{formatPeso(n(l.totalDeductions))}</td></tr></tfoot>
               </table>
             </div>
+            {(() => {
+              const lv = leave.get(l.employeeId);
+              if (!lv || (lv.taken.length === 0 && lv.balances.length === 0)) return null;
+              return (
+                <div className="mt-3 grid grid-cols-2 gap-6 border-t border-neutral-300 pt-2">
+                  <div>
+                    <div className="py-1 font-semibold">Leave this period</div>
+                    {lv.taken.length === 0
+                      ? <div className="text-neutral-500">No leave taken.</div>
+                      : (
+                        <table className="w-full">
+                          <tbody>
+                            {lv.taken.map((t) => (
+                              <tr key={`${t.code}${t.paid}`}>
+                                <td className="py-0.5 align-top">{t.name}{t.paid ? "" : " (without pay)"}<div className="text-[10px] text-neutral-500">{t.dates.map(md).join(", ")}</div></td>
+                                <td className="py-0.5 text-right align-top font-mono">{d2(t.days)} day/s</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                  </div>
+                  <div>
+                    <div className="py-1 font-semibold">Leave balance as of {mdy(run.periodEnd)}</div>
+                    {lv.balances.length === 0
+                      ? <div className="text-neutral-500">No leave credits.</div>
+                      : (
+                        <table className="w-full">
+                          <thead><tr className="border-b border-neutral-300 text-left text-neutral-500"><th className="py-0.5 font-normal">Type</th><th className="py-0.5 text-right font-normal">Earned</th><th className="py-0.5 text-right font-normal">Used</th><th className="py-0.5 text-right font-normal">Remaining</th></tr></thead>
+                          <tbody>
+                            {lv.balances.map((b) => (
+                              <tr key={b.code}>
+                                <td className="py-0.5">{b.name}</td>
+                                <td className="py-0.5 text-right font-mono">{d2(b.earned)}</td>
+                                <td className="py-0.5 text-right font-mono">{d2(b.used)}</td>
+                                <td className={`py-0.5 text-right font-mono font-semibold ${b.remaining < 0 ? "text-red-600" : ""}`}>{d2(b.remaining)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                  </div>
+                </div>
+              );
+            })()}
             <div className="mt-3 flex items-end justify-between border-t border-neutral-400 pt-2">
               <div className="text-sm">NET PAY: <b className="font-mono">{formatPeso(n(l.netPay))}</b></div>
               <div className="w-56 border-t border-neutral-500 pt-0.5 text-center text-neutral-500">Received by / date</div>

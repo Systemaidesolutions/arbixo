@@ -345,3 +345,55 @@ export async function convertLeave(companyId: string, userId: string, raw: { lea
   }
   return { status: 200, created };
 }
+
+export type PayslipLeave = {
+  /** Approved leave falling in the pay period, one row per leave type. */
+  taken: { code: string; name: string; paid: boolean; days: number; dates: string[] }[];
+  /** Yearly-credit leave types as of the period end: earned so far, used to date, remaining. */
+  balances: { code: string; name: string; earned: number; used: number; remaining: number }[];
+};
+
+/** Leave details for payslips: what was taken in the period and what's left for the year. */
+export async function payslipLeave(companyId: string, employeeIds: string[], start: string, end: string): Promise<Map<string, PayslipLeave>> {
+  const out = new Map<string, PayslipLeave>();
+  if (employeeIds.length === 0) return out;
+  const year = Number(end.slice(0, 4));
+  const throughMonth = Number(end.slice(5, 7));
+  const [types, credits, reqs] = await Promise.all([
+    prisma.leaveType.findMany({ where: { companyId }, orderBy: [{ sortOrder: "asc" }, { code: "asc" }] }),
+    prisma.leaveCredit.findMany({ where: { companyId, year, employeeId: { in: employeeIds } } }),
+    prisma.leaveRequest.findMany({
+      where: { companyId, employeeId: { in: employeeIds }, kind: "FILING", status: "APPROVED", startDate: { lte: utc(end) }, endDate: { gte: utc(`${year}-01-01`) } },
+      select: { employeeId: true, leaveTypeId: true, isPaid: true, dates: true },
+    }),
+  ]);
+  const r2 = (v: number) => Math.round(v * 100) / 100;
+  for (const id of employeeIds) {
+    const mine = reqs.filter((r) => r.employeeId === id);
+    const taken: PayslipLeave["taken"] = [];
+    const usedByType = new Map<string, number>();
+    for (const r of mine) {
+      for (const d of r.dates as LeaveDate[]) {
+        const days = Number(d.days) || 0;
+        if (d.date.slice(0, 4) === String(year) && d.date <= end) usedByType.set(r.leaveTypeId, (usedByType.get(r.leaveTypeId) ?? 0) + days);
+        if (d.date < start || d.date > end) continue;
+        const t = types.find((x) => x.id === r.leaveTypeId);
+        let row = taken.find((x) => x.code === (t?.code ?? "?") && x.paid === r.isPaid);
+        if (!row) { row = { code: t?.code ?? "?", name: t?.name ?? "Leave", paid: r.isPaid, days: 0, dates: [] }; taken.push(row); }
+        row.days = r2(row.days + days);
+        row.dates.push(d.date);
+      }
+    }
+    taken.forEach((x) => x.dates.sort());
+    const balances: PayslipLeave["balances"] = [];
+    for (const t of types.filter((x) => x.creditBasis === "ANNUAL")) {
+      const c = credits.find((x) => x.employeeId === id && x.leaveTypeId === t.id);
+      const used = r2(usedByType.get(t.id) ?? 0);
+      if (!c && !used) continue;
+      const earned = r2(c ? accruedCredits(n(c.granted), t.accrual, throughMonth) + n(c.carriedOver) + n(c.adjustment) : 0);
+      balances.push({ code: t.code, name: t.name, earned, used, remaining: r2(earned - used) });
+    }
+    out.set(id, { taken, balances });
+  }
+  return out;
+}
