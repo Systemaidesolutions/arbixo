@@ -89,6 +89,10 @@ export async function saveProfile(companyId: string, employeeId: string, raw: Re
     biometricId: clean(raw.biometricId),
     shiftStart: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(raw.shiftStart ?? "")) ? String(raw.shiftStart) : null,
     shiftEnd: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(raw.shiftEnd ?? "")) ? String(raw.shiftEnd) : null,
+    restDayMode: raw.restDayMode === "FLEXIBLE" ? ("FLEXIBLE" as const) : ("FIXED" as const),
+    restWeekdays: raw.restDayMode === "FLEXIBLE" || !Array.isArray(raw.restWeekdays)
+      ? []
+      : [...new Set((raw.restWeekdays as unknown[]).map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort(),
     recurring,
     bankName: clean(raw.bankName),
     bankAccountNo: clean(raw.bankAccountNo),

@@ -10,6 +10,7 @@ import {
 export type BioLine = {
   employeeId: string; code: string; name: string; payBasis: PayBasis;
   biometricId: string | null; shiftStart: string | null; shiftEnd: string | null; leaveDates: string[];
+  dayTypes: Record<string, DayType>; // this employee's day types (run holidays + own rest days)
 };
 
 type Layout = "datetime" | "datePlusTime" | "inOut";
@@ -23,8 +24,8 @@ const layoutOf = (m: Mapping): Layout => (m.inCol != null ? "inOut" : m.dateTime
  * replaces attendance, absences, late/undertime and OT/night hours of the
  * employees found in the file; everyone else is left as is.
  */
-export function BiometricImport({ periodStart, periodEnd, dayTypes, shift, lines, onApply, onClose }: {
-  periodStart: string; periodEnd: string; dayTypes: Record<string, DayType>; shift: Shift; lines: BioLine[];
+export function BiometricImport({ periodStart, periodEnd, shift, lines, onApply, onClose }: {
+  periodStart: string; periodEnd: string; shift: Shift; lines: BioLine[];
   onApply: (patches: Map<string, LinePatch>) => void; onClose: () => void;
 }) {
   const [grid, setGrid] = useState<Grid | null>(null);
@@ -63,12 +64,12 @@ export function BiometricImport({ periodStart, periodEnd, dayTypes, shift, lines
       if (!line) { unmatched.push(id); continue; }
       const s = line.shiftStart && line.shiftEnd ? { ...shift, start: line.shiftStart, end: line.shiftEnd } : shift;
       const days = computeDays(ats, s, periodStart, periodEnd);
-      matched.push({ line, deviceId: id, days, patch: toLinePatch(days, line.payBasis, periodStart, periodEnd, dayTypes, new Set(line.leaveDates)) });
+      matched.push({ line, deviceId: id, days, patch: toLinePatch(days, line.payBasis, periodStart, periodEnd, line.dayTypes, new Set(line.leaveDates)) });
     }
     matched.sort((a, b) => a.line.name.localeCompare(b.line.name));
     const found = new Set(matched.map((m) => m.line.employeeId));
     return { punches: punches.length, skipped, matched, unmatched: unmatched.sort(), missing: lines.filter((l) => !found.has(l.employeeId)) };
-  }, [grid, map, lines, shift, periodStart, periodEnd, dayTypes]);
+  }, [grid, map, lines, shift, periodStart, periodEnd]);
 
   function setLayout(l: Layout) {
     if (!map) return;
@@ -188,7 +189,7 @@ export function BiometricImport({ periodStart, periodEnd, dayTypes, shift, lines
                                 <tbody>
                                   {days.map((d) => (
                                     <tr key={d.date} className={d.incomplete ? "text-amber-700" : ""}>
-                                      <td className="pr-3">{mdy(d.date)}</td><td className="pr-3 text-center">{dayTypes[d.date] ?? "REG"}</td>
+                                      <td className="pr-3">{mdy(d.date)}</td><td className="pr-3 text-center">{line.dayTypes[d.date] ?? "REG"}</td>
                                       <td className="pr-3 text-center font-mono">{d.in != null ? atTime(d.in) : "–"}</td>
                                       <td className="pr-3 text-center font-mono">{d.out != null ? atTime(d.out) : "missing"}</td>
                                       <td className="pr-3 text-center font-mono">{d.days || "–"}</td><td className="pr-3 text-center font-mono">{d.lateMinutes || "–"}</td>

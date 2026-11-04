@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { annualIncomeTax, computeLine, computeThirteenth, DEFAULT_RULES, hdmfMonthly, periodDates, philhealthMonthly, sssMonthly, thirteenthMonthBase, type DayHours, type DayType } from "./compute";
+import { annualIncomeTax, computeLine, employeeDayTypes, restDatesFor, computeThirteenth, DEFAULT_RULES, hdmfMonthly, periodDates, philhealthMonthly, sssMonthly, thirteenthMonthBase, type DayHours, type DayType } from "./compute";
 
 const allOn = { deductSss: true, deductPhilhealth: true, deductHdmf: true, withholdTax: true };
 
@@ -169,5 +169,23 @@ describe("13th-month pay", () => {
   });
   it("base excludes OT/premiums/holiday pay but keeps paid leave, less lates", () => {
     expect(thirteenthMonthBase({ basicPay: 3150, leavePay: 700, lateDeduction: 50 })).toBe(3800);
+  });
+});
+
+describe("per-employee rest days", () => {
+  it("combines run holidays with the employee's own rest days", () => {
+    const types = employeeDayTypes({ "2026-11-01": "RD", "2026-11-04": "RH", "2026-11-05": "SH" }, ["2026-11-04", "2026-11-06"]);
+    // run-wide RD is dropped (rest days come from the employee); holiday on rest day gets +R
+    expect(types).toEqual({ "2026-11-04": "RHRD", "2026-11-05": "SH", "2026-11-06": "RD" });
+    expect(restDatesFor("2026-11-01", "2026-11-15", [0])).toEqual(["2026-11-01", "2026-11-08", "2026-11-15"]);
+  });
+  it("pays work on the employee's own rest day at 130%", () => {
+    const ctx = {
+      periodStart: "2026-11-02", periodEnd: "2026-11-08", dayTypes: {}, rules: DEFAULT_RULES,
+      group: { frequency: "WEEKLY" as const, deductSss: false, deductPhilhealth: false, deductHdmf: false, withholdTax: false },
+    };
+    const base = { payBasis: "DAILY" as const, rate: 600, isMinimumWage: false, absentDays: 0, lateMinutes: 0, otHours: 0, nightDiffHours: 0, adjustments: [], attendance: { "2026-11-04": 1 } };
+    expect(computeLine({ ...base, restDates: [] }, ctx).premiumPay).toBe(0);
+    expect(computeLine({ ...base, restDates: ["2026-11-04"] }, ctx).premiumPay).toBe(180);
   });
 });

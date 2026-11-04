@@ -11,6 +11,7 @@ type Profile = {
   hireDate: string; contractEnd: string; sssNo: string; philhealthNo: string; pagibigNo: string; isMinimumWage: boolean;
   sex: "MALE" | "FEMALE" | null; isSoloParent: boolean; thirteenthMonthEligible: boolean;
   biometricId: string; shiftStart: string; shiftEnd: string;
+  restDayMode: "FIXED" | "FLEXIBLE"; restWeekdays: number[];
   recurring: { payItemId: string; amount: number }[]; bankName: string; bankAccountNo: string; isActive: boolean;
 };
 type Employee = { id: string; code: string; name: string; position: string | null; isActive: boolean; profile: Profile | null };
@@ -21,14 +22,16 @@ export const EMPLOYMENT_LABEL: Record<EmploymentType, string> = {
   REGULAR: "Regular", PROBATIONARY: "Probationary", CONTRACTUAL: "Contractual", PROJECT_BASED: "Project-based", CASUAL: "Casual",
 };
 const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const dayList = (ds: number[]) => ds.length ? [...ds].sort().map((d) => WEEKDAYS[d]).join(", ") : "none";
 const label = "block text-xs text-neutral-500";
 
 const blankProfile = (): Profile => ({
   payGroupId: null, locationId: null, employmentType: "CONTRACTUAL", payBasis: "DAILY", rate: 0, hireDate: "", contractEnd: "",
-  sssNo: "", philhealthNo: "", pagibigNo: "", isMinimumWage: false, sex: null, isSoloParent: false, thirteenthMonthEligible: true, biometricId: "", shiftStart: "", shiftEnd: "", recurring: [], bankName: "", bankAccountNo: "", isActive: true,
+  sssNo: "", philhealthNo: "", pagibigNo: "", isMinimumWage: false, sex: null, isSoloParent: false, thirteenthMonthEligible: true, biometricId: "", shiftStart: "", shiftEnd: "", restDayMode: "FIXED", restWeekdays: [], recurring: [], bankName: "", bankAccountNo: "", isActive: true,
 });
 
-export function PayrollEmployeesClient({ employees, groups, items, branches, canEdit }: { employees: Employee[]; groups: Option[]; items: PayItemOption[]; branches: Option[]; canEdit: boolean }) {
+export function PayrollEmployeesClient({ employees, groups, items, branches, canEdit, companyRestWeekdays }: { employees: Employee[]; groups: Option[]; items: PayItemOption[]; branches: Option[]; canEdit: boolean; companyRestWeekdays: number[] }) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState<Profile>(blankProfile());
@@ -82,6 +85,30 @@ export function PayrollEmployeesClient({ employees, groups, items, branches, can
           <label className={label} title="Leave blank to use the company shift in Payroll setup">Own shift start<input type="time" value={form.shiftStart} onChange={(e) => setForm({ ...form, shiftStart: e.target.value })} className={field} /></label>
           <label className={label}>Own shift end<input type="time" value={form.shiftEnd} onChange={(e) => setForm({ ...form, shiftEnd: e.target.value })} className={field} /></label>
           <span />
+          <div className="sm:col-span-4 rounded border border-neutral-200 bg-white p-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className={label}>Rest day
+                <select value={form.restDayMode} onChange={(e) => setForm({ ...form, restDayMode: e.target.value as Profile["restDayMode"] })} className={`${field} w-64`}>
+                  <option value="FIXED">Fixed (same days every week)</option>
+                  <option value="FLEXIBLE">Not fixed (set every payroll run)</option>
+                </select>
+              </label>
+              {form.restDayMode === "FIXED" ? (
+                <div className="pt-4">
+                  <div className="flex flex-wrap gap-2 text-sm text-neutral-700">
+                    {WEEKDAYS.map((w, i) => (
+                      <label key={w} className="flex items-center gap-1">
+                        <input type="checkbox" checked={form.restWeekdays.includes(i)} onChange={(e) => setForm({ ...form, restWeekdays: e.target.checked ? [...form.restWeekdays, i].sort() : form.restWeekdays.filter((x) => x !== i) })} /> {w}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="text-[11px] text-neutral-500">{form.restWeekdays.length ? "Filled in automatically on every payroll run." : `None ticked: uses the company rest days (${dayList(companyRestWeekdays)}) from Payroll setup.`}</div>
+                </div>
+              ) : (
+                <p className="pt-4 text-[11px] text-amber-700">Rest days are marked by the payroll processor on each run; this employee is highlighted there until marked.</p>
+              )}
+            </div>
+          </div>
           <label className={label}>Bank<input value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} className={field} /></label>
           <label className={label}>Bank account no.<input value={form.bankAccountNo} onChange={(e) => setForm({ ...form, bankAccountNo: e.target.value })} className={field} /></label>
           <label className="flex items-center gap-2 pt-5 text-sm text-neutral-700"><input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} /> Include in payroll</label>
@@ -127,13 +154,13 @@ export function PayrollEmployeesClient({ employees, groups, items, branches, can
           <thead>
             <tr className="border-b border-neutral-200 text-left text-xs uppercase tracking-wide text-neutral-500">
               <th className="py-2 pr-3">Code</th><th className="py-2 pr-3">Name</th><th className="py-2 pr-3">Type</th><th className="py-2 pr-3">Pay group</th>
-              <th className="py-2 pr-3 text-right">Rate</th><th className="py-2 pr-3">Status</th><th className="py-2"></th>
+              <th className="py-2 pr-3 text-right">Rate</th><th className="py-2 pr-3">Rest day</th><th className="py-2 pr-3">Status</th><th className="py-2"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
-            {rows.length === 0 && <tr><td colSpan={7} className="py-3 text-neutral-400">No employees.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={8} className="py-3 text-neutral-400">No employees.</td></tr>}
             {rows.map((e) => editing === e.id ? (
-              <tr key={e.id}><td colSpan={7}><div className="pt-2 text-sm font-medium">{e.name}</div>{renderEditor()}</td></tr>
+              <tr key={e.id}><td colSpan={8}><div className="pt-2 text-sm font-medium">{e.name}</div>{renderEditor()}</td></tr>
             ) : (
               <tr key={e.id} className={e.isActive ? "" : "text-neutral-400"}>
                 <td className="py-1.5 pr-3 font-mono text-xs">{e.code}</td>
@@ -141,6 +168,12 @@ export function PayrollEmployeesClient({ employees, groups, items, branches, can
                 <td className="py-1.5 pr-3 text-xs">{e.profile ? EMPLOYMENT_LABEL[e.profile.employmentType] : "—"}</td>
                 <td className="py-1.5 pr-3 text-xs">{e.profile ? groupName(e.profile.payGroupId) : "—"}</td>
                 <td className="py-1.5 pr-3 text-right font-mono">{e.profile ? `${formatPeso(e.profile.rate)}${e.profile.payBasis === "DAILY" ? "/day" : "/mo"}` : "—"}</td>
+                <td className="py-1.5 pr-3 text-xs">
+                  {!e.profile ? "—"
+                    : e.profile.restDayMode === "FLEXIBLE" ? <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">Not fixed</span>
+                    : e.profile.restWeekdays.length ? dayList(e.profile.restWeekdays)
+                    : <span className="text-neutral-400">{dayList(companyRestWeekdays)} (company)</span>}
+                </td>
                 <td className="py-1.5 pr-3">
                   {!e.profile ? <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">Not set up</span>
                     : e.profile.isActive ? <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">In payroll</span>

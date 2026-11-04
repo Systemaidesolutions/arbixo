@@ -14,7 +14,7 @@ export default async function PayrollEmployeesPage() {
       </main>
     );
   }
-  await getOrCreateSetup(company.id);
+  const setup = await getOrCreateSetup(company.id);
   const [employees, groups, items, branches] = await Promise.all([
     prisma.employee.findMany({ where: { companyId: company.id }, include: { payrollProfile: true }, orderBy: [{ lastName: "asc" }, { firstName: "asc" }] }),
     prisma.payGroup.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true } }),
@@ -32,6 +32,7 @@ export default async function PayrollEmployeesPage() {
       <div className="mt-6">
         <PayrollEmployeesClient
           canEdit={Boolean(capability?.canPost)}
+          companyRestWeekdays={setup.restWeekdays}
           groups={groups}
           items={items}
           branches={branches}
@@ -46,6 +47,7 @@ export default async function PayrollEmployeesPage() {
                 sssNo: p.sssNo ?? "", philhealthNo: p.philhealthNo ?? "", pagibigNo: p.pagibigNo ?? "", isMinimumWage: p.isMinimumWage,
                 sex: p.sex, isSoloParent: p.isSoloParent, thirteenthMonthEligible: p.thirteenthMonthEligible,
                 biometricId: p.biometricId ?? "", shiftStart: p.shiftStart ?? "", shiftEnd: p.shiftEnd ?? "",
+                restDayMode: p.restDayMode, restWeekdays: p.restWeekdays,
                 recurring: (Array.isArray(p.recurring) ? p.recurring : []) as { payItemId: string; amount: number }[],
                 bankName: p.bankName ?? "", bankAccountNo: p.bankAccountNo ?? "", isActive: p.isActive,
               } : null,

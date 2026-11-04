@@ -93,6 +93,7 @@ export type LineInput = {
   adjustments?: Adjustment[];
   // Approved leave in the period, one entry per date (see lib/payroll/leave.ts).
   leaves?: { date: string; days: number; paid: boolean }[] | null;
+  restDates?: string[] | null; // this employee's rest days; null = use the run's day types as is
   leaveConversionDays?: number; // unused leave paid in cash this run
   benefitsExemptRemaining?: number; // what's left of the yearly 13th-month/benefits exemption
 };
@@ -100,7 +101,7 @@ export type LineInput = {
 export type RunContext = {
   periodStart: string; // YYYY-MM-DD
   periodEnd: string;
-  dayTypes?: Record<string, DayType> | null;
+  dayTypes?: Record<string, DayType> | null; // holidays (and legacy run-wide rest days)
   rules: PayrollRules;
   group: GroupRules;
 };
@@ -161,6 +162,26 @@ export function periodsPerYear(frequency: PayFrequency, periodDayCount: number):
 // ---------------- Day types ----------------
 
 export const isRestDayType = (t: DayType) => t === "RD" || t.endsWith("RD");
+
+const WITHOUT_REST: Record<DayType, DayType> = { REG: "REG", RD: "REG", SH: "SH", SHRD: "SH", DSH: "DSH", DSHRD: "DSH", RH: "RH", RHRD: "RH", DH: "DH", DHRD: "DH" };
+const WITH_REST: Record<DayType, DayType> = { REG: "RD", RD: "RD", SH: "SHRD", SHRD: "SHRD", DSH: "DSHRD", DSHRD: "DSHRD", RH: "RHRD", RHRD: "RHRD", DH: "DHRD", DHRD: "DHRD" };
+/** The holiday part of a day type (rest day removed). */
+export const holidayPart = (t: DayType): DayType => WITHOUT_REST[t];
+/** Same holiday, falling on the rest day. */
+export const onRestDay = (t: DayType): DayType => WITH_REST[t];
+
+/** One employee's day types: the run's holidays combined with that employee's own rest days. */
+export function employeeDayTypes(runTypes: Record<string, DayType> | null | undefined, restDates: string[]): Record<string, DayType> {
+  const out: Record<string, DayType> = {};
+  for (const [d, t] of Object.entries(runTypes ?? {})) if (holidayPart(t) !== "REG") out[d] = holidayPart(t);
+  for (const d of restDates) out[d] = onRestDay(out[d] ?? "REG");
+  return out;
+}
+
+/** Dates in the period falling on the given weekdays (0 = Sunday). */
+export function restDatesFor(periodStart: string, periodEnd: string, weekdays: number[]): string[] {
+  return periodDates(periodStart, periodEnd).filter((d) => weekdays.includes(new Date(`${d}T00:00:00Z`).getUTCDay()));
+}
 export const isSpecialDayType = (t: DayType) => t === "SH" || t === "SHRD" || t === "DSH" || t === "DSHRD";
 /** Regular holidays on this date: 0, 1, or 2 for a double holiday. */
 export const regularHolidayCount = (t: DayType) => (t === "DH" || t === "DHRD" ? 2 : t === "RH" || t === "RHRD" ? 1 : 0);
@@ -245,7 +266,8 @@ export function computeLine(input: LineInput, ctx: RunContext): LineResult {
   const dates = periodDates(ctx.periodStart, ctx.periodEnd);
   const ppy = periodsPerYear(group.frequency, dates.length);
   const runsPerMonth = ppy / 12;
-  const typeOf = (d: string): DayType => ctx.dayTypes?.[d] ?? "REG";
+  const types = input.restDates ? employeeDayTypes(ctx.dayTypes, input.restDates) : (ctx.dayTypes ?? {});
+  const typeOf = (d: string): DayType => types[d] ?? "REG";
 
   const dailyRate = dailyRateOf(input.payBasis, input.rate, rules);
   const hourlyRate = dailyRate / (rules.hoursPerDay || 8);

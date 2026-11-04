@@ -1136,6 +1136,13 @@ enum PayrollRunKind {
   THIRTEENTH_MONTH
 }
 
+// FIXED = same weekdays every week, filled in automatically on each run;
+// FLEXIBLE = rotating/shifting, marked by the payroll processor on each run.
+enum RestDayMode {
+  FIXED
+  FLEXIBLE
+}
+
 enum PayrollRunStatus {
   DRAFT
   POSTED
@@ -1285,6 +1292,9 @@ model PayrollProfile {
   biometricId   String?
   shiftStart    String?
   shiftEnd      String?
+  // Rest day schedule. FIXED with no weekdays = the company's rest days (setup).
+  restDayMode   RestDayMode @default(FIXED)
+  restWeekdays  Int[]       @default([])
 
   // Recurring earnings/deductions copied into every new run: [{ payItemId, amount }].
   recurring Json?
@@ -1358,6 +1368,9 @@ model PayrollRunLine {
   // type: { "2026-11-30": { days: 1, ot: 2, nd: 0, ndOt: 0 } }. `days` is for
   // monthly-paid staff working a rest day/holiday (daily-rate use the grid).
   dayHours       Json?
+  // This employee's rest days in the period: ["2026-11-02", ...]. Null until
+  // first computed (filled from the profile's fixed weekdays).
+  restDates      Json?
   // This run's earnings/deductions: [{ payItemId, amount }].
   adjustments    Json?
   // Approved leave falling in the period, refreshed on every recompute while

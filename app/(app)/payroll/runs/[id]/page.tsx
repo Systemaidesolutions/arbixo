@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getCurrentCompany, getCurrentCapability } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { getOrCreateSetup, isoDate, recomputeRun, toGroupRules, toRules } from "@/lib/payroll/server";
+import { getOrCreateSetup, isoDate, lineRestDates, recomputeRun, scheduledRestDates, toGroupRules, toRules } from "@/lib/payroll/server";
 import { conversionsForRun, leaveForRun } from "@/lib/payroll/leaveServer";
 import type { DayHours, DayType } from "@/lib/payroll/compute";
 import type { RunLeave } from "@/lib/payroll/leave";
@@ -86,6 +86,9 @@ export default async function PayrollRunPage({ params }: { params: { id: string 
       biometricId: l.employee.payrollProfile?.biometricId ?? null,
       shiftStart: l.employee.payrollProfile?.shiftStart ?? null,
       shiftEnd: l.employee.payrollProfile?.shiftEnd ?? null,
+      restDayMode: l.employee.payrollProfile?.restDayMode ?? "FIXED",
+      restDates: lineRestDates(l.restDates, l.employee.payrollProfile, setup.restWeekdays, isoDate(run.periodStart), isoDate(run.periodEnd)),
+      scheduledRest: scheduledRestDates(l.employee.payrollProfile, setup.restWeekdays, isoDate(run.periodStart), isoDate(run.periodEnd)),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 

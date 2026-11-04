@@ -4,7 +4,7 @@ import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatPeso } from "@/lib/format";
 import {
-  computeLine, DAY_TYPE_LABEL, DAY_TYPES, dayMultiplier, periodDates,
+  computeLine, DAY_TYPE_LABEL, dayMultiplier, employeeDayTypes, holidayPart, periodDates,
   type Adjustment, type DayHours, type DayType, type GroupRules, type LineResult, type PayrollRules,
 } from "@/lib/payroll/compute";
 import type { RunLeave } from "@/lib/payroll/leave";
@@ -21,6 +21,9 @@ type Line = {
   leaveConversionDays: number; // unused leave converted to cash, paid this run
   benefitsExemptRemaining: number; // left of the yearly 13th-month/bonus exemption
   biometricId: string | null; shiftStart: string | null; shiftEnd: string | null; // for the biometric import
+  restDayMode: "FIXED" | "FLEXIBLE"; // FLEXIBLE = no fixed rest day, marked here every run
+  restDates: string[]; // this employee's rest days in the period
+  scheduledRest: string[]; // what the fixed schedule gives (for "reset")
 };
 type Run = {
   id: string; runNo: string; status: "DRAFT" | "POSTED" | "CANCELLED"; groupName: string; branch: string | null;
@@ -32,6 +35,8 @@ const DAY_TYPE_STYLE: Record<DayType, string> = {
   REG: "", RD: "bg-neutral-100", SH: "bg-amber-50", SHRD: "bg-amber-100", DSH: "bg-amber-100", DSHRD: "bg-amber-200",
   RH: "bg-rose-50", RHRD: "bg-rose-100", DH: "bg-rose-100", DHRD: "bg-rose-200",
 };
+// The run marks holidays only; rest days come from each employee.
+const HOLIDAY_TYPES: DayType[] = ["REG", "SH", "DSH", "RH", "DH"];
 const DAY_TYPE_SHORT: Record<DayType, string> = {
   REG: "Ord", RD: "Rest", SH: "SH", SHRD: "SH+R", DSH: "2SH", DSHRD: "2SH+R", RH: "RH", RHRD: "RH+R", DH: "2RH", DHRD: "2RH+R",
 };
@@ -68,6 +73,24 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
 
   const dates = useMemo(() => periodDates(run.periodStart, run.periodEnd), [run.periodStart, run.periodEnd]);
   const daily = lines.filter((l) => l.payBasis === "DAILY");
+  /** Each employee's day types: the run's holidays plus their own rest days. */
+  const typesByEmp = useMemo(() => {
+    const m = new Map<string, Record<string, DayType>>();
+    for (const l of lines) m.set(l.employeeId, employeeDayTypes(dayTypes, l.restDates));
+    return m;
+  }, [lines, dayTypes]);
+  const typeFor = (l: Line, d: string): DayType => typesByEmp.get(l.employeeId)?.[d] ?? "REG";
+  const runType = (d: string): DayType => holidayPart(dayTypes[d] ?? "REG");
+  const flexible = lines.filter((l) => l.restDayMode === "FLEXIBLE");
+  const flexibleUnmarked = flexible.filter((l) => l.restDates.length === 0);
+  const [restOpen, setRestOpen] = useState(flexible.length > 0);
+  // Flexible employees first so the processor sees who needs marking.
+  const restRows = useMemo(() => [...lines].sort((a, b) => (a.restDayMode === b.restDayMode ? a.name.localeCompare(b.name) : a.restDayMode === "FLEXIBLE" ? -1 : 1)), [lines]);
+  const sameDates = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+  function toggleRest(l: Line, d: string) {
+    const next = l.restDates.includes(d) ? l.restDates.filter((x) => x !== d) : [...l.restDates, d].sort();
+    patch(l.employeeId, { restDates: next });
+  }
 
   const results = useMemo(() => {
     const ctx = { periodStart: run.periodStart, periodEnd: run.periodEnd, dayTypes, rules, group };
@@ -107,13 +130,14 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
       if (l.payBasis !== "DAILY" || (only && l.employeeId !== only)) return l;
       const att = { ...l.attendance };
       const onLeave = new Set(l.leaves.filter((x) => x.days >= 1).map((x) => x.date));
-      for (const d of dates) if ((dayTypes[d] ?? "REG") === "REG" && att[d] == null && !onLeave.has(d)) att[d] = 1;
+      const types = employeeDayTypes(dayTypes, l.restDates);
+      for (const d of dates) if ((types[d] ?? "REG") === "REG" && att[d] == null && !onLeave.has(d)) att[d] = 1;
       return { ...l, attendance: att };
     }));
     setDirty(true);
   }
   function setDayType(date: string, t: DayType) {
-    setDayTypes((d) => { const n = { ...d }; if (t === "REG") delete n[date]; else n[date] = t; return n; });
+    setDayTypes((d) => { const n = { ...d }; if (t === "REG") delete n[date]; else n[date] = holidayPart(t); return n; });
     setDirty(true);
   }
 
@@ -128,13 +152,14 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
 
   const payload = () => ({
     dayTypes, remarks,
-    lines: lines.map((l) => ({ employeeId: l.employeeId, attendance: l.attendance, absentDays: Number(l.absentDays) || 0, lateMinutes: Number(l.lateMinutes) || 0, otHours: Number(l.otHours) || 0, nightDiffHours: Number(l.nightDiffHours) || 0, dayHours: l.dayHours, adjustments: l.adjustments.map((a) => ({ payItemId: a.payItemId, amount: Number(a.amount) || 0 })) })),
+    lines: lines.map((l) => ({ employeeId: l.employeeId, restDates: l.restDates, attendance: l.attendance, absentDays: Number(l.absentDays) || 0, lateMinutes: Number(l.lateMinutes) || 0, otHours: Number(l.otHours) || 0, nightDiffHours: Number(l.nightDiffHours) || 0, dayHours: l.dayHours, adjustments: l.adjustments.map((a) => ({ payItemId: a.payItemId, amount: Number(a.amount) || 0 })) })),
   });
 
   async function save() {
     if (await call(`/api/payroll/runs/${run.id}`, "PATCH", payload())) { setDirty(false); setMsg({ ok: true, text: "Saved." }); router.refresh(); }
   }
   async function post() {
+    if (flexibleUnmarked.length && !confirm(`${flexibleUnmarked.length} employee(s) without a fixed rest day have no rest day marked in this period (${flexibleUnmarked.map((l) => l.name).join("; ")}). Their work on every date is paid as ordinary days. Continue anyway?`)) return;
     if (!confirm(`Post ${run.runNo} to the General Journal? Net pay ${formatPeso(totals.net)} for ${lines.length} employee(s). It can't be edited after posting.`)) return;
     if (dirty && !(await call(`/api/payroll/runs/${run.id}`, "PATCH", payload()))) return;
     if (await call(`/api/payroll/runs/${run.id}/post`, "POST")) { setDirty(false); router.refresh(); }
@@ -186,7 +211,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
                 <tr key={date}>
                   <td className="pr-2">
                     <select value={date} disabled={ro} onChange={(e) => setEntry(e.target.value, h, date)} className="rounded border border-neutral-300 px-1 py-0.5 text-[11px]">
-                      {dates.filter((d) => d === date || !l.dayHours[d]).map((d) => <option key={d} value={d}>{mdy(d).slice(0, 5)} {WEEKDAY[dow(d)]} · {DAY_TYPE_SHORT[dayTypes[d] ?? "REG"]}</option>)}
+                      {dates.filter((d) => d === date || !l.dayHours[d]).map((d) => <option key={d} value={d}>{mdy(d).slice(0, 5)} {WEEKDAY[dow(d)]} · {DAY_TYPE_SHORT[typeFor(l, d)]}</option>)}
                     </select>
                   </td>
                   {monthly && <td className="pr-2">{inp(h.days, (x) => setEntry(date, { ...h, days: x }))}</td>}
@@ -244,11 +269,11 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
         <BiometricImport
           periodStart={run.periodStart}
           periodEnd={run.periodEnd}
-          dayTypes={dayTypes}
           shift={shift}
           lines={lines.map((l) => ({
             employeeId: l.employeeId, code: l.code, name: l.name, payBasis: l.payBasis, biometricId: l.biometricId,
             shiftStart: l.shiftStart, shiftEnd: l.shiftEnd, leaveDates: l.leaves.map((x) => x.date),
+            dayTypes: typesByEmp.get(l.employeeId) ?? {},
           }))}
           onApply={applyImport}
           onClose={() => setImporting(false)}
@@ -257,22 +282,94 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
 
       {/* Day types of the period (DOLE handbook pay rates apply per date) */}
       <section className="mt-6 rounded-lg border border-neutral-200 p-4 print:hidden">
-        <h2 className="text-sm font-medium text-neutral-800">Days in this period</h2>
-        <p className="text-xs text-neutral-500">Mark rest days, special days and regular holidays (from the President&apos;s proclamation). Pay for work on each date, overtime (125% ordinary, 130% of the day&apos;s rate otherwise) and night shift (+10%) follow the day type. A special <i>working</i> day is an ordinary day.</p>
+        <h2 className="text-sm font-medium text-neutral-800">Holidays in this period</h2>
+        <p className="text-xs text-neutral-500">Mark special days and regular holidays (from the President&apos;s proclamation). Rest days are per employee (below). Pay for work on each date, overtime (125% ordinary, 130% of the day&apos;s rate otherwise) and night shift (+10%) follow the day type; a holiday on an employee&apos;s rest day uses the &ldquo;+R&rdquo; rate. A special <i>working</i> day is an ordinary day.</p>
         <div className="mt-2 flex flex-wrap gap-1">
           {dates.map((d) => {
-            const t = dayTypes[d] ?? "REG";
+            const t = runType(d);
             return (
               <div key={d} className={`rounded border border-neutral-200 px-1 py-0.5 text-center text-[10px] ${DAY_TYPE_STYLE[t]}`} title={`${DAY_TYPE_LABEL[t]}: ${Math.round(dayMultiplier(t, rules) * 100)}% if worked`}>
                 <div className="text-neutral-400">{WEEKDAY[dow(d)]} <b className="text-neutral-700">{d.slice(8)}</b></div>
                 <select value={t} disabled={ro} onChange={(e) => setDayType(d, e.target.value as DayType)} className="w-16 rounded border border-neutral-200 bg-transparent text-[10px] disabled:border-transparent">
-                  {DAY_TYPES.map((x) => <option key={x} value={x} title={DAY_TYPE_LABEL[x]}>{DAY_TYPE_SHORT[x]}</option>)}
+                  {HOLIDAY_TYPES.map((x) => <option key={x} value={x} title={DAY_TYPE_LABEL[x]}>{DAY_TYPE_SHORT[x]}</option>)}
                 </select>
               </div>
             );
           })}
         </div>
-        <p className="mt-1 text-[10px] text-neutral-400">Ord ordinary · Rest rest day · SH special day · 2SH double special · RH regular holiday · 2RH double holiday · +R falls on the rest day</p>
+        <p className="mt-1 text-[10px] text-neutral-400">Ord ordinary · SH special day · 2SH double special · RH regular holiday · 2RH double holiday</p>
+      </section>
+
+      {/* Rest days per employee */}
+      <section className={`mt-6 rounded-lg border p-4 print:hidden ${flexibleUnmarked.length ? "border-amber-300" : "border-neutral-200"}`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-medium text-neutral-800">
+              Rest days
+              {flexible.length > 0 && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">{flexible.length} without fixed rest day</span>}
+            </h2>
+            <p className="text-xs text-neutral-500">Fixed rest days fill in automatically from each employee&apos;s schedule. Employees <b>without a fixed rest day</b> (highlighted) need their rest days marked here every run. Click a date to mark or unmark it.</p>
+          </div>
+          <button onClick={() => setRestOpen(!restOpen)} className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{restOpen ? "Hide" : "Show"} rest days</button>
+        </div>
+        {flexibleUnmarked.length > 0 && (
+          <p className="mt-2 rounded bg-amber-50 px-2 py-1.5 text-xs text-amber-800">
+            No rest day marked yet for {flexibleUnmarked.length} employee(s): {flexibleUnmarked.map((l) => l.name).join("; ")}.
+          </p>
+        )}
+        {restOpen && lines.length > 0 && (
+          <div className="mt-3 overflow-x-auto">
+            <table className="text-xs">
+              <thead>
+                <tr>
+                  <th className="sticky left-0 z-10 min-w-[14rem] bg-white py-1 pr-3 text-left font-medium text-neutral-500">Employee</th>
+                  {dates.map((d) => (
+                    <th key={d} className={`px-0.5 py-1 text-center font-normal ${DAY_TYPE_STYLE[runType(d)]}`}>
+                      <div className="text-neutral-400">{WEEKDAY[dow(d)]}</div>
+                      <div className="font-medium text-neutral-700">{d.slice(8)}</div>
+                    </th>
+                  ))}
+                  <th className="px-2 py-1 text-right font-medium text-neutral-500">Rest</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {restRows.map((l) => {
+                  const flex = l.restDayMode === "FLEXIBLE";
+                  const changed = !flex && !sameDates(l.restDates, l.scheduledRest);
+                  const rowBg = flex ? (l.restDates.length ? "bg-amber-50" : "bg-amber-100") : "bg-white";
+                  return (
+                    <tr key={l.employeeId} className={flex ? "bg-amber-50/60" : ""}>
+                      <td className={`sticky left-0 z-10 py-1 pr-3 ${rowBg}`}>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-neutral-800">{l.name}</span>
+                          {flex
+                            ? <span className="rounded bg-amber-200 px-1 text-[10px] font-medium text-amber-900" title="No fixed rest day: mark it every run">Flexible</span>
+                            : <span className="rounded bg-neutral-100 px-1 text-[10px] text-neutral-500" title="Filled from the employee's fixed schedule">Fixed</span>}
+                        </div>
+                        {changed && <div className="text-[10px] text-neutral-500">changed from schedule{canEdit && <> · <button onClick={() => patch(l.employeeId, { restDates: l.scheduledRest })} className="text-brand-blue hover:underline">reset</button></>}</div>}
+                        {flex && !l.restDates.length && <div className="text-[10px] font-medium text-amber-800">no rest day marked</div>}
+                      </td>
+                      {dates.map((d) => {
+                        const rest = l.restDates.includes(d);
+                        return (
+                          <td key={d} className="px-0.5 py-1 text-center">
+                            <button
+                              disabled={ro}
+                              onClick={() => toggleRest(l, d)}
+                              title={rest ? "Rest day: click to unmark" : "Click to mark as rest day"}
+                              className={`h-6 w-8 rounded border text-[10px] ${rest ? (flex ? "border-amber-500 bg-amber-300 font-medium text-amber-900" : "border-neutral-400 bg-neutral-300 font-medium text-neutral-800") : "border-neutral-200 text-neutral-300 hover:bg-neutral-50"} disabled:cursor-default`}
+                            >{rest ? "R" : "·"}</button>
+                          </td>
+                        );
+                      })}
+                      <td className="px-2 py-1 text-right font-mono">{l.restDates.length}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       {/* Daily attendance grid */}
@@ -291,10 +388,10 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
                 <tr>
                   <th className="sticky left-0 z-10 min-w-[12rem] bg-white py-1 pr-3 text-left font-medium text-neutral-500">Employee</th>
                   {dates.map((d) => (
-                    <th key={d} className={`px-0.5 py-1 text-center font-normal ${DAY_TYPE_STYLE[dayTypes[d] ?? "REG"]}`}>
+                    <th key={d} className={`px-0.5 py-1 text-center font-normal ${DAY_TYPE_STYLE[runType(d)]}`}>
                       <div className="text-neutral-400">{WEEKDAY[dow(d)]}</div>
                       <div className="font-medium text-neutral-700">{d.slice(8)}</div>
-                      <div className="text-[10px] text-neutral-500" title={DAY_TYPE_LABEL[dayTypes[d] ?? "REG"]}>{DAY_TYPE_SHORT[dayTypes[d] ?? "REG"]}</div>
+                      <div className="text-[10px] text-neutral-500" title={DAY_TYPE_LABEL[runType(d)]}>{runType(d) === "REG" ? "" : DAY_TYPE_SHORT[runType(d)]}</div>
                     </th>
                   ))}
                   <th className="px-2 py-1 text-right font-medium text-neutral-500">Days</th>
@@ -307,14 +404,16 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
                   const r = results.get(l.employeeId)!;
                   return (
                     <tr key={l.employeeId}>
-                      <td className="sticky left-0 z-10 bg-white py-1 pr-3">
-                        <div className="text-neutral-800">{l.name}</div>
+                      <td className={`sticky left-0 z-10 py-1 pr-3 ${l.restDayMode === "FLEXIBLE" ? "bg-amber-50" : "bg-white"}`}>
+                        <div className="text-neutral-800">{l.name}{l.restDayMode === "FLEXIBLE" && <span className="ml-1 rounded bg-amber-200 px-1 text-[10px] font-medium text-amber-900" title="No fixed rest day: rest days are marked in the Rest days section">Flexible</span>}</div>
                         {canEdit && <button onClick={() => fillRegular(l.employeeId)} className="text-[10px] text-brand-blue hover:underline">fill regular days</button>}
                       </td>
                       {dates.map((d) => {
                         const lv = l.leaves.find((x) => x.date === d);
+                        const t = typeFor(l, d);
                         return (
-                          <td key={d} className={`px-0.5 py-1 text-center ${DAY_TYPE_STYLE[dayTypes[d] ?? "REG"]}`}>
+                          <td key={d} className={`px-0.5 py-1 text-center ${DAY_TYPE_STYLE[t]}`} title={DAY_TYPE_LABEL[t]}>
+                            {t !== runType(d) && <div className="text-[9px] leading-none text-neutral-500">rest</div>}
                             {lv && <div title={`${lv.code}${lv.days < 1 ? " (half day)" : ""}${lv.paid ? ", with pay" : ", without pay"}`} className={`mx-auto mb-0.5 w-10 rounded px-0.5 text-[10px] font-medium ${lv.paid ? "bg-blue-100 text-brand-blue" : "bg-neutral-200 text-neutral-600"}`}>{lv.code}{lv.days < 1 ? "½" : ""}</div>}
                             {(!lv || lv.days < 1 || l.attendance[d] != null) && <input value={l.attendance[d] ?? ""} disabled={ro} inputMode="decimal" onChange={(e) => setCell(l, d, e.target.value)} className={`${cellInput} w-10 text-center`} />}
                           </td>
@@ -383,7 +482,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
                     <Fragment key={l.employeeId}>
                       <tr className="align-top">
                         <td className="py-1.5 pr-2">
-                          <div className="text-sm text-neutral-800">{l.name}</div>
+                          <div className="text-sm text-neutral-800">{l.name}{l.restDayMode === "FLEXIBLE" && <span className={`ml-1 rounded px-1 text-[10px] font-medium ${l.restDates.length ? "bg-amber-100 text-amber-800" : "bg-amber-300 text-amber-900"}`} title={l.restDates.length ? `Flexible rest day: ${l.restDates.map((d) => d.slice(5)).join(", ")}` : "Flexible rest day: none marked yet"}>{l.restDates.length ? "Flexible rest" : "No rest day marked"}</span>}</div>
                           <div className="text-[10px] text-neutral-400">{l.code} · {formatPeso(l.rate)}{l.payBasis === "DAILY" ? "/day" : "/mo"}{l.isMinimumWage ? " · MWE" : ""}</div>
                         </td>
                         <td className="py-1.5 pr-2 text-right">

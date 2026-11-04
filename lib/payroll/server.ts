@@ -4,7 +4,7 @@ import { setAuditSuppressed } from "@/lib/auditContext";
 import { postDocument, type LedgerLineInput } from "@/lib/ledgerPosting";
 import type { PayrollSetup, PayGroup, Prisma } from "@prisma/client";
 import {
-  computeLine, computeThirteenth, periodDates, round2, thirteenthMonthBase,
+  computeLine, computeThirteenth, periodDates, restDatesFor, round2, thirteenthMonthBase,
   type Adjustment, type DayHours, type DayType, type GroupRules, type PayrollRules, type RunContext,
 } from "./compute";
 import { conversionsForRun, leaveForRun } from "./leaveServer";
@@ -167,8 +167,27 @@ export async function createRun(companyId: string, userId: string, raw: CreateRu
   return { status: 200, run };
 }
 
+type RestProfile = { restDayMode: "FIXED" | "FLEXIBLE"; restWeekdays: number[] } | null | undefined;
+
+/** An employee's rest days in a period from their schedule: fixed weekdays (or the company's), none when flexible. */
+export function scheduledRestDates(p: RestProfile, companyRestWeekdays: number[], start: string, end: string): string[] {
+  if (p?.restDayMode === "FLEXIBLE") return [];
+  return restDatesFor(start, end, p?.restWeekdays?.length ? p.restWeekdays : companyRestWeekdays);
+}
+
+/** A run line's rest days: what's saved on the line, else the employee's schedule. */
+export function lineRestDates(stored: unknown, p: RestProfile, companyRestWeekdays: number[], start: string, end: string): string[] {
+  if (Array.isArray(stored)) return cleanRestDates(stored, start, end);
+  return scheduledRestDates(p, companyRestWeekdays, start, end);
+}
+
+function cleanRestDates(raw: unknown[], start: string, end: string): string[] {
+  return [...new Set(raw.map(String).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= start && d <= end))].sort();
+}
+
 export type LinePatch = {
   employeeId: string;
+  restDates?: string[] | null;
   attendance?: Record<string, number> | null;
   absentDays?: number;
   lateMinutes?: number;
@@ -216,6 +235,7 @@ export async function saveRunInputs(companyId: string, runId: string, body: { da
             ...(l.otHours !== undefined ? { otHours: num(l.otHours) } : {}),
             ...(l.nightDiffHours !== undefined ? { nightDiffHours: num(l.nightDiffHours) } : {}),
             ...(l.dayHours !== undefined ? { dayHours: cleanDayHours(l.dayHours) } : {}),
+            ...(Array.isArray(l.restDates) ? { restDates: cleanRestDates(l.restDates, isoDate(run.periodStart), isoDate(run.periodEnd)) } : {}),
             ...(l.adjustments !== undefined ? { adjustments: l.adjustments.filter((a) => a.payItemId && Number(a.amount)) } : {}),
           },
         });
@@ -317,6 +337,7 @@ export async function recomputeRun(companyId: string, runId: string) {
     for (const line of run.lines) {
       const adjustments = await resolveAdjustments(companyId, line.adjustments);
       const lineLeaves = leaves.get(line.employeeId) ?? [];
+      const restDates = lineRestDates(line.restDates, line.employee.payrollProfile, setup.restWeekdays, ctx.periodStart, ctx.periodEnd);
       const r = computeLine(
         {
           payBasis: line.payBasis,
@@ -328,6 +349,7 @@ export async function recomputeRun(companyId: string, runId: string) {
           otHours: n(line.otHours),
           nightDiffHours: n(line.nightDiffHours),
           dayHours: (line.dayHours ?? {}) as Record<string, DayHours>,
+          restDates,
           adjustments,
           leaves: lineLeaves,
           leaveConversionDays: conversions.get(line.employeeId) ?? 0,
@@ -335,7 +357,7 @@ export async function recomputeRun(companyId: string, runId: string) {
         },
         ctx
       );
-      await prisma.payrollRunLine.update({ where: { id: line.id }, data: { ...r, leaves: lineLeaves } });
+      await prisma.payrollRunLine.update({ where: { id: line.id }, data: { ...r, leaves: lineLeaves, restDates } });
       totals.gross += r.grossPay;
       totals.ded += r.totalDeductions;
       totals.net += r.netPay;

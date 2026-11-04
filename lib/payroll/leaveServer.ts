@@ -137,7 +137,10 @@ export async function fileLeave(companyId: string, userId: string, raw: FileLeav
   if (problem) return { status: 400, error: problem };
 
   const setup = await getOrCreateSetup(companyId);
-  const allowed = leaveDatesFor(raw.startDate, raw.endDate, { restWeekdays: setup.restWeekdays, countCalendarDays: t.countCalendarDays, halfDay: t.allowHalfDay && raw.halfDay });
+  // Skip the employee's own fixed rest days (company rest days when flexible or not set).
+  const prof = await prisma.payrollProfile.findUnique({ where: { employeeId: raw.employeeId }, select: { restDayMode: true, restWeekdays: true } });
+  const restWeekdays = prof?.restDayMode === "FIXED" && prof.restWeekdays.length ? prof.restWeekdays : setup.restWeekdays;
+  const allowed = leaveDatesFor(raw.startDate, raw.endDate, { restWeekdays, countCalendarDays: t.countCalendarDays, halfDay: t.allowHalfDay && raw.halfDay });
   // The form may trim dates or mark half days; only keep dates inside the range.
   let dates = allowed;
   if (Array.isArray(raw.dates)) {
