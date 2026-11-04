@@ -15,6 +15,7 @@ type PayItem = { id: string; code: string; name: string; kind: "EARNING" | "DEDU
 type Line = {
   employeeId: string; code: string; name: string; position: string | null; payBasis: "MONTHLY" | "DAILY"; rate: number; isMinimumWage: boolean;
   attendance: Record<string, number>; absentDays: number; lateMinutes: number; otHours: number; nightDiffHours: number;
+  absentHours?: number; lateHours?: number; // what the editor shows; saved as days / minutes
   adjustments: { payItemId: string; amount: number }[];
   leaves: RunLeave[]; // approved leave in the period (read-only here; managed under Payroll › Leave)
   dayHours: Record<string, DayHours>; // work/OT/night hours on specific dates
@@ -50,7 +51,13 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
   available: { employeeId: string; label: string }[]; canEdit: boolean; canCancel: boolean;
 }) {
   const router = useRouter();
-  const [lines, setLines] = useState<Line[]>(initialLines);
+  // Every register input is in hours. Absences are stored in days and late in
+  // minutes, so convert on the way in and out.
+  const hpd = Number(rules.hoursPerDay) || 8;
+  const h2 = (v: number) => Math.round(v * 100) / 100;
+  const absentDaysOf = (l: Line) => (Number(l.absentHours) || 0) / hpd;
+  const lateMinutesOf = (l: Line) => (Number(l.lateHours) || 0) * 60;
+  const [lines, setLines] = useState<Line[]>(() => initialLines.map((l) => ({ ...l, absentHours: h2(l.absentDays * hpd), lateHours: h2(l.lateMinutes / 60) })));
   const [dayTypes, setDayTypes] = useState<Record<string, DayType>>(run.dayTypes);
   const [remarks, setRemarks] = useState(run.remarks);
   const [dirty, setDirty] = useState(false);
@@ -64,7 +71,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
   function applyImport(patches: Map<string, LinePatch>) {
     setLines((ls) => ls.map((l) => {
       const p = patches.get(l.employeeId);
-      return p ? { ...l, ...p, absentDays: l.payBasis === "MONTHLY" ? p.absentDays : l.absentDays } : l;
+      return p ? { ...l, ...p, absentHours: l.payBasis === "MONTHLY" ? h2(p.absentDays * hpd) : l.absentHours, lateHours: h2(p.lateMinutes / 60) } : l;
     }));
     setDirty(true);
     setImporting(false);
@@ -84,7 +91,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
   /** Ordinary workdays in the period for one employee (not a rest day or holiday). */
   const workdaysOf = (l: Line) => dates.filter((d) => typeFor(l, d) === "REG").length;
   /** Monthly-paid employees whose absences exceed their workdays in the period. */
-  const overAbsent = lines.filter((l) => l.payBasis === "MONTHLY" && (Number(l.absentDays) || 0) > workdaysOf(l));
+  const overAbsent = lines.filter((l) => l.payBasis === "MONTHLY" && absentDaysOf(l) > workdaysOf(l));
   const flexible = lines.filter((l) => l.restDayMode === "FLEXIBLE");
   const flexibleUnmarked = flexible.filter((l) => l.restDates.length === 0);
   const [restOpen, setRestOpen] = useState(flexible.length > 0);
@@ -104,7 +111,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
         const it = items.find((i) => i.id === a.payItemId);
         return it && Number(a.amount) ? [{ payItemId: it.id, code: it.code, name: it.name, kind: it.kind, taxable: it.taxable, isOtherBenefit: it.isOtherBenefit, amount: Math.abs(Number(a.amount)) }] : [];
       });
-      map.set(l.employeeId, computeLine({ ...l, adjustments }, ctx));
+      map.set(l.employeeId, computeLine({ ...l, absentDays: absentDaysOf(l), lateMinutes: lateMinutesOf(l), adjustments }, ctx));
     }
     return map;
   }, [lines, dayTypes, rules, group, items, run.periodStart, run.periodEnd]);
@@ -156,7 +163,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
 
   const payload = () => ({
     dayTypes, remarks,
-    lines: lines.map((l) => ({ employeeId: l.employeeId, restDates: l.restDates, attendance: l.attendance, absentDays: Number(l.absentDays) || 0, lateMinutes: Number(l.lateMinutes) || 0, otHours: Number(l.otHours) || 0, nightDiffHours: Number(l.nightDiffHours) || 0, dayHours: l.dayHours, adjustments: l.adjustments.map((a) => ({ payItemId: a.payItemId, amount: Number(a.amount) || 0 })) })),
+    lines: lines.map((l) => ({ employeeId: l.employeeId, restDates: l.restDates, attendance: l.attendance, absentDays: Math.round(absentDaysOf(l) * 10000) / 10000, lateMinutes: h2(lateMinutesOf(l)), otHours: Number(l.otHours) || 0, nightDiffHours: Number(l.nightDiffHours) || 0, dayHours: l.dayHours, adjustments: l.adjustments.map((a) => ({ payItemId: a.payItemId, amount: Number(a.amount) || 0 })) })),
   });
 
   async function save() {
@@ -275,6 +282,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
           periodStart={run.periodStart}
           periodEnd={run.periodEnd}
           shift={shift}
+          hoursPerDay={hpd}
           lines={lines.map((l) => ({
             employeeId: l.employeeId, code: l.code, name: l.name, payBasis: l.payBasis, biometricId: l.biometricId,
             shiftStart: l.shiftStart, shiftEnd: l.shiftEnd, leaveDates: l.leaves.map((x) => x.date),
@@ -461,8 +469,8 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
               <thead>
                 <tr className="border-b border-neutral-200 text-left uppercase tracking-wide text-neutral-500">
                   <th className="py-2 pr-2">Employee</th>
-                  <th className="py-2 pr-2 text-right" title="Monthly-paid: days absent">Absent</th>
-                  <th className="py-2 pr-2 text-right" title="Late + undertime minutes">Late min</th>
+                  <th className="py-2 pr-2 text-right" title={`Monthly-paid: hours absent (${hpd} hrs = 1 day)`}>Absent hrs</th>
+                  <th className="py-2 pr-2 text-right" title="Late + undertime, in hours (15 min = 0.25)">Late hrs</th>
                   <th className="py-2 pr-2 text-right">OT hrs</th>
                   <th className="py-2 pr-2 text-right">ND hrs</th>
                   <th className="py-2 pr-2 text-right" title="Approved leave in the period">Leave</th>
@@ -494,17 +502,17 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
                           {l.payBasis === "MONTHLY"
                             ? (() => {
                                 const wd = workdaysOf(l);
-                                const over = (Number(l.absentDays) || 0) > wd;
+                                const over = absentDaysOf(l) > wd;
                                 return (
                                   <>
-                                    <input value={String(l.absentDays || "")} disabled={ro} inputMode="decimal" title={`Days absent. ${wd} workday(s) in this period.`} onChange={(e) => patch(l.employeeId, { absentDays: e.target.value as unknown as number })} className={`${cellInput} ${over ? "border-red-500 bg-red-50 text-red-700" : ""}`} />
-                                    <div className={`mt-0.5 text-[10px] ${over ? "font-medium text-red-600" : "text-neutral-400"}`}>{over ? `max ${wd} days` : `of ${wd} days`}</div>
+                                    <input value={String(l.absentHours || "")} disabled={ro} inputMode="decimal" title={`Hours absent. ${wd} workday(s) × ${hpd} hrs = ${wd * hpd} hrs in this period.`} onChange={(e) => patch(l.employeeId, { absentHours: e.target.value as unknown as number })} className={`${cellInput} ${over ? "border-red-500 bg-red-50 text-red-700" : ""}`} />
+                                    <div className={`mt-0.5 text-[10px] ${over ? "font-medium text-red-600" : "text-neutral-400"}`}>{over ? `max ${h2(wd * hpd)} hrs` : `of ${h2(wd * hpd)} hrs`}</div>
                                   </>
                                 );
                               })()
                             : <span className="text-neutral-300" title="Daily-rate: use the attendance grid">grid</span>}
                         </td>
-                        {(["lateMinutes", "otHours", "nightDiffHours"] as const).map((k) => (
+                        {(["lateHours", "otHours", "nightDiffHours"] as const).map((k) => (
                           <td key={k} className="py-1.5 pr-2 text-right">
                             <input value={String(l[k] || "")} disabled={ro} inputMode="decimal" onChange={(e) => patch(l.employeeId, { [k]: e.target.value as unknown as number })} className={cellInput} />
                           </td>

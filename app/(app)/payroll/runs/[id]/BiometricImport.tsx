@@ -24,8 +24,10 @@ const layoutOf = (m: Mapping): Layout => (m.inCol != null ? "inOut" : m.dateTime
  * replaces attendance, absences, late/undertime and OT/night hours of the
  * employees found in the file; everyone else is left as is.
  */
-export function BiometricImport({ periodStart, periodEnd, shift, lines, onApply, onClose }: {
-  periodStart: string; periodEnd: string; shift: Shift; lines: BioLine[];
+const hrs = (v: number) => Math.round(v * 100) / 100;
+
+export function BiometricImport({ periodStart, periodEnd, shift, hoursPerDay, lines, onApply, onClose }: {
+  periodStart: string; periodEnd: string; shift: Shift; hoursPerDay: number; lines: BioLine[];
   onApply: (patches: Map<string, LinePatch>) => void; onClose: () => void;
 }) {
   const [grid, setGrid] = useState<Grid | null>(null);
@@ -158,8 +160,8 @@ export function BiometricImport({ periodStart, periodEnd, shift, lines, onApply,
                 <thead>
                   <tr className="border-b border-neutral-200 text-left uppercase tracking-wide text-neutral-500">
                     <th className="px-2 py-1.5">Employee</th><th className="px-2 py-1.5">Device ID</th>
-                    <th className="px-2 py-1.5 text-right">Days present</th><th className="px-2 py-1.5 text-right" title="Monthly-paid: ordinary workdays without punches or approved leave">Absences</th>
-                    <th className="px-2 py-1.5 text-right">Late/under (min)</th><th className="px-2 py-1.5 text-right">OT hrs</th>
+                    <th className="px-2 py-1.5 text-right">Days present</th><th className="px-2 py-1.5 text-right" title="Monthly-paid: ordinary workdays without punches or approved leave, in hours">Absent hrs</th>
+                    <th className="px-2 py-1.5 text-right">Late/under hrs</th><th className="px-2 py-1.5 text-right">OT hrs</th>
                     <th className="px-2 py-1.5 text-right">Night hrs</th><th className="px-2 py-1.5 text-right">Night OT</th><th className="px-2 py-1.5">Check</th><th />
                   </tr>
                 </thead>
@@ -173,8 +175,8 @@ export function BiometricImport({ periodStart, periodEnd, shift, lines, onApply,
                           <td className="px-2 py-1">{line.name} <span className="text-[10px] text-neutral-400">{line.payBasis === "DAILY" ? "daily" : "monthly"}</span></td>
                           <td className="px-2 py-1 font-mono">{deviceId}</td>
                           <td className="px-2 py-1 text-right font-mono">{sum(days, "days")}</td>
-                          <td className="px-2 py-1 text-right font-mono">{line.payBasis === "MONTHLY" ? patch.absentDays : "–"}</td>
-                          <td className="px-2 py-1 text-right font-mono">{patch.lateMinutes}</td>
+                          <td className="px-2 py-1 text-right font-mono">{line.payBasis === "MONTHLY" ? hrs(patch.absentDays * hoursPerDay) : "–"}</td>
+                          <td className="px-2 py-1 text-right font-mono">{hrs(patch.lateMinutes / 60)}</td>
                           <td className="px-2 py-1 text-right font-mono">{sum(days, "otHours")}</td>
                           <td className="px-2 py-1 text-right font-mono">{sum(days, "ndHours")}</td>
                           <td className="px-2 py-1 text-right font-mono">{sum(days, "ndOtHours")}</td>
@@ -185,14 +187,14 @@ export function BiometricImport({ periodStart, periodEnd, shift, lines, onApply,
                           <tr className="bg-neutral-50">
                             <td colSpan={10} className="px-3 py-2">
                               <table className="text-[11px]">
-                                <thead><tr className="text-neutral-500"><th className="pr-3 text-left font-normal">Date</th><th className="pr-3 font-normal">Type</th><th className="pr-3 font-normal">In</th><th className="pr-3 font-normal">Out</th><th className="pr-3 font-normal">Day</th><th className="pr-3 font-normal">Late/under</th><th className="pr-3 font-normal">OT</th><th className="pr-3 font-normal">Night</th><th className="pr-3 font-normal">Night OT</th></tr></thead>
+                                <thead><tr className="text-neutral-500"><th className="pr-3 text-left font-normal">Date</th><th className="pr-3 font-normal">Type</th><th className="pr-3 font-normal">In</th><th className="pr-3 font-normal">Out</th><th className="pr-3 font-normal">Day</th><th className="pr-3 font-normal">Late/under hrs</th><th className="pr-3 font-normal">OT</th><th className="pr-3 font-normal">Night</th><th className="pr-3 font-normal">Night OT</th></tr></thead>
                                 <tbody>
                                   {days.map((d) => (
                                     <tr key={d.date} className={d.incomplete ? "text-amber-700" : ""}>
                                       <td className="pr-3">{mdy(d.date)}</td><td className="pr-3 text-center">{line.dayTypes[d.date] ?? "REG"}</td>
                                       <td className="pr-3 text-center font-mono">{d.in != null ? atTime(d.in) : "–"}</td>
                                       <td className="pr-3 text-center font-mono">{d.out != null ? atTime(d.out) : "missing"}</td>
-                                      <td className="pr-3 text-center font-mono">{d.days || "–"}</td><td className="pr-3 text-center font-mono">{d.lateMinutes || "–"}</td>
+                                      <td className="pr-3 text-center font-mono">{d.days || "–"}</td><td className="pr-3 text-center font-mono">{d.lateMinutes ? hrs(d.lateMinutes / 60) : "–"}</td>
                                       <td className="pr-3 text-center font-mono">{d.otHours || "–"}</td><td className="pr-3 text-center font-mono">{d.ndHours || "–"}</td><td className="pr-3 text-center font-mono">{d.ndOtHours || "–"}</td>
                                     </tr>
                                   ))}

@@ -1360,7 +1360,7 @@ model PayrollRunLine {
   // --- Inputs ---
   // DAILY basis: days worked per date { "2026-11-03": 1, "2026-11-04": 0.5 }.
   attendance     Json?
-  absentDays     Decimal @default(0) @db.Decimal(8, 2) // MONTHLY basis
+  absentDays     Decimal @default(0) @db.Decimal(10, 4) // MONTHLY basis; entered in hours, so keep 4 decimals
   lateMinutes    Decimal @default(0) @db.Decimal(10, 2) // late + undertime
   otHours        Decimal @default(0) @db.Decimal(8, 2)
   nightDiffHours Decimal @default(0) @db.Decimal(8, 2)
