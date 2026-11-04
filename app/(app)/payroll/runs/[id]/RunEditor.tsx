@@ -81,6 +81,10 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
   }, [lines, dayTypes]);
   const typeFor = (l: Line, d: string): DayType => typesByEmp.get(l.employeeId)?.[d] ?? "REG";
   const runType = (d: string): DayType => holidayPart(dayTypes[d] ?? "REG");
+  /** Ordinary workdays in the period for one employee (not a rest day or holiday). */
+  const workdaysOf = (l: Line) => dates.filter((d) => typeFor(l, d) === "REG").length;
+  /** Monthly-paid employees whose absences exceed their workdays in the period. */
+  const overAbsent = lines.filter((l) => l.payBasis === "MONTHLY" && (Number(l.absentDays) || 0) > workdaysOf(l));
   const flexible = lines.filter((l) => l.restDayMode === "FLEXIBLE");
   const flexibleUnmarked = flexible.filter((l) => l.restDates.length === 0);
   const [restOpen, setRestOpen] = useState(flexible.length > 0);
@@ -161,6 +165,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
   async function post() {
     if (flexibleUnmarked.length && !confirm(`${flexibleUnmarked.length} employee(s) without a fixed rest day have no rest day marked in this period (${flexibleUnmarked.map((l) => l.name).join("; ")}). Their work on every date is paid as ordinary days. Continue anyway?`)) return;
     if (!confirm(`Post ${run.runNo} to the General Journal? Net pay ${formatPeso(totals.net)} for ${lines.length} employee(s). It can't be edited after posting.`)) return;
+    if (overAbsent.length && !confirm(`Absences are more than the workdays in this period for: ${overAbsent.map((l) => l.name).join("; ")}. Their basic pay will be zero. Post anyway?`)) return;
     if (dirty && !(await call(`/api/payroll/runs/${run.id}`, "PATCH", payload()))) return;
     if (await call(`/api/payroll/runs/${run.id}/post`, "POST")) { setDirty(false); router.refresh(); }
   }
@@ -487,7 +492,16 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
                         </td>
                         <td className="py-1.5 pr-2 text-right">
                           {l.payBasis === "MONTHLY"
-                            ? <input value={String(l.absentDays || "")} disabled={ro} inputMode="decimal" onChange={(e) => patch(l.employeeId, { absentDays: e.target.value as unknown as number })} className={cellInput} />
+                            ? (() => {
+                                const wd = workdaysOf(l);
+                                const over = (Number(l.absentDays) || 0) > wd;
+                                return (
+                                  <>
+                                    <input value={String(l.absentDays || "")} disabled={ro} inputMode="decimal" title={`Days absent. ${wd} workday(s) in this period.`} onChange={(e) => patch(l.employeeId, { absentDays: e.target.value as unknown as number })} className={`${cellInput} ${over ? "border-red-500 bg-red-50 text-red-700" : ""}`} />
+                                    <div className={`mt-0.5 text-[10px] ${over ? "font-medium text-red-600" : "text-neutral-400"}`}>{over ? `max ${wd} days` : `of ${wd} days`}</div>
+                                  </>
+                                );
+                              })()
                             : <span className="text-neutral-300" title="Daily-rate: use the attendance grid">grid</span>}
                         </td>
                         {(["lateMinutes", "otHours", "nightDiffHours"] as const).map((k) => (
