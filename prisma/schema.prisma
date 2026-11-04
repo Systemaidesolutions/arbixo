@@ -1199,6 +1199,9 @@ model PayrollSetup {
   // Weekdays that are rest days (0 = Sunday … 6 = Saturday). Leave filings
   // skip these when counting working days.
   restWeekdays              Int[]   @default([0])
+  // Yearly leave credits earned 1/12 on the 1st of each month instead of all
+  // on Jan 1. An employee's own setting (PayrollProfile) wins over this.
+  leaveMonthlyAccrual       Boolean @default(false)
 
   // GL accounts (plain Account ids).
   salariesExpenseAccountId       String?
@@ -1295,6 +1298,9 @@ model PayrollProfile {
   // Rest day schedule. FIXED with no weekdays = the company's rest days (setup).
   restDayMode   RestDayMode @default(FIXED)
   restWeekdays  Int[]       @default([])
+  // Leave credits earned monthly: true = monthly, false = all on Jan 1,
+  // null = follow the company setting (PayrollSetup.leaveMonthlyAccrual).
+  leaveMonthlyAccrual Boolean?
 
   // Recurring earnings/deductions copied into every new run: [{ payItemId, amount }].
   recurring Json?

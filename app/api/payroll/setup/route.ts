@@ -7,7 +7,7 @@ const NUMBER_FIELDS = [
   "doubleSpecialMultiplier", "doubleSpecialRestDayMultiplier", "regularHolidayMultiplier", "regularHolidayRestDayMultiplier",
   "doubleHolidayMultiplier", "doubleHolidayRestDayMultiplier", "nightDiffRate", "benefitsExemptCap",
 ] as const;
-const BOOLEAN_FIELDS = ["payUnworkedRegularHoliday", "holidayRequiresPriorPresence", "monthlyIncludesRestDays", "monthlyIncludesSpecialDays"] as const;
+const BOOLEAN_FIELDS = ["payUnworkedRegularHoliday", "holidayRequiresPriorPresence", "monthlyIncludesRestDays", "monthlyIncludesSpecialDays", "leaveMonthlyAccrual"] as const;
 const ACCOUNT_FIELDS = [
   "salariesExpenseAccountId", "contributionsExpenseAccountId", "sssPayableAccountId", "philhealthPayableAccountId",
   "hdmfPayableAccountId", "withholdingTaxPayableAccountId", "otherDeductionsAccountId", "netPayAccountId", "thirteenthMonthAccountId",

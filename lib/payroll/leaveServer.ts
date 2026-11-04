@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { EmploymentType, LeaveAccrual, LeaveCreditBasis, LeaveEligibility, LeaveType, Prisma } from "@prisma/client";
 import { getOrCreateSetup, isoDate } from "./server";
 import {
-  PH_LEAVE_DEFAULTS, accruedCredits, daysByYear, eligibilityProblem, leaveDatesFor, sumDays,
+  PH_LEAVE_DEFAULTS, accruedCredits, daysByYear, effectiveAccrual, eligibilityProblem, leaveDatesFor, sumDays,
   type EmployeeFacts, type LeaveDate, type LeaveTypeRules, type RunLeave,
 } from "./leave";
 
@@ -112,10 +112,19 @@ async function usedByYear(employeeId: string, leaveTypeId: string, years: number
 }
 
 /** Credits available for one year, before subtracting what's been used. */
-async function creditTotal(employeeId: string, t: LeaveType, year: number, throughMonth: number): Promise<number> {
+async function creditTotal(employeeId: string, t: LeaveType, year: number, throughMonth: number, accrual: LeaveAccrual = t.accrual): Promise<number> {
   const c = await prisma.leaveCredit.findUnique({ where: { employeeId_leaveTypeId_year: { employeeId, leaveTypeId: t.id, year } } });
   if (!c) return 0;
-  return accruedCredits(n(c.granted), t.accrual, throughMonth) + n(c.carriedOver) + n(c.adjustment);
+  return accruedCredits(n(c.granted), accrual, throughMonth) + n(c.carriedOver) + n(c.adjustment);
+}
+
+/** One employee's accrual for a leave type: employee setting, then company, then the type. */
+async function accrualFor(companyId: string, employeeId: string, t: LeaveType): Promise<LeaveAccrual> {
+  const [setup, profile] = await Promise.all([
+    getOrCreateSetup(companyId),
+    prisma.payrollProfile.findUnique({ where: { employeeId }, select: { leaveMonthlyAccrual: true } }),
+  ]);
+  return effectiveAccrual(t.accrual, setup.leaveMonthlyAccrual, profile?.leaveMonthlyAccrual);
 }
 
 export type FileLeaveInput = {
@@ -181,9 +190,10 @@ export async function fileLeave(companyId: string, userId: string, raw: FileLeav
     if (t.creditBasis === "ANNUAL") {
       const perYear = daysByYear(dates);
       const used = await usedByYear(raw.employeeId, t.id, [...perYear.keys()]);
+      const accrual = await accrualFor(companyId, raw.employeeId, t);
       for (const [year, want] of perYear) {
         const lastMonth = Math.max(...dates.filter((d) => d.date.startsWith(String(year))).map((d) => Number(d.date.slice(5, 7))));
-        const available = (await creditTotal(raw.employeeId, t, year, lastMonth)) - (used.get(year) ?? 0);
+        const available = (await creditTotal(raw.employeeId, t, year, lastMonth, accrual)) - (used.get(year) ?? 0);
         if (want > available + 1e-9) return { status: 400, error: `Not enough ${t.code} credits for ${year}: ${Math.max(0, Math.round(available * 100) / 100)} day(s) available, ${want} requested.` };
       }
     }
@@ -359,13 +369,15 @@ export async function payslipLeave(companyId: string, employeeIds: string[], sta
   if (employeeIds.length === 0) return out;
   const year = Number(end.slice(0, 4));
   const throughMonth = Number(end.slice(5, 7));
-  const [types, credits, reqs] = await Promise.all([
+  const [types, credits, reqs, setup, profiles] = await Promise.all([
     prisma.leaveType.findMany({ where: { companyId }, orderBy: [{ sortOrder: "asc" }, { code: "asc" }] }),
     prisma.leaveCredit.findMany({ where: { companyId, year, employeeId: { in: employeeIds } } }),
     prisma.leaveRequest.findMany({
       where: { companyId, employeeId: { in: employeeIds }, kind: "FILING", status: "APPROVED", startDate: { lte: utc(end) }, endDate: { gte: utc(`${year}-01-01`) } },
       select: { employeeId: true, leaveTypeId: true, isPaid: true, dates: true },
     }),
+    getOrCreateSetup(companyId),
+    prisma.payrollProfile.findMany({ where: { companyId, employeeId: { in: employeeIds } }, select: { employeeId: true, leaveMonthlyAccrual: true } }),
   ]);
   const r2 = (v: number) => Math.round(v * 100) / 100;
   for (const id of employeeIds) {
@@ -390,7 +402,8 @@ export async function payslipLeave(companyId: string, employeeIds: string[], sta
       const c = credits.find((x) => x.employeeId === id && x.leaveTypeId === t.id);
       const used = r2(usedByType.get(t.id) ?? 0);
       if (!c && !used) continue;
-      const earned = r2(c ? accruedCredits(n(c.granted), t.accrual, throughMonth) + n(c.carriedOver) + n(c.adjustment) : 0);
+      const accrual = effectiveAccrual(t.accrual, setup.leaveMonthlyAccrual, profiles.find((p) => p.employeeId === id)?.leaveMonthlyAccrual);
+      const earned = r2(c ? accruedCredits(n(c.granted), accrual, throughMonth) + n(c.carriedOver) + n(c.adjustment) : 0);
       balances.push({ code: t.code, name: t.name, earned, used, remaining: r2(earned - used) });
     }
     out.set(id, { taken, balances });

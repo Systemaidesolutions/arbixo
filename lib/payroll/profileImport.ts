@@ -40,6 +40,7 @@ export const PROFILE_COLUMNS: TemplateColumn[] = [
   { header: "Shift End", note: "Own shift, 24-hour HH:mm, e.g. 17:00.", text: true },
   { header: "Rest Day Type", note: "Fixed = same days every week; Not fixed = set on every payroll run. Blank = Fixed.", choices: ["Fixed", "Not fixed"], width: 14 },
   { header: "Rest Days", note: "For Fixed: weekdays separated by commas, e.g. Sun or Sat,Sun. Blank = company rest days.", width: 12 },
+  { header: "Monthly Leave Credits", note: "Yes = leave credits earned 1/12 on the 1st of each month; No = all on Jan 1; Company = follow Payroll setup. Blank keeps the current setting (Company for new).", choices: ["Company", "Yes", "No"], width: 16 },
   { header: "Bank", note: "", width: 14 },
   { header: "Bank Account No", note: "", text: true, width: 18 },
   { header: "Include in Payroll", note: "No to exclude from new runs. Blank = Yes.", choices: ["Yes", "No"], width: 16 },
@@ -57,8 +58,8 @@ export function profileTemplate() {
     ],
     columns: PROFILE_COLUMNS,
     examples: [
-      ["EMP-0101", "", "", "Contractual", "Daily", "695", "WEEKLY", "", "2026-01-05", "2026-12-31", "34-1234567-8", "12-345678901-2", "1234-5678-9012", "Yes", "Male", "No", "Yes", "101", "", "", "Not fixed", "", "", "", "Yes"],
-      ["EMP-0102", "Reyes", "Maria", "Regular", "Monthly", "25000", "SEMI", "Head Office", "2024-03-01", "", "", "", "", "No", "Female", "Yes", "Yes", "", "08:00", "17:00", "Fixed", "Sun", "BDO", "001234567890", "Yes"],
+      ["EMP-0101", "", "", "Contractual", "Daily", "695", "WEEKLY", "", "2026-01-05", "2026-12-31", "34-1234567-8", "12-345678901-2", "1234-5678-9012", "Yes", "Male", "No", "Yes", "101", "", "", "Not fixed", "", "Company", "", "", "Yes"],
+      ["EMP-0102", "Reyes", "Maria", "Regular", "Monthly", "25000", "SEMI", "Head Office", "2024-03-01", "", "", "", "", "No", "Female", "Yes", "Yes", "", "08:00", "17:00", "Fixed", "Sun", "Yes", "BDO", "001234567890", "Yes"],
     ],
   });
 }
@@ -104,7 +105,7 @@ export async function importProfiles(companyId: string, sheet: SheetRow[], dryRu
       payGroupId: p.payGroupId, locationId: p.locationId, employmentType: p.employmentType, payBasis: p.payBasis, rate: Number(p.rate),
       hireDate: iso(p.hireDate), contractEnd: iso(p.contractEnd), sssNo: p.sssNo, philhealthNo: p.philhealthNo, pagibigNo: p.pagibigNo,
       isMinimumWage: p.isMinimumWage, sex: p.sex, isSoloParent: p.isSoloParent, thirteenthMonthEligible: p.thirteenthMonthEligible,
-      biometricId: p.biometricId, shiftStart: p.shiftStart, shiftEnd: p.shiftEnd, restDayMode: p.restDayMode, restWeekdays: p.restWeekdays,
+      biometricId: p.biometricId, shiftStart: p.shiftStart, shiftEnd: p.shiftEnd, restDayMode: p.restDayMode, restWeekdays: p.restWeekdays, leaveMonthlyAccrual: p.leaveMonthlyAccrual,
       recurring: p.recurring ?? [], bankName: p.bankName, bankAccountNo: p.bankAccountNo, isActive: p.isActive,
     } : { thirteenthMonthEligible: true, isActive: true, restDayMode: "FIXED", restWeekdays: [] };
 
@@ -151,6 +152,13 @@ export async function importProfiles(companyId: string, sheet: SheetRow[], dryRu
       if (nums.some((n) => n < 0)) return fail(`Rest Days must be weekday names like Sun or Sat,Sun: ${days}`);
       raw.restWeekdays = nums;
       if (!mode) raw.restDayMode = "FIXED";
+    }
+
+    const accr = get("Monthly Leave Credits", "Monthly Leave", "Leave Accrual");
+    if (accr) {
+      const a = accr.toLowerCase().replace(/[^a-z]/g, "");
+      if (["company", "default", "companysetting"].includes(a)) raw.leaveMonthlyAccrual = null;
+      else { const yn = toYesNo(accr); if (yn === null) return fail(`Monthly Leave Credits must be Company, Yes or No: ${accr}`); raw.leaveMonthlyAccrual = yn; }
     }
 
     plan.push({ row: rowNo, code, employeeId: emp?.id ?? null, newEmployee: emp ? null : { lastName, firstName }, raw });

@@ -13,6 +13,7 @@ type Profile = {
   sex: "MALE" | "FEMALE" | null; isSoloParent: boolean; thirteenthMonthEligible: boolean;
   biometricId: string; shiftStart: string; shiftEnd: string;
   restDayMode: "FIXED" | "FLEXIBLE"; restWeekdays: number[];
+  leaveMonthlyAccrual: boolean | null; // null = company setting
   recurring: { payItemId: string; amount: number }[]; bankName: string; bankAccountNo: string; isActive: boolean;
 };
 type Employee = { id: string; code: string; name: string; position: string | null; isActive: boolean; profile: Profile | null };
@@ -29,10 +30,10 @@ const label = "block text-xs text-neutral-500";
 
 const blankProfile = (): Profile => ({
   payGroupId: null, locationId: null, employmentType: "CONTRACTUAL", payBasis: "DAILY", rate: 0, hireDate: "", contractEnd: "",
-  sssNo: "", philhealthNo: "", pagibigNo: "", isMinimumWage: false, sex: null, isSoloParent: false, thirteenthMonthEligible: true, biometricId: "", shiftStart: "", shiftEnd: "", restDayMode: "FIXED", restWeekdays: [], recurring: [], bankName: "", bankAccountNo: "", isActive: true,
+  sssNo: "", philhealthNo: "", pagibigNo: "", isMinimumWage: false, sex: null, isSoloParent: false, thirteenthMonthEligible: true, biometricId: "", shiftStart: "", shiftEnd: "", restDayMode: "FIXED", restWeekdays: [], leaveMonthlyAccrual: null, recurring: [], bankName: "", bankAccountNo: "", isActive: true,
 });
 
-export function PayrollEmployeesClient({ employees, groups, items, branches, canEdit, companyRestWeekdays }: { employees: Employee[]; groups: Option[]; items: PayItemOption[]; branches: Option[]; canEdit: boolean; companyRestWeekdays: number[] }) {
+export function PayrollEmployeesClient({ employees, groups, items, branches, canEdit, companyRestWeekdays, companyLeaveMonthly }: { employees: Employee[]; groups: Option[]; items: PayItemOption[]; branches: Option[]; canEdit: boolean; companyRestWeekdays: number[]; companyLeaveMonthly: boolean }) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState<Profile>(blankProfile());
@@ -111,6 +112,19 @@ export function PayrollEmployeesClient({ employees, groups, items, branches, can
               )}
             </div>
           </div>
+          <label className={`${label} sm:col-span-2`}>Leave credits
+            <select
+              value={form.leaveMonthlyAccrual == null ? "" : form.leaveMonthlyAccrual ? "MONTHLY" : "UPFRONT"}
+              onChange={(e) => setForm({ ...form, leaveMonthlyAccrual: e.target.value === "" ? null : e.target.value === "MONTHLY" })}
+              className={field}
+            >
+              <option value="">Company setting ({companyLeaveMonthly ? "earned monthly" : "off"})</option>
+              <option value="MONTHLY">Earned monthly (1/12 on the 1st of each month)</option>
+              <option value="UPFRONT">All on Jan 1 (not monthly)</option>
+            </select>
+            <span className="mt-0.5 block text-[11px] text-neutral-400">This employee&apos;s setting wins over the company setting in Payroll setup.</span>
+          </label>
+          <span className="hidden sm:col-span-2 sm:block" />
           <label className={label}>Bank<input value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} className={field} /></label>
           <label className={label}>Bank account no.<input value={form.bankAccountNo} onChange={(e) => setForm({ ...form, bankAccountNo: e.target.value })} className={field} /></label>
           <label className="flex items-center gap-2 pt-5 text-sm text-neutral-700"><input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} /> Include in payroll</label>

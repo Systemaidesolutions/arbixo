@@ -2,7 +2,7 @@ import { getCurrentCompany, getCurrentCapability } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateSetup, isoDate } from "@/lib/payroll/server";
 import { ensureLeaveTypes } from "@/lib/payroll/leaveServer";
-import { accruedCredits, daysByYear, type LeaveDate } from "@/lib/payroll/leave";
+import { accruedCredits, daysByYear, effectiveAccrual, type LeaveDate } from "@/lib/payroll/leave";
 import { LeavesClient, type Balance } from "./LeavesClient";
 
 export default async function LeavesPage({ searchParams }: { searchParams: { year?: string; tab?: string } }) {
@@ -54,7 +54,7 @@ export default async function LeavesPage({ searchParams }: { searchParams: { yea
       const u = used.get(`${p.employeeId}:${t.id}`) ?? 0;
       if (!c && !u) continue;
       const granted = Number(c?.granted ?? 0), carriedOver = Number(c?.carriedOver ?? 0), adjustment = Number(c?.adjustment ?? 0);
-      const total = accruedCredits(granted, t.accrual, throughMonth) + carriedOver + adjustment;
+      const total = accruedCredits(granted, effectiveAccrual(t.accrual, setup.leaveMonthlyAccrual, p.leaveMonthlyAccrual), throughMonth) + carriedOver + adjustment;
       balances.push({ employeeId: p.employeeId, leaveTypeId: t.id, granted, carriedOver, adjustment, earned: total, used: Math.round(u * 100) / 100 });
     }
   }

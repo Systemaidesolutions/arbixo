@@ -33,6 +33,7 @@ export default async function PayrollEmployeesPage() {
         <PayrollEmployeesClient
           canEdit={Boolean(capability?.canPost)}
           companyRestWeekdays={setup.restWeekdays}
+          companyLeaveMonthly={setup.leaveMonthlyAccrual}
           groups={groups}
           items={items}
           branches={branches}
@@ -47,7 +48,7 @@ export default async function PayrollEmployeesPage() {
                 sssNo: p.sssNo ?? "", philhealthNo: p.philhealthNo ?? "", pagibigNo: p.pagibigNo ?? "", isMinimumWage: p.isMinimumWage,
                 sex: p.sex, isSoloParent: p.isSoloParent, thirteenthMonthEligible: p.thirteenthMonthEligible,
                 biometricId: p.biometricId ?? "", shiftStart: p.shiftStart ?? "", shiftEnd: p.shiftEnd ?? "",
-                restDayMode: p.restDayMode, restWeekdays: p.restWeekdays,
+                restDayMode: p.restDayMode, restWeekdays: p.restWeekdays, leaveMonthlyAccrual: p.leaveMonthlyAccrual,
                 recurring: (Array.isArray(p.recurring) ? p.recurring : []) as { payItemId: string; amount: number }[],
                 bankName: p.bankName ?? "", bankAccountNo: p.bankAccountNo ?? "", isActive: p.isActive,
               } : null,

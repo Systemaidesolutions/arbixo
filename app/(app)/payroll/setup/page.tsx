@@ -46,7 +46,7 @@ export default async function PayrollSetupPage() {
             nightDiffRate: n(setup.nightDiffRate), benefitsExemptCap: n(setup.benefitsExemptCap),
             payUnworkedRegularHoliday: setup.payUnworkedRegularHoliday, holidayRequiresPriorPresence: setup.holidayRequiresPriorPresence,
             monthlyIncludesRestDays: setup.monthlyIncludesRestDays, monthlyIncludesSpecialDays: setup.monthlyIncludesSpecialDays,
-            restWeekdays: setup.restWeekdays, thirteenthMonthAccountId: setup.thirteenthMonthAccountId,
+            restWeekdays: setup.restWeekdays, thirteenthMonthAccountId: setup.thirteenthMonthAccountId, leaveMonthlyAccrual: setup.leaveMonthlyAccrual,
             shiftStart: setup.shiftStart, shiftEnd: setup.shiftEnd, breakMinutes: setup.breakMinutes, lateGraceMinutes: setup.lateGraceMinutes,
             otMinimumMinutes: setup.otMinimumMinutes, otRoundingMinutes: setup.otRoundingMinutes,
             salariesExpenseAccountId: setup.salariesExpenseAccountId, contributionsExpenseAccountId: setup.contributionsExpenseAccountId,

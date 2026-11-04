@@ -11,7 +11,7 @@ type Setup = {
   regularHolidayMultiplier: number; regularHolidayRestDayMultiplier: number; doubleHolidayMultiplier: number; doubleHolidayRestDayMultiplier: number;
   nightDiffRate: number; payUnworkedRegularHoliday: boolean; holidayRequiresPriorPresence: boolean;
   monthlyIncludesRestDays: boolean; monthlyIncludesSpecialDays: boolean; benefitsExemptCap: number;
-  restWeekdays: number[]; thirteenthMonthAccountId: string | null;
+  restWeekdays: number[]; thirteenthMonthAccountId: string | null; leaveMonthlyAccrual: boolean;
   shiftStart: string; shiftEnd: string; breakMinutes: number; lateGraceMinutes: number; otMinimumMinutes: number; otRoundingMinutes: number;
   salariesExpenseAccountId: string | null; contributionsExpenseAccountId: string | null; sssPayableAccountId: string | null;
   philhealthPayableAccountId: string | null; hdmfPayableAccountId: string | null; withholdingTaxPayableAccountId: string | null;
@@ -113,6 +113,18 @@ export function SetupClient({ setup, groups, items, accounts, canEdit }: { setup
           <label className="flex items-start gap-2 pt-5 text-sm text-neutral-700">
             <input type="checkbox" className="mt-1" disabled={!canEdit} checked={form.monthlyIncludesRestDays} onChange={(e) => setForm({ ...form, monthlyIncludesRestDays: e.target.checked })} />
             <span>Monthly salary already pays rest days (factor 365)</span>
+          </label>
+        </div>
+        <div className="mt-4 rounded border border-neutral-200 bg-neutral-50 p-3">
+          <label className="flex items-start gap-2 text-sm text-neutral-700">
+            <input type="checkbox" className="mt-1" disabled={!canEdit} checked={form.leaveMonthlyAccrual} onChange={(e) => setForm({ ...form, leaveMonthlyAccrual: e.target.checked })} />
+            <span>
+              Earn leave credits monthly
+              <span className="block text-[11px] text-neutral-500">
+                Yearly leave credits are granted 1/12 on the 1st of each month instead of all on Jan 1. Example: 12 days a year = 1 credit on Jan 1,
+                2 on Feb 1, 3 on Mar 1 … 12 on Dec 1. Applies to every employee unless their own payroll record says otherwise. Off by default.
+              </span>
+            </span>
           </label>
         </div>
         <div className="mt-4">

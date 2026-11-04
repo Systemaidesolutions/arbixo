@@ -103,6 +103,17 @@ export function accruedCredits(granted: number, accrual: LeaveAccrual, throughMo
   return Math.round(((granted * Math.min(12, Math.max(0, throughMonth))) / 12) * 100) / 100;
 }
 
+/**
+ * How an employee earns a yearly leave type's credits. The employee's own
+ * setting comes first, then the company's; with neither turned on, the leave
+ * type's own setting applies (up front by default).
+ */
+export function effectiveAccrual(typeAccrual: LeaveAccrual, companyMonthly: boolean, employeeMonthly: boolean | null | undefined): LeaveAccrual {
+  if (employeeMonthly === true) return "MONTHLY";
+  if (employeeMonthly === false) return "UPFRONT";
+  return companyMonthly ? "MONTHLY" : typeAccrual;
+}
+
 /** Whole months from hire date to `asOf` (both YYYY-MM-DD). */
 export function serviceMonths(hireDate: string | null, asOf: string): number {
   if (!hireDate) return 0;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeLine, DEFAULT_RULES } from "./compute";
-import { PH_LEAVE_DEFAULTS, accruedCredits, daysByYear, eligibilityProblem, leaveDatesFor, serviceMonths, sumDays } from "./leave";
+import { PH_LEAVE_DEFAULTS, accruedCredits, daysByYear, effectiveAccrual, eligibilityProblem, leaveDatesFor, serviceMonths, sumDays } from "./leave";
 
 const noDeductions = { deductSss: false, deductPhilhealth: false, deductHdmf: false, withholdTax: false };
 
@@ -69,5 +69,20 @@ describe("leave in payroll", () => {
     expect(paid.leavePay).toBe(0);
     const unpaid = computeLine({ payBasis: "MONTHLY", rate: 31300, isMinimumWage: false, leaves: [{ date: "2026-11-03", days: 1, paid: false }] }, ctx);
     expect(unpaid.basicPay).toBe(15650 - 1200); // daily rate = 31,300 x 12 / 313
+  });
+});
+
+describe("effectiveAccrual (employee > company > leave type)", () => {
+  it("uses the employee setting first", () => {
+    expect(effectiveAccrual("UPFRONT", false, true)).toBe("MONTHLY");
+    expect(effectiveAccrual("MONTHLY", true, false)).toBe("UPFRONT");
+  });
+  it("falls back to the company, then the leave type", () => {
+    expect(effectiveAccrual("UPFRONT", true, null)).toBe("MONTHLY");
+    expect(effectiveAccrual("UPFRONT", false, null)).toBe("UPFRONT");
+    expect(effectiveAccrual("MONTHLY", false, undefined)).toBe("MONTHLY");
+  });
+  it("12 a year earns 1 on Jan 1, 2 on Feb 1 … 12 on Dec 1", () => {
+    expect([1, 2, 3, 12].map((m) => accruedCredits(12, effectiveAccrual("UPFRONT", true, null), m))).toEqual([1, 2, 3, 12]);
   });
 });
