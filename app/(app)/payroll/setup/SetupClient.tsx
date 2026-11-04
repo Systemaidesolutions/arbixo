@@ -76,6 +76,7 @@ export function SetupClient({ setup, groups, items, accounts, canEdit }: { setup
   const [form, setForm] = useState<Setup>(setup);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [leaveMsg, setLeaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function saveSetup() {
     setBusy(true); setMsg(null);
@@ -87,6 +88,31 @@ export function SetupClient({ setup, groups, items, accounts, canEdit }: { setup
 
   return (
     <div className="space-y-6">
+      <section id="leave-credits" className="rounded-lg border border-brand-blue/30 bg-blue-50/40 p-4">
+        <h2 className="text-sm font-medium text-neutral-800">Leave credits</h2>
+        <label className="mt-2 flex items-start gap-2 text-sm text-neutral-700">
+          <input
+            type="checkbox" className="mt-1" disabled={!canEdit || busy} checked={form.leaveMonthlyAccrual}
+            onChange={async (e) => {
+              const on = e.target.checked;
+              setForm({ ...form, leaveMonthlyAccrual: on });
+              setBusy(true);
+              const err = await send("/api/payroll/setup", "PUT", { leaveMonthlyAccrual: on });
+              setBusy(false);
+              setLeaveMsg(err ? { ok: false, text: err } : { ok: true, text: on ? "Saved: leave credits are now earned monthly." : "Saved: leave credits are granted in full on Jan 1." });
+              if (err) setForm((f) => ({ ...f, leaveMonthlyAccrual: !on })); else router.refresh();
+            }}
+          />
+          <span>
+            <b>Earn leave credits monthly</b> <span className={`ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium ${form.leaveMonthlyAccrual ? "bg-green-100 text-green-700" : "bg-neutral-200 text-neutral-600"}`}>{form.leaveMonthlyAccrual ? "ON" : "OFF"}</span>
+            <span className="block text-xs text-neutral-500">
+              Yearly leave credits are granted 1/12 on the 1st of each month instead of all on Jan 1. Example: 12 days a year = 1 credit on Jan 1,
+              2 on Feb 1, 3 on Mar 1 … 12 on Dec 1. Applies to every employee unless their own setting under Payroll › Employees says otherwise. Off by default.
+            </span>
+          </span>
+        </label>
+        {leaveMsg && <p className={`mt-2 text-xs ${leaveMsg.ok ? "text-green-700" : "text-red-600"}`}>{leaveMsg.text}</p>}
+      </section>
       <section className="rounded-lg border border-neutral-200 p-4">
         <h2 className="text-sm font-medium text-neutral-800">Pay rules</h2>
         <p className="text-xs text-neutral-500">Defaults follow the Labor Code. Change them if company policy pays more.</p>
@@ -113,18 +139,6 @@ export function SetupClient({ setup, groups, items, accounts, canEdit }: { setup
           <label className="flex items-start gap-2 pt-5 text-sm text-neutral-700">
             <input type="checkbox" className="mt-1" disabled={!canEdit} checked={form.monthlyIncludesRestDays} onChange={(e) => setForm({ ...form, monthlyIncludesRestDays: e.target.checked })} />
             <span>Monthly salary already pays rest days (factor 365)</span>
-          </label>
-        </div>
-        <div className="mt-4 rounded border border-neutral-200 bg-neutral-50 p-3">
-          <label className="flex items-start gap-2 text-sm text-neutral-700">
-            <input type="checkbox" className="mt-1" disabled={!canEdit} checked={form.leaveMonthlyAccrual} onChange={(e) => setForm({ ...form, leaveMonthlyAccrual: e.target.checked })} />
-            <span>
-              Earn leave credits monthly
-              <span className="block text-[11px] text-neutral-500">
-                Yearly leave credits are granted 1/12 on the 1st of each month instead of all on Jan 1. Example: 12 days a year = 1 credit on Jan 1,
-                2 on Feb 1, 3 on Mar 1 … 12 on Dec 1. Applies to every employee unless their own payroll record says otherwise. Off by default.
-              </span>
-            </span>
           </label>
         </div>
         <div className="mt-4">

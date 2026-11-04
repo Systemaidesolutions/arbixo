@@ -1,6 +1,7 @@
 import { getCurrentCompany, getCurrentCapability } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { ensureLeaveTypes } from "@/lib/payroll/leaveServer";
+import { getOrCreateSetup } from "@/lib/payroll/server";
 import { LeaveTypesClient } from "./LeaveTypesClient";
 
 export default async function LeaveTypesPage() {
@@ -15,6 +16,7 @@ export default async function LeaveTypesPage() {
     );
   }
   await ensureLeaveTypes(company.id);
+  const setup = await getOrCreateSetup(company.id);
   const types = await prisma.leaveType.findMany({ where: { companyId: company.id }, orderBy: [{ sortOrder: "asc" }, { code: "asc" }] });
 
   return (
@@ -23,6 +25,11 @@ export default async function LeaveTypesPage() {
       <p className="mt-1 text-sm text-neutral-500">
         Starts with the Philippine statutory leaves as summarized in the DOLE Handbook on Workers&apos; Statutory Monetary Benefits (SIL, maternity,
         allocated maternity, paternity, solo parent, VAWC, special leave for women) plus vacation, sick and leave without pay. Adjust credits and eligibility to your company policy, or add your own (birthday, bereavement, emergency…).
+      </p>
+      <p className="mt-3 rounded border border-brand-blue/30 bg-blue-50/40 px-3 py-2 text-sm text-neutral-700">
+        Earn leave credits monthly: <b>{setup.leaveMonthlyAccrual ? "ON" : "OFF"}</b> for the company.{" "}
+        <a href="/payroll/setup#leave-credits" className="text-brand-blue hover:underline">Change in Payroll setup</a>; per employee under{" "}
+        <a href="/payroll/employees" className="text-brand-blue hover:underline">Payroll employees</a> (Edit › Leave credits).
       </p>
       <div className="mt-6">
         <LeaveTypesClient

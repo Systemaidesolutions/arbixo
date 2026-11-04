@@ -112,7 +112,8 @@ export function PayrollEmployeesClient({ employees, groups, items, branches, can
               )}
             </div>
           </div>
-          <label className={`${label} sm:col-span-2`}>Leave credits
+          <div className="sm:col-span-4 rounded border border-brand-blue/30 bg-blue-50/40 p-2">
+          <label className={`${label} max-w-md`}><span className="font-medium text-neutral-700">Leave credits</span>
             <select
               value={form.leaveMonthlyAccrual == null ? "" : form.leaveMonthlyAccrual ? "MONTHLY" : "UPFRONT"}
               onChange={(e) => setForm({ ...form, leaveMonthlyAccrual: e.target.value === "" ? null : e.target.value === "MONTHLY" })}
@@ -122,9 +123,9 @@ export function PayrollEmployeesClient({ employees, groups, items, branches, can
               <option value="MONTHLY">Earned monthly (1/12 on the 1st of each month)</option>
               <option value="UPFRONT">All on Jan 1 (not monthly)</option>
             </select>
-            <span className="mt-0.5 block text-[11px] text-neutral-400">This employee&apos;s setting wins over the company setting in Payroll setup.</span>
+            <span className="mt-0.5 block text-[11px] text-neutral-500">This employee&apos;s setting wins over the company setting in Payroll › Setup › Leave credits.</span>
           </label>
-          <span className="hidden sm:col-span-2 sm:block" />
+          </div>
           <label className={label}>Bank<input value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} className={field} /></label>
           <label className={label}>Bank account no.<input value={form.bankAccountNo} onChange={(e) => setForm({ ...form, bankAccountNo: e.target.value })} className={field} /></label>
           <label className="flex items-center gap-2 pt-5 text-sm text-neutral-700"><input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} /> Include in payroll</label>
@@ -182,13 +183,13 @@ export function PayrollEmployeesClient({ employees, groups, items, branches, can
           <thead>
             <tr className="border-b border-neutral-200 text-left text-xs uppercase tracking-wide text-neutral-500">
               <th className="py-2 pr-3">Code</th><th className="py-2 pr-3">Name</th><th className="py-2 pr-3">Type</th><th className="py-2 pr-3">Pay group</th>
-              <th className="py-2 pr-3 text-right">Rate</th><th className="py-2 pr-3">Rest day</th><th className="py-2 pr-3">Status</th><th className="py-2"></th>
+              <th className="py-2 pr-3 text-right">Rate</th><th className="py-2 pr-3">Rest day</th><th className="py-2 pr-3">Leave credits</th><th className="py-2 pr-3">Status</th><th className="py-2"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
-            {rows.length === 0 && <tr><td colSpan={8} className="py-3 text-neutral-400">No employees.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={9} className="py-3 text-neutral-400">No employees.</td></tr>}
             {rows.map((e) => editing === e.id ? (
-              <tr key={e.id}><td colSpan={8}><div className="pt-2 text-sm font-medium">{e.name}</div>{renderEditor()}</td></tr>
+              <tr key={e.id}><td colSpan={9}><div className="pt-2 text-sm font-medium">{e.name}</div>{renderEditor()}</td></tr>
             ) : (
               <tr key={e.id} className={e.isActive ? "" : "text-neutral-400"}>
                 <td className="py-1.5 pr-3 font-mono text-xs">{e.code}</td>
@@ -201,6 +202,12 @@ export function PayrollEmployeesClient({ employees, groups, items, branches, can
                     : e.profile.restDayMode === "FLEXIBLE" ? <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">Not fixed</span>
                     : e.profile.restWeekdays.length ? dayList(e.profile.restWeekdays)
                     : <span className="text-neutral-400">{dayList(companyRestWeekdays)} (company)</span>}
+                </td>
+                <td className="py-1.5 pr-3 text-xs">
+                  {!e.profile ? "—"
+                    : e.profile.leaveMonthlyAccrual === true ? <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-brand-blue">Monthly</span>
+                    : e.profile.leaveMonthlyAccrual === false ? <span className="rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-medium text-neutral-700">All on Jan 1</span>
+                    : <span className="text-neutral-400">{companyLeaveMonthly ? "Monthly" : "All on Jan 1"} (company)</span>}
                 </td>
                 <td className="py-1.5 pr-3">
                   {!e.profile ? <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">Not set up</span>
