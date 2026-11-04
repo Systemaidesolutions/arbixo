@@ -154,9 +154,6 @@ export function appForPath(pathname: string, cookieApp: AppKey | null): AppKey {
   return cookieApp ?? "accounting";
 }
 
-// ARbixo Payroll User Manual (a Claude Docs page; viewers need it shared with them).
-export const PAYROLL_MANUAL_URL = "https://claude.ai/artifact/XSwn49zUgsKQhWqDd4ypVB";
-
 export const PAYROLL_NAV_SECTIONS: NavSection[] = [
   {
     title: "Payroll",
@@ -176,7 +173,7 @@ export const PAYROLL_NAV_SECTIONS: NavSection[] = [
       { href: "/agents/employees", label: "Employees", icon: "employees" },
       { href: "/company/branches", label: "Branches", icon: "companies" },
       { href: "/company/setup", label: "Company details", icon: "company" },
-      { href: PAYROLL_MANUAL_URL, label: "User manual", icon: "manual", external: true },
+      { href: "/payroll/manual", label: "User manual", icon: "manual" },
     ],
   },
 ];
