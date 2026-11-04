@@ -19,11 +19,9 @@ export async function PayrollSubscriptionStatus({ companyId, isAdmin }: { compan
           <span className="font-medium">ARbixo Payroll subscription</span>
           <span className="ml-2 text-xs">{active} active payroll employee(s)</span>
         </div>
-        {!isAdmin && (
-          <Link href="/subscription/payments" className="text-xs font-medium text-brand-blue hover:underline">
-            Subscription payments
-          </Link>
-        )}
+        <Link href="/subscription/payments" className="text-xs font-medium text-brand-blue hover:underline">
+          Renew / subscription payments
+        </Link>
       </div>
       <ul className="mt-1 space-y-0.5 text-xs">
         {months.map(({ k, tier }) => (
@@ -42,7 +40,7 @@ export async function PayrollSubscriptionStatus({ companyId, isAdmin }: { compan
       {!ok && (
         <p className="mt-1 text-xs">
           Payroll runs for an unpaid month can&apos;t be created, edited or posted.
-          {isAdmin ? " (You're an admin, so you aren't blocked.)" : " A Manager can subscribe under Subscription payments."}
+          {isAdmin ? " (You're an admin, so you aren't blocked.)" : " Renew under Subscription payments; an admin approves the payment."}
         </p>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { effectiveCompanyId, getCurrentCapability } from "@/lib/currentUser";
+import { effectiveCompanyId } from "@/lib/currentUser";
 import { priceForRequest } from "@/lib/subscriptionPricing";
 import { voucherDiscount, voucherStatus } from "@/lib/vouchers";
 
@@ -11,10 +11,8 @@ export async function POST(request: NextRequest) {
   if (!companyId) {
     return NextResponse.json({ error: "No company." }, { status: 403 });
   }
-  const cap = await getCurrentCapability();
-  if (!cap?.canApprove) {
-    return NextResponse.json({ error: "Only a Manager can renew the subscription." }, { status: 403 });
-  }
+  // Any user of the company may renew; an admin verifies the payment
+  // (payments an admin records while acting in the company count at once).
 
   const body = await request.json().catch(() => null);
   const code = typeof body?.code === "string" ? body.code.trim().toUpperCase() : "";

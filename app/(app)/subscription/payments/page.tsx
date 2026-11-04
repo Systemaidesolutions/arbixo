@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { APP_COOKIE } from "@/lib/navigation";
-import { getCurrentUserRecord, getCurrentCapability, effectiveCompanyId } from "@/lib/currentUser";
+import { getCurrentUserRecord, effectiveCompanyId } from "@/lib/currentUser";
 import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
 import { SubscriptionPaymentsSection } from "./SubscriptionPaymentsSection";
 
@@ -10,9 +10,9 @@ export default async function SubscriptionPaymentsPage() {
   if (!user) redirect("/login");
   const isAdmin = user.role === "ADMIN" && !getAdminActingAsCompanyId();
   const companyId = await effectiveCompanyId();
-  const cap = await getCurrentCapability();
-  const isManager = !!companyId && !!cap?.canApprove;
-  if (!isAdmin && !isManager) redirect("/dashboard");
+  const isMember = !!companyId; // any user of the company can renew
+  if (!isAdmin && !isMember) redirect("/dashboard");
+  const actingAdmin = user.role === "ADMIN" && !isAdmin;
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-12">
@@ -20,7 +20,9 @@ export default async function SubscriptionPaymentsPage() {
       <p className="mt-1 text-sm text-neutral-500">
         {isAdmin
           ? "All subscription payments. Verify a payment to activate that month for the company."
-          : "Renew below and an administrator will verify your payment before the month is activated."}
+          : actingAdmin
+            ? "You're an admin, so payments you record here are approved immediately."
+            : "Renew below and an administrator will verify your payment before the month is activated."}
       </p>
       <SubscriptionPaymentsSection showRenew={!isAdmin} defaultApp={cookies().get(APP_COOKIE)?.value === "payroll" ? "PAYROLL" : "ACCOUNTING"} />
     </main>

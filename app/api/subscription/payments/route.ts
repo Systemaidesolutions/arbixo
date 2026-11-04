@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserRecord, getCurrentCapability, effectiveCompanyId } from "@/lib/currentUser";
+import { getCurrentUserRecord, effectiveCompanyId } from "@/lib/currentUser";
 import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
 
 // Subscription payment log. A platform admin (not currently acting inside a
@@ -12,9 +12,8 @@ export async function GET() {
 
   const isPlatformAdmin = user.role === "ADMIN" && !getAdminActingAsCompanyId();
   const companyId = await effectiveCompanyId();
-  const cap = await getCurrentCapability();
-  const isManager = !!companyId && !!cap?.canApprove;
-  if (!isPlatformAdmin && !isManager) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const isMember = !!companyId; // every user of the company sees its payments
+  if (!isPlatformAdmin && !isMember) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const payments = await prisma.subscriptionPayment.findMany({
     where: isPlatformAdmin ? {} : { companyId: companyId ?? "" },

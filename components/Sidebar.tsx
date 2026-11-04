@@ -72,7 +72,6 @@ const SUBSCRIPTION_PAYMENTS_LINK = { href: "/subscription/payments", label: "Sub
 function sectionsFor(role: "ADMIN" | "USER", subtype: SubscriberSubtype | null, app: AppKey): NavSection[] {
   if (role === "ADMIN") return ADMIN_NAV_SECTIONS;
   if (app === "payroll") {
-    if (!capabilitiesFor(role, subtype).canApprove) return PAYROLL_NAV_SECTIONS;
     return PAYROLL_NAV_SECTIONS.map((s) => (s.title === "Setup" ? { ...s, links: [...s.links, SUBSCRIPTION_PAYMENTS_LINK] } : s));
   }
   const cap = capabilitiesFor(role, subtype);
@@ -92,7 +91,9 @@ function sectionsFor(role: "ADMIN" | "USER", subtype: SubscriberSubtype | null, 
     sections = withHistory;
   }
 
-  if (!cap.canApprove) return sections;
+  if (!cap.canApprove) {
+    return sections.map((s) => (s.title === "Setup" ? { ...s, links: [...s.links, SUBSCRIPTION_PAYMENTS_LINK] } : s));
+  }
 
   // Managers additionally get a company-backup link inside Setup and the
   // Audit group.

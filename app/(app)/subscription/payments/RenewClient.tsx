@@ -108,7 +108,7 @@ export function RenewClient({ onSubmitted, defaultApp = "ACCOUNTING" }: { onSubm
       setMsg({ ok: false, text: j?.error ?? "Could not submit the payment." });
       return;
     }
-    setMsg({ ok: true, text: "Payment submitted — an administrator will verify it before the month is activated." });
+    setMsg({ ok: true, text: j?.verified ? "Payment recorded and approved — the month is active now." : "Payment submitted — an administrator will verify it before the month is activated." });
     setVoucher("");
     setGcashRef("");
     setReceiptFile(null);

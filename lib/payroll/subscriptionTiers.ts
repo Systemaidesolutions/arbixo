@@ -48,7 +48,7 @@ export function runMonths(run: { kind: string; periodStart: Date; periodEnd: Dat
 export function coverageProblem(coverage: Map<number, number>, months: number[], activeEmployees: number): string | null {
   const unpaid = months.filter((m) => !coverage.has(m));
   if (unpaid.length) {
-    return `ARbixo Payroll isn't subscribed for ${unpaid.map(monthName).join(" and ")}. A Manager can subscribe under Setup › Subscription payments.`;
+    return `ARbixo Payroll isn't subscribed for ${unpaid.map(monthName).join(" and ")}. Renew under Setup › Subscription payments; an admin approves the payment.`;
   }
   const short = months.find((m) => (coverage.get(m) ?? 0) < activeEmployees);
   if (short !== undefined) {

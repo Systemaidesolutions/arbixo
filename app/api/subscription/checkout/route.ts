@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { effectiveCompanyId, getCurrentCapability } from "@/lib/currentUser";
+import { effectiveCompanyId } from "@/lib/currentUser";
 import { getCurrentPayrollPrices, getCurrentPrice } from "@/lib/subscriptionPricing";
 import { activePayrollEmployees, getPayrollCoverage } from "@/lib/payroll/subscription";
 
@@ -12,10 +12,8 @@ export async function GET() {
   if (!companyId) {
     return NextResponse.json({ error: "No company." }, { status: 403 });
   }
-  const cap = await getCurrentCapability();
-  if (!cap?.canApprove) {
-    return NextResponse.json({ error: "Only a Manager can renew the subscription." }, { status: 403 });
-  }
+  // Any user of the company may renew; an admin verifies the payment
+  // (payments an admin records while acting in the company count at once).
 
   const [payrollPrices, payrollCoverage, payrollEmployees] = await Promise.all([
     getCurrentPayrollPrices(),

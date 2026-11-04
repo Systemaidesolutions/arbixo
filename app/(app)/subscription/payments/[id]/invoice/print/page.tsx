@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserRecord, getCurrentCapability, effectiveCompanyId } from "@/lib/currentUser";
+import { getCurrentUserRecord, effectiveCompanyId } from "@/lib/currentUser";
 import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
 import { getBusinessProfile, computeVatBreakdown, invoicePeriodLabel } from "@/lib/subscriptionInvoice";
 import { formatPeso, formatDate } from "@/lib/format";
@@ -21,9 +21,7 @@ export default async function SubscriptionInvoicePrintPage({ params }: { params:
   const isPlatformAdmin = user.role === "ADMIN" && !getAdminActingAsCompanyId();
   if (!isPlatformAdmin) {
     const companyId = await effectiveCompanyId();
-    const cap = await getCurrentCapability();
-    const isManager = !!companyId && !!cap?.canApprove;
-    if (!isManager || companyId !== payment.companyId) notFound();
+    if (!companyId || companyId !== payment.companyId) notFound();
   }
 
   const seller = await getBusinessProfile();

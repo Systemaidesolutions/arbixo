@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserRecord, effectiveCompanyId, getCurrentCapability } from "@/lib/currentUser";
+import { getCurrentUserRecord, effectiveCompanyId } from "@/lib/currentUser";
+import { issueInvoiceNumber } from "@/lib/subscriptionInvoice";
+import { postSubscriptionPaymentToArbixoBooks } from "@/lib/arbixoBookkeeping";
+import { recomputeCompanySubscriptionSummary } from "@/lib/subscriptionCoverage";
 import { priceForRequest } from "@/lib/subscriptionPricing";
 import { voucherDiscount, voucherStatus } from "@/lib/vouchers";
 import { setAuditSuppressed } from "@/lib/auditContext";
@@ -31,10 +34,8 @@ export async function POST(request: NextRequest) {
   if (!companyId) {
     return NextResponse.json({ error: "No company." }, { status: 403 });
   }
-  const cap = await getCurrentCapability();
-  if (!cap?.canApprove) {
-    return NextResponse.json({ error: "Only a Manager can renew the subscription." }, { status: 403 });
-  }
+  // Any user of the company may renew; an admin verifies the payment
+  // (payments an admin records while acting in the company count at once).
 
   const body = await request.json().catch(() => null);
   const code = typeof body?.voucherCode === "string" ? body.voucherCode.trim().toUpperCase() : "";
@@ -97,7 +98,21 @@ export async function POST(request: NextRequest) {
         },
       });
     });
-    return NextResponse.json({ payment }, { status: 201 });
+    if (user.role !== "ADMIN") return NextResponse.json({ payment }, { status: 201 });
+
+    // An admin recording a payment inside the company needs no approval:
+    // verify it now, the same way the admin verify route does. Done after the
+    // transaction (separate statements avoid the pooler deadlock).
+    const now = new Date();
+    const amount = Number(payment.amountDue);
+    const invoiceNo = amount > 0 ? await issueInvoiceNumber() : null;
+    const verified = await prisma.subscriptionPayment.update({
+      where: { id: payment.id },
+      data: { status: "VERIFIED", verifiedById: user.id, verifiedAt: now, invoiceNo, invoiceIssuedAt: invoiceNo ? now : null },
+    });
+    if (verified.app === "ACCOUNTING") await recomputeCompanySubscriptionSummary(companyId);
+    if (invoiceNo) await postSubscriptionPaymentToArbixoBooks(verified, user.id);
+    return NextResponse.json({ payment: verified, verified: true }, { status: 201 });
   } catch (err) {
     if (err instanceof VoucherError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
