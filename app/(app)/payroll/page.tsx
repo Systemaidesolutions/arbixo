@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getCurrentCompany } from "@/lib/currentUser";
+import { getCurrentCompany, getCurrentUserRecord } from "@/lib/currentUser";
+import { PayrollSubscriptionStatus } from "./SubscriptionStatus";
 import { prisma } from "@/lib/prisma";
 import { formatPeso } from "@/lib/format";
 import { getOrCreateSetup, isoDate } from "@/lib/payroll/server";
@@ -63,6 +64,10 @@ export default async function PayrollHomePage() {
           {pendingLeave > 0 && <p>{pendingLeave} leave filing(s) waiting for approval. <Link href="/payroll/leaves" className="font-medium underline">Review leave</Link>.</p>}
         </div>
       )}
+
+      <div className="mt-4">
+        <PayrollSubscriptionStatus companyId={company.id} isAdmin={(await getCurrentUserRecord())?.role === "ADMIN"} />
+      </div>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {tiles.map(([k, v, href]) => {

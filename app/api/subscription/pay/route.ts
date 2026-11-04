@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord, effectiveCompanyId, getCurrentCapability } from "@/lib/currentUser";
-import { getCurrentPrice } from "@/lib/subscriptionPricing";
+import { priceForRequest } from "@/lib/subscriptionPricing";
 import { voucherDiscount, voucherStatus } from "@/lib/vouchers";
 import { setAuditSuppressed } from "@/lib/auditContext";
 import { monthStringToPeriod } from "@/lib/subscriptionCoverage";
@@ -52,10 +52,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Receipt image is too large (max ~2 MB)." }, { status: 400 });
   }
 
-  const price = await getCurrentPrice();
-  if (!price) {
-    return NextResponse.json({ error: "No subscription price is set. Contact your administrator." }, { status: 400 });
-  }
+  const priced = await priceForRequest(body);
+  if (!priced.ok) return NextResponse.json({ error: priced.error }, { status: 400 });
+  const price = priced.price;
   const base = Number(price.amount);
 
   // Suppress auto-audit during the transaction — see the note in the admin
@@ -80,7 +79,9 @@ export async function POST(request: NextRequest) {
       return tx.subscriptionPayment.create({
         data: {
           companyId,
-          priceName: price.name,
+          priceName: priced.priceName,
+          app: priced.app,
+          maxEmployees: priced.maxEmployees,
           baseAmount: base,
           currency: price.currency,
           voucherCode,

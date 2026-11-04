@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { effectiveCompanyId, getCurrentCapability } from "@/lib/currentUser";
-import { getCurrentPrice } from "@/lib/subscriptionPricing";
+import { priceForRequest } from "@/lib/subscriptionPricing";
 import { voucherDiscount, voucherStatus } from "@/lib/vouchers";
 
 // Previews a voucher against the current price. Does NOT redeem it — that
@@ -20,11 +20,12 @@ export async function POST(request: NextRequest) {
   const code = typeof body?.code === "string" ? body.code.trim().toUpperCase() : "";
   if (!code) return NextResponse.json({ error: "Enter a voucher code." }, { status: 400 });
 
-  const [voucher, price] = await Promise.all([
+  const [voucher, priced] = await Promise.all([
     prisma.voucher.findUnique({ where: { code } }),
-    getCurrentPrice(),
+    priceForRequest(body),
   ]);
-  if (!price) return NextResponse.json({ error: "No subscription price is set. Contact your administrator." }, { status: 400 });
+  if (!priced.ok) return NextResponse.json({ error: priced.error }, { status: 400 });
+  const price = priced.price;
   if (!voucher || voucherStatus(voucher) !== "active") {
     return NextResponse.json({ valid: false, error: "That voucher isn't valid or has already been used." }, { status: 200 });
   }

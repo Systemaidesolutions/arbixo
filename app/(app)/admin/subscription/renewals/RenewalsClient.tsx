@@ -6,6 +6,7 @@ type Company = { id: string; tradeName: string; registeredName: string | null; s
 type Data = {
   companies: Company[];
   price: { name: string; amount: number; currency: string } | null;
+  payrollPrices: { maxEmployees: number; name: string; amount: number; currency: string }[];
   gcash: { name: string; number: string; qrImage: string | null };
 };
 
@@ -32,6 +33,8 @@ export function RenewalsClient() {
   const [month, setMonth] = useState("");
   const [voucher, setVoucher] = useState("");
   const [gcashRef, setGcashRef] = useState("");
+  const [app, setApp] = useState<"ACCOUNTING" | "PAYROLL">("ACCOUNTING");
+  const [tier, setTier] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [rowMsg, setRowMsg] = useState<{ id: string; ok: boolean; text: string } | null>(null);
 
@@ -53,6 +56,7 @@ export function RenewalsClient() {
     setVoucher("");
     setGcashRef("");
     setRowMsg(null);
+    setTier((t) => t ?? data?.payrollPrices?.[0]?.maxEmployees ?? null);
   }
 
   async function cancel(companyId: string, name: string) {
@@ -80,12 +84,17 @@ export function RenewalsClient() {
     const res = await fetch("/api/admin/subscription/renewals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ companyId, month, voucherCode: voucher.trim(), gcashRef }),
+      body: JSON.stringify({ companyId, month, voucherCode: voucher.trim(), gcashRef, app, maxEmployees: app === "PAYROLL" ? tier : undefined }),
     });
     const j = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) {
       setRowMsg({ id: companyId, ok: false, text: j?.error ?? "Could not renew." });
+      return;
+    }
+    if (app === "PAYROLL") {
+      setRowMsg({ id: companyId, ok: true, text: `Recorded — ARbixo Payroll paid for ${month}, up to ${tier} employees.` });
+      setOpenId(null);
       return;
     }
     setRowMsg({ id: companyId, ok: true, text: `Recorded — now covered through ${String(j.subscriptionEndsAt).slice(0, 10)}.` });
@@ -187,20 +196,37 @@ export function RenewalsClient() {
                             Cancel
                           </button>
                         )}
-                        <button onClick={() => toggle(c.id, c.subscriptionEndsAt)} disabled={!price} className="text-xs font-medium text-brand-blue hover:underline disabled:opacity-40">
+                        <button onClick={() => toggle(c.id, c.subscriptionEndsAt)} disabled={!price && !data.payrollPrices?.length} className="text-xs font-medium text-brand-blue hover:underline disabled:opacity-40">
                           {isOpen ? "Close" : "Renew"}
                         </button>
                       </div>
                     </td>
                   </tr>
-                  {isOpen && price && (
+                  {isOpen && (
                     <tr className="bg-neutral-50/60">
                       <td colSpan={4} className="px-4 py-4">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <div className="space-y-3">
-                            <div className="text-sm">
-                              Renewing <span className="font-medium">{c.tradeName}</span> — {price.name} <span className="font-mono">{fmt(price.amount)}</span> for the month below.
+                            <div className="inline-flex rounded border border-neutral-300 p-0.5 text-xs">
+                              {([["ACCOUNTING", "Accounting"], ["PAYROLL", "Payroll"]] as const).map(([k, l]) => (
+                                <button key={k} type="button" onClick={() => setApp(k)}
+                                  className={`rounded px-2.5 py-1 ${app === k ? "bg-brand-navy text-white" : "text-neutral-600 hover:bg-neutral-100"}`}>{l}</button>
+                              ))}
                             </div>
+                            {app === "PAYROLL" ? (
+                              data.payrollPrices?.length ? (
+                                <label className="block text-xs text-neutral-500">
+                                  Employees
+                                  <select value={tier ?? ""} onChange={(e) => setTier(Number(e.target.value))} className="mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm">
+                                    {data.payrollPrices.map((p) => <option key={p.maxEmployees} value={p.maxEmployees}>Up to {p.maxEmployees} — {fmt(p.amount)}</option>)}
+                                  </select>
+                                </label>
+                              ) : <p className="text-sm text-amber-600">No ARbixo Payroll prices yet. Add them under Pricing.</p>
+                            ) : price ? (
+                              <div className="text-sm">
+                                Renewing <span className="font-medium">{c.tradeName}</span> — {price.name} <span className="font-mono">{fmt(price.amount)}</span> for the month below.
+                              </div>
+                            ) : <p className="text-sm text-amber-600">No ARbixo Accounting price yet. Add one under Pricing.</p>}
                             <label className="block text-xs text-neutral-500">
                               Month to record payment for
                               <input

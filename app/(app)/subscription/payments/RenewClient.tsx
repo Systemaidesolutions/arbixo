@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { tierFor } from "@/lib/payroll/subscriptionTiers";
 
+type Price = { name: string; amount: number; currency: string };
 type CheckoutData = {
-  price: { name: string; amount: number; currency: string } | null;
+  price: Price | null;
   gcash: { name: string; number: string; qrImage: string | null };
   subscriptionEndsAt: string | null;
+  payroll: {
+    prices: (Price & { maxEmployees: number })[];
+    paidMonths: Record<string, number>; // "YYYY-MM" → employee tier paid
+    activeEmployees: number;
+  };
 };
+export type RenewApp = "ACCOUNTING" | "PAYROLL";
 
 // yyyy-mm for <input type="month">, defaulting to the calendar month
 // containing subscriptionEndsAt (a month-aligned payment's periodEnd lands
@@ -28,8 +36,10 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-export function RenewClient({ onSubmitted }: { onSubmitted?: () => void }) {
+export function RenewClient({ onSubmitted, defaultApp = "ACCOUNTING" }: { onSubmitted?: () => void; defaultApp?: RenewApp }) {
   const [data, setData] = useState<CheckoutData | null>(null);
+  const [app, setApp] = useState<RenewApp>(defaultApp);
+  const [tier, setTier] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [month, setMonth] = useState("");
   const [voucher, setVoucher] = useState("");
@@ -47,8 +57,13 @@ export function RenewClient({ onSubmitted }: { onSubmitted?: () => void }) {
           setLoadError(j?.error ?? `Could not load renewal info (HTTP ${r.status}).`);
           return;
         }
-        setData(j as CheckoutData);
-        setMonth(defaultMonth((j as CheckoutData).subscriptionEndsAt));
+        const d = j as CheckoutData;
+        setData(d);
+        setMonth(defaultMonth(d.subscriptionEndsAt));
+        // Payroll: the smallest priced tier that fits today's active employees.
+        const need = tierFor(Math.max(1, d.payroll.activeEmployees));
+        const fit = d.payroll.prices.find((p) => p.maxEmployees >= need) ?? d.payroll.prices[d.payroll.prices.length - 1];
+        setTier(fit?.maxEmployees ?? null);
       })
       .catch(() => setLoadError("Could not reach the server."));
   }, []);
@@ -79,6 +94,8 @@ export function RenewClient({ onSubmitted }: { onSubmitted?: () => void }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        app,
+        maxEmployees: app === "PAYROLL" ? tier : undefined,
         month,
         voucherCode: voucher.trim(),
         gcashRef: gcashRef.trim(),
@@ -101,24 +118,71 @@ export function RenewClient({ onSubmitted }: { onSubmitted?: () => void }) {
 
   if (loadError) return <p className="text-sm text-red-600">{loadError}</p>;
   if (!data) return <p className="text-sm text-neutral-400">Loading…</p>;
-  const price = data.price;
+  const payrollPrice = data.payroll.prices.find((p) => p.maxEmployees === tier) ?? null;
+  const price = app === "PAYROLL" ? payrollPrice : data.price;
+  const paidTier = data.payroll.paidMonths[month];
+  const tooSmall = app === "PAYROLL" && tier != null && tier < data.payroll.activeEmployees;
   const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const label = "block text-xs text-neutral-500";
 
   return (
     <section className="rounded-lg border border-neutral-200 p-4">
       <h2 className="text-sm font-medium text-neutral-800">Renew subscription</h2>
-      {!price ? (
+      <div className="mt-3 inline-flex rounded border border-neutral-300 p-0.5 text-sm">
+        {([["ACCOUNTING", "ARbixo Accounting"], ["PAYROLL", "ARbixo Payroll"]] as const).map(([k, l]) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => { setApp(k); setMsg(null); }}
+            className={`rounded px-3 py-1 ${app === k ? "bg-brand-navy text-white" : "text-neutral-600 hover:bg-neutral-100"}`}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+      {app === "PAYROLL" && (
+        <p className="mt-2 text-xs text-neutral-500">
+          Billed monthly by employee count. You have <b>{data.payroll.activeEmployees}</b> active payroll employee(s). Payroll runs can only be
+          created, edited and posted for months you have paid, and only while your employees fit the tier.
+        </p>
+      )}
+      {app === "PAYROLL" && data.payroll.prices.length === 0 ? (
+        <p className="mt-2 text-sm text-amber-600">No ARbixo Payroll prices are set yet. Contact your administrator.</p>
+      ) : !price && app === "ACCOUNTING" ? (
         <p className="mt-2 text-sm text-amber-600">No subscription price is set yet. Contact your administrator.</p>
       ) : (
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-3">
-            <div className="text-sm">
-              {price.name} — <span className="font-mono">{price.currency} {price.amount.toFixed(2)}</span> for the month below.
-            </div>
+            {app === "PAYROLL" && (
+              <label className={label}>
+                Employees
+                <select value={tier ?? ""} onChange={(e) => setTier(Number(e.target.value))} className={field}>
+                  {data.payroll.prices.map((p) => (
+                    <option key={p.maxEmployees} value={p.maxEmployees}>
+                      Up to {p.maxEmployees} employees — {p.currency} {p.amount.toFixed(2)} / month
+                    </option>
+                  ))}
+                </select>
+                {tooSmall && (
+                  <span className="mt-1 block text-[11px] text-red-600">
+                    This tier is smaller than your {data.payroll.activeEmployees} active employees; payroll runs would stay locked.
+                  </span>
+                )}
+              </label>
+            )}
+            {price && (
+              <div className="text-sm">
+                {price.name} — <span className="font-mono">{price.currency} {price.amount.toFixed(2)}</span> for the month below.
+              </div>
+            )}
             <label className={label}>
               Month to pay for
               <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className={field} />
+              {app === "PAYROLL" && paidTier ? (
+                <span className="mt-1 block text-[11px] text-amber-700">
+                  This month is already paid for up to {paidTier} employees. Pay again only to move to a bigger tier.
+                </span>
+              ) : null}
             </label>
             <label className={label}>
               Voucher code (optional)
@@ -148,7 +212,7 @@ export function RenewClient({ onSubmitted }: { onSubmitted?: () => void }) {
             )}
             <button
               onClick={submit}
-              disabled={busy}
+              disabled={busy || !price}
               className="rounded bg-brand-navy px-4 py-2 text-sm text-white hover:bg-brand-navyLight disabled:opacity-50"
             >
               {busy ? "Submitting…" : "Submit payment"}

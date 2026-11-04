@@ -11,7 +11,7 @@ import {
 import { conversionsForRun, leaveForRun } from "./leaveServer";
 
 export type PayrollAuth =
-  | { ok: true; companyId: string; userId: string }
+  | { ok: true; companyId: string; userId: string; isAdmin: boolean }
   | { ok: false; status: number; error: string };
 
 /** Payroll writes need posting rights on the caller's active company. */
@@ -22,7 +22,7 @@ export async function payrollAuth(need: "canPost" | "canCancel" = "canPost"): Pr
   if (!companyId) return { ok: false, status: 403, error: "No company selected." };
   const auth = await resolvePoster(companyId, need);
   if (!auth.ok) return auth;
-  return { ok: true, companyId, userId: auth.user.id };
+  return { ok: true, companyId, userId: auth.user.id, isAdmin: auth.user.role === "ADMIN" };
 }
 
 export const isoDate = (d: Date) => d.toISOString().slice(0, 10);
@@ -464,6 +464,9 @@ export async function postRun(companyId: string, userId: string, runId: string) 
     postingDate: run.payDate,
     lines,
     createdById: userId,
+    // Payroll is its own subscription, checked before posting
+    // (lib/payroll/subscription.ts), not the accounting one.
+    skipSubscriptionCheck: true,
   });
   await prisma.payrollRun.update({ where: { id: runId }, data: { status: "POSTED", postedAt: new Date(), postedById: userId } });
   return { status: 200, ok: true };

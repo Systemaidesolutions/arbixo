@@ -105,10 +105,15 @@ model SubscriptionPrice {
   currency      String    @default("PHP")
   effectiveFrom DateTime
   effectiveTo   DateTime?                      // null = open-ended / current
+  // Which app this price is for. PAYROLL prices are per employee tier
+  // (maxEmployees = 20, 50, 100, 200 …); each tier has its own dated chain.
+  app           SubscriptionApp @default(ACCOUNTING)
+  maxEmployees  Int?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@index([effectiveFrom])
+  @@index([app, maxEmployees])
 }
 
 enum VoucherDiscountType {
@@ -141,6 +146,12 @@ enum PaymentStatus {
   REJECTED
 }
 
+// ARbixo Accounting and ARbixo Payroll are separate monthly subscriptions.
+enum SubscriptionApp {
+  ACCOUNTING
+  PAYROLL
+}
+
 // Audit log of subscription payments. Snapshots the price and voucher used so
 // the record stays accurate even if those are edited later.
 model SubscriptionPayment {
@@ -150,6 +161,11 @@ model SubscriptionPayment {
   priceName      String
   baseAmount     Decimal       @db.Decimal(10, 2)
   currency       String        @default("PHP")
+  // ACCOUNTING covers posting dates (lib/subscriptionCoverage.ts); PAYROLL
+  // covers payroll runs for up to maxEmployees active employees
+  // (lib/payroll/subscription.ts).
+  app            SubscriptionApp @default(ACCOUNTING)
+  maxEmployees   Int?
   voucherCode    String?
   discountAmount Decimal       @db.Decimal(10, 2) @default(0)
   amountDue      Decimal       @db.Decimal(10, 2)

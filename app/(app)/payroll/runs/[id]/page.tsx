@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
-import { getCurrentCompany, getCurrentCapability } from "@/lib/currentUser";
+import Link from "next/link";
+import { getCurrentCompany, getCurrentCapability, getCurrentUserRecord } from "@/lib/currentUser";
+import { payrollSubscriptionProblem } from "@/lib/payroll/subscription";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateSetup, isoDate, lineRestDates, recomputeRun, scheduledRestDates, toGroupRules, toRules } from "@/lib/payroll/server";
 import { conversionsForRun, leaveForRun } from "@/lib/payroll/leaveServer";
@@ -20,6 +22,17 @@ export default async function PayrollRunPage({ params }: { params: { id: string 
     include: { payGroup: true, lines: { include: { employee: { include: { payrollProfile: true } } } } },
   });
   if (!run) notFound();
+
+  // ARbixo Payroll subscription: a draft for an unpaid month (or too many
+  // employees for the paid tier) opens read-only. Admins aren't blocked.
+  const isAdmin = (await getCurrentUserRecord())?.role === "ADMIN";
+  const subProblem = run.status === "DRAFT" && !isAdmin ? await payrollSubscriptionProblem(company.id, run) : null;
+  const locked = subProblem ? (
+    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <b>This run is locked.</b> {subProblem}{" "}
+      <Link href="/subscription/payments" className="font-medium underline">Subscription payments</Link>
+    </div>
+  ) : null;
 
   const setup = await getOrCreateSetup(company.id);
   const inRun = run.lines.map((l) => l.employeeId);
@@ -48,9 +61,10 @@ export default async function PayrollRunPage({ params }: { params: { id: string 
   if (run.kind === "THIRTEENTH_MONTH") {
     return (
       <main className="mx-auto max-w-[96rem] px-4 py-8 sm:px-8 sm:py-10">
+        {locked}
         <ThirteenthRun
           companyId={company.id}
-          canEdit={Boolean(capability?.canPost) && run.status === "DRAFT"}
+          canEdit={Boolean(capability?.canPost) && run.status === "DRAFT" && !subProblem}
           canCancel={Boolean(capability?.canCancel) && run.status === "POSTED"}
           run={{ id: run.id, runNo: run.runNo, status: run.status, groupName: run.payGroup.name, branch: branch?.name ?? null, year: run.periodStart.getUTCFullYear(), payDate: isoDate(run.payDate), cap: num(setup.benefitsExemptCap) }}
           lines={run.lines
@@ -94,9 +108,10 @@ export default async function PayrollRunPage({ params }: { params: { id: string 
 
   return (
     <main className="mx-auto max-w-[96rem] px-4 py-8 sm:px-8 sm:py-10">
+      {locked}
       <RunEditor
         companyId={company.id}
-        canEdit={Boolean(capability?.canPost) && run.status === "DRAFT"}
+        canEdit={Boolean(capability?.canPost) && run.status === "DRAFT" && !subProblem}
         canCancel={Boolean(capability?.canCancel) && run.status === "POSTED"}
         run={{
           id: run.id, runNo: run.runNo, status: run.status, groupName: run.payGroup.name, branch: branch?.name ?? null,

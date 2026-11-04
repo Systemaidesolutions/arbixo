@@ -44,7 +44,7 @@ export type SubscriptionCoverage = { monthRanges: [number, number][] };
  */
 export async function getSubscriptionCoverage(companyId: string): Promise<SubscriptionCoverage> {
   const payments = await prisma.subscriptionPayment.findMany({
-    where: { companyId, status: "VERIFIED", periodStart: { not: null }, periodEnd: { not: null } },
+    where: { companyId, app: "ACCOUNTING", status: "VERIFIED", periodStart: { not: null }, periodEnd: { not: null } },
     select: { periodStart: true, periodEnd: true },
   });
   if (payments.length > 0) {
@@ -96,7 +96,7 @@ export function monthStringToPeriod(monthStr: string): { periodStart: Date; peri
  */
 export async function recomputeCompanySubscriptionSummary(companyId: string): Promise<void> {
   const agg = await prisma.subscriptionPayment.aggregate({
-    where: { companyId, status: "VERIFIED", periodStart: { not: null }, periodEnd: { not: null } },
+    where: { companyId, app: "ACCOUNTING", status: "VERIFIED", periodStart: { not: null }, periodEnd: { not: null } },
     _min: { periodStart: true },
     _max: { periodEnd: true },
   });

@@ -1,4 +1,5 @@
-import { getCurrentCompany, getCurrentCapability } from "@/lib/currentUser";
+import { getCurrentCompany, getCurrentCapability, getCurrentUserRecord } from "@/lib/currentUser";
+import { PayrollSubscriptionStatus } from "../SubscriptionStatus";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateSetup, isoDate } from "@/lib/payroll/server";
 import { RunsClient } from "./RunsClient";
@@ -27,6 +28,9 @@ export default async function PayrollRunsPage() {
       <p className="mt-1 text-sm text-neutral-500">
         Create a run per pay group and period, encode attendance and adjustments, then post it to the General Journal.
       </p>
+      <div className="mt-4">
+        <PayrollSubscriptionStatus companyId={company.id} isAdmin={(await getCurrentUserRecord())?.role === "ADMIN"} />
+      </div>
       <div className="mt-6">
         <RunsClient
           canEdit={Boolean(capability?.canPost)}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/currentUser";
-import { getCurrentPrice } from "@/lib/subscriptionPricing";
+import { getCurrentPayrollPrices, getCurrentPrice, priceForRequest } from "@/lib/subscriptionPricing";
 import { voucherDiscount, voucherStatus } from "@/lib/vouchers";
 import { setAuditSuppressed } from "@/lib/auditContext";
 import { monthStringToPeriod, recomputeCompanySubscriptionSummary } from "@/lib/subscriptionCoverage";
@@ -27,10 +27,12 @@ export async function GET() {
     getCurrentPrice(),
     prisma.appSettings.findUnique({ where: { id: "singleton" }, select: { gcashName: true, gcashNumber: true, gcashQrImage: true } }),
   ]);
+  const payrollPrices = await getCurrentPayrollPrices();
 
   return NextResponse.json({
     companies,
     price: price ? { name: price.name, amount: Number(price.amount), currency: price.currency } : null,
+    payrollPrices: payrollPrices.map((p) => ({ maxEmployees: p.maxEmployees, name: p.name, amount: Number(p.amount), currency: p.currency })),
     gcash: { name: settings?.gcashName ?? "", number: settings?.gcashNumber ?? "", qrImage: settings?.gcashQrImage ?? null },
   });
 }
@@ -69,11 +71,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "A valid month (YYYY-MM) is required." }, { status: 400 });
   }
 
-  const [price, company] = await Promise.all([
-    getCurrentPrice(),
+  const [priced, company] = await Promise.all([
+    priceForRequest(body),
     prisma.company.findUnique({ where: { id: companyId }, select: { id: true } }),
   ]);
-  if (!price) return NextResponse.json({ error: "No subscription price is set." }, { status: 400 });
+  if (!priced.ok) return NextResponse.json({ error: priced.error }, { status: 400 });
+  const price = priced.price;
   if (!company) return NextResponse.json({ error: "Company not found." }, { status: 404 });
 
   const base = Number(price.amount);
@@ -102,7 +105,9 @@ export async function POST(request: NextRequest) {
       return tx.subscriptionPayment.create({
         data: {
           companyId,
-          priceName: price.name,
+          priceName: priced.priceName,
+          app: priced.app,
+          maxEmployees: priced.maxEmployees,
           baseAmount: base,
           currency: price.currency,
           voucherCode,

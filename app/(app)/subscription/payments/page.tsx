@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { APP_COOKIE } from "@/lib/navigation";
 import { getCurrentUserRecord, getCurrentCapability, effectiveCompanyId } from "@/lib/currentUser";
 import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
 import { SubscriptionPaymentsSection } from "./SubscriptionPaymentsSection";
@@ -20,7 +22,7 @@ export default async function SubscriptionPaymentsPage() {
           ? "All subscription payments. Verify a payment to activate that month for the company."
           : "Renew below and an administrator will verify your payment before the month is activated."}
       </p>
-      <SubscriptionPaymentsSection showRenew={!isAdmin} />
+      <SubscriptionPaymentsSection showRenew={!isAdmin} defaultApp={cookies().get(APP_COOKIE)?.value === "payroll" ? "PAYROLL" : "ACCOUNTING"} />
     </main>
   );
 }
