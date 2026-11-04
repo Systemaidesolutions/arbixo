@@ -12,6 +12,7 @@ type Setup = {
   nightDiffRate: number; payUnworkedRegularHoliday: boolean; holidayRequiresPriorPresence: boolean;
   monthlyIncludesRestDays: boolean; monthlyIncludesSpecialDays: boolean; benefitsExemptCap: number;
   restWeekdays: number[]; thirteenthMonthAccountId: string | null;
+  shiftStart: string; shiftEnd: string; breakMinutes: number; lateGraceMinutes: number; otMinimumMinutes: number; otRoundingMinutes: number;
   salariesExpenseAccountId: string | null; contributionsExpenseAccountId: string | null; sssPayableAccountId: string | null;
   philhealthPayableAccountId: string | null; hdmfPayableAccountId: string | null; withholdingTaxPayableAccountId: string | null;
   otherDeductionsAccountId: string | null; netPayAccountId: string | null;
@@ -125,6 +126,16 @@ export function SetupClient({ setup, groups, items, accounts, canEdit }: { setup
               </label>
             ))}
           </div>
+        </div>
+
+        <h2 className="mt-6 text-sm font-medium text-neutral-800">Work schedule (biometric import)</h2>
+        <p className="text-xs text-neutral-500">Punches are compared with this shift to get late/undertime, overtime and night hours. An end time at or before the start is an overnight shift. Employees can have their own shift in Payroll employees.</p>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-6">
+          <label className={label}>Shift start<input type="time" value={form.shiftStart} disabled={!canEdit} onChange={(e) => setForm({ ...form, shiftStart: e.target.value })} className={field} /></label>
+          <label className={label}>Shift end<input type="time" value={form.shiftEnd} disabled={!canEdit} onChange={(e) => setForm({ ...form, shiftEnd: e.target.value })} className={field} /></label>
+          {([["breakMinutes", "Unpaid break (min)"], ["lateGraceMinutes", "Late grace (min)"], ["otMinimumMinutes", "Min. OT counted (min)"], ["otRoundingMinutes", "Round OT down to (min)"]] as const).map(([k, t]) => (
+            <label key={k} className={label}>{t}<input value={String(form[k])} inputMode="numeric" disabled={!canEdit} onChange={(e) => setForm({ ...form, [k]: e.target.value as unknown as number })} className={field} /></label>
+          ))}
         </div>
 
         <h2 className="mt-6 text-sm font-medium text-neutral-800">Posting accounts</h2>

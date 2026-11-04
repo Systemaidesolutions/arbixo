@@ -83,6 +83,9 @@ export default async function PayrollRunPage({ params }: { params: { id: string 
       dayHours: (l.dayHours ?? {}) as Record<string, DayHours>,
       leaveConversionDays: liveConversions ? liveConversions.get(l.employeeId) ?? 0 : num(l.leaveConversionDays),
       benefitsExemptRemaining: exemptLeft(l.employeeId),
+      biometricId: l.employee.payrollProfile?.biometricId ?? null,
+      shiftStart: l.employee.payrollProfile?.shiftStart ?? null,
+      shiftEnd: l.employee.payrollProfile?.shiftEnd ?? null,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -98,6 +101,10 @@ export default async function PayrollRunPage({ params }: { params: { id: string 
           dayTypes: (run.dayTypes ?? {}) as Record<string, DayType>,
         }}
         rules={toRules(setup)}
+        shift={{
+          start: setup.shiftStart, end: setup.shiftEnd, breakMinutes: setup.breakMinutes, lateGraceMinutes: setup.lateGraceMinutes,
+          otMinimumMinutes: setup.otMinimumMinutes, otRoundingMinutes: setup.otRoundingMinutes,
+        }}
         group={toGroupRules(run.payGroup)}
         items={items.map((i) => ({ id: i.id, code: i.code, name: i.name, kind: i.kind, taxable: i.taxable, isOtherBenefit: i.isOtherBenefit, isActive: i.isActive }))}
         lines={lines}

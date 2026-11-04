@@ -10,6 +10,7 @@ type Profile = {
   payGroupId: string | null; locationId: string | null; employmentType: EmploymentType; payBasis: PayBasis; rate: number;
   hireDate: string; contractEnd: string; sssNo: string; philhealthNo: string; pagibigNo: string; isMinimumWage: boolean;
   sex: "MALE" | "FEMALE" | null; isSoloParent: boolean; thirteenthMonthEligible: boolean;
+  biometricId: string; shiftStart: string; shiftEnd: string;
   recurring: { payItemId: string; amount: number }[]; bankName: string; bankAccountNo: string; isActive: boolean;
 };
 type Employee = { id: string; code: string; name: string; position: string | null; isActive: boolean; profile: Profile | null };
@@ -24,7 +25,7 @@ const label = "block text-xs text-neutral-500";
 
 const blankProfile = (): Profile => ({
   payGroupId: null, locationId: null, employmentType: "CONTRACTUAL", payBasis: "DAILY", rate: 0, hireDate: "", contractEnd: "",
-  sssNo: "", philhealthNo: "", pagibigNo: "", isMinimumWage: false, sex: null, isSoloParent: false, thirteenthMonthEligible: true, recurring: [], bankName: "", bankAccountNo: "", isActive: true,
+  sssNo: "", philhealthNo: "", pagibigNo: "", isMinimumWage: false, sex: null, isSoloParent: false, thirteenthMonthEligible: true, biometricId: "", shiftStart: "", shiftEnd: "", recurring: [], bankName: "", bankAccountNo: "", isActive: true,
 });
 
 export function PayrollEmployeesClient({ employees, groups, items, branches, canEdit }: { employees: Employee[]; groups: Option[]; items: PayItemOption[]; branches: Option[]; canEdit: boolean }) {
@@ -76,6 +77,10 @@ export function PayrollEmployeesClient({ employees, groups, items, branches, can
           <label className={label} title="Used for leave eligibility (maternity, paternity, VAWC…)">Sex<select value={form.sex ?? ""} onChange={(e) => setForm({ ...form, sex: (e.target.value || null) as Profile["sex"] })} className={field}><option value="">—</option><option value="FEMALE">Female</option><option value="MALE">Male</option></select></label>
           <label className="flex items-center gap-2 pt-5 text-sm text-neutral-700"><input type="checkbox" checked={form.isSoloParent} onChange={(e) => setForm({ ...form, isSoloParent: e.target.checked })} /> Solo parent (has Solo Parent ID)</label>
           <label className="flex items-center gap-2 pt-5 text-sm text-neutral-700" title="PD 851: rank-and-file employees get 13th-month pay; managerial employees don't"><input type="checkbox" checked={form.thirteenthMonthEligible} onChange={(e) => setForm({ ...form, thirteenthMonthEligible: e.target.checked })} /> Gets 13th-month pay (rank-and-file)</label>
+          <span />
+          <label className={label} title="The user ID enrolled on the biometric device. Blank = match by employee code.">Biometric ID<input value={form.biometricId} onChange={(e) => setForm({ ...form, biometricId: e.target.value })} className={field} placeholder="Same as code" /></label>
+          <label className={label} title="Leave blank to use the company shift in Payroll setup">Own shift start<input type="time" value={form.shiftStart} onChange={(e) => setForm({ ...form, shiftStart: e.target.value })} className={field} /></label>
+          <label className={label}>Own shift end<input type="time" value={form.shiftEnd} onChange={(e) => setForm({ ...form, shiftEnd: e.target.value })} className={field} /></label>
           <span />
           <label className={label}>Bank<input value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} className={field} /></label>
           <label className={label}>Bank account no.<input value={form.bankAccountNo} onChange={(e) => setForm({ ...form, bankAccountNo: e.target.value })} className={field} /></label>

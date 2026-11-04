@@ -27,6 +27,18 @@ export async function PUT(request: NextRequest) {
     data[f] = f === "workDaysPerYear" ? Math.round(v) : v;
   }
   for (const f of BOOLEAN_FIELDS) if (typeof body[f] === "boolean") data[f] = body[f];
+  for (const f of ["shiftStart", "shiftEnd"] as const) {
+    if (!(f in body)) continue;
+    const v = String(body[f] ?? "").trim();
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) return NextResponse.json({ error: "Shift times must be HH:mm (24-hour)." }, { status: 400 });
+    data[f] = v;
+  }
+  for (const f of ["breakMinutes", "lateGraceMinutes", "otMinimumMinutes", "otRoundingMinutes"] as const) {
+    if (!(f in body)) continue;
+    const v = Math.round(Number(body[f]));
+    if (!Number.isFinite(v) || v < 0 || v > 600) return NextResponse.json({ error: `Invalid value for ${f}.` }, { status: 400 });
+    data[f] = v;
+  }
   if ("restWeekdays" in body) {
     const days = Array.isArray(body.restWeekdays) ? [...new Set((body.restWeekdays as unknown[]).map(Number))] : [];
     if (days.some((d) => !Number.isInteger(d) || d < 0 || d > 6) || days.length > 6) return NextResponse.json({ error: "Invalid rest days." }, { status: 400 });

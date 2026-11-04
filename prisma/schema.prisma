@@ -1179,6 +1179,14 @@ model PayrollSetup {
   monthlyIncludesSpecialDays     Boolean @default(true)
   // 13th-month pay + other benefits exempt from tax up to this amount a year.
   benefitsExemptCap              Decimal @default(90000) @db.Decimal(18, 2)
+  // Default work schedule for biometric imports (HH:mm, 24h). An end at or
+  // before the start is an overnight shift.
+  shiftStart                     String  @default("08:00")
+  shiftEnd                       String  @default("17:00")
+  breakMinutes                   Int     @default(60)
+  lateGraceMinutes               Int     @default(0) // not late within this many minutes
+  otMinimumMinutes               Int     @default(30) // OT shorter than this isn't counted
+  otRoundingMinutes              Int     @default(15) // counted OT rounds down to this block
   // Daily-paid employees still get 100% of the daily rate on an unworked regular holiday.
   payUnworkedRegularHoliday Boolean @default(true)
   // Weekdays that are rest days (0 = Sunday … 6 = Saturday). Leave filings
@@ -1272,6 +1280,11 @@ model PayrollProfile {
   isSoloParent  Boolean @default(false)
   // Rank-and-file employees get 13th-month pay (PD 851); managerial don't.
   thirteenthMonthEligible Boolean @default(true)
+  // Biometric device user ID (falls back to the employee code), and an
+  // optional own shift overriding the company schedule.
+  biometricId   String?
+  shiftStart    String?
+  shiftEnd      String?
 
   // Recurring earnings/deductions copied into every new run: [{ payItemId, amount }].
   recurring Json?

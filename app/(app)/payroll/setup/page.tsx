@@ -47,6 +47,8 @@ export default async function PayrollSetupPage() {
             payUnworkedRegularHoliday: setup.payUnworkedRegularHoliday, holidayRequiresPriorPresence: setup.holidayRequiresPriorPresence,
             monthlyIncludesRestDays: setup.monthlyIncludesRestDays, monthlyIncludesSpecialDays: setup.monthlyIncludesSpecialDays,
             restWeekdays: setup.restWeekdays, thirteenthMonthAccountId: setup.thirteenthMonthAccountId,
+            shiftStart: setup.shiftStart, shiftEnd: setup.shiftEnd, breakMinutes: setup.breakMinutes, lateGraceMinutes: setup.lateGraceMinutes,
+            otMinimumMinutes: setup.otMinimumMinutes, otRoundingMinutes: setup.otRoundingMinutes,
             salariesExpenseAccountId: setup.salariesExpenseAccountId, contributionsExpenseAccountId: setup.contributionsExpenseAccountId,
             sssPayableAccountId: setup.sssPayableAccountId, philhealthPayableAccountId: setup.philhealthPayableAccountId,
             hdmfPayableAccountId: setup.hdmfPayableAccountId, withholdingTaxPayableAccountId: setup.withholdingTaxPayableAccountId,

@@ -8,6 +8,8 @@ import {
   type Adjustment, type DayHours, type DayType, type GroupRules, type LineResult, type PayrollRules,
 } from "@/lib/payroll/compute";
 import type { RunLeave } from "@/lib/payroll/leave";
+import type { LinePatch, Shift } from "@/lib/payroll/biometric";
+import { BiometricImport } from "./BiometricImport";
 
 type PayItem = { id: string; code: string; name: string; kind: "EARNING" | "DEDUCTION"; taxable: boolean; isOtherBenefit: boolean; isActive: boolean };
 type Line = {
@@ -18,6 +20,7 @@ type Line = {
   dayHours: Record<string, DayHours>; // work/OT/night hours on specific dates
   leaveConversionDays: number; // unused leave converted to cash, paid this run
   benefitsExemptRemaining: number; // left of the yearly 13th-month/bonus exemption
+  biometricId: string | null; shiftStart: string | null; shiftEnd: string | null; // for the biometric import
 };
 type Run = {
   id: string; runNo: string; status: "DRAFT" | "POSTED" | "CANCELLED"; groupName: string; branch: string | null;
@@ -37,8 +40,8 @@ const dow = (iso: string) => new Date(`${iso}T00:00:00Z`).getUTCDay();
 const cellInput = "w-14 rounded border border-neutral-300 px-1 py-0.5 text-right font-mono text-xs disabled:border-transparent disabled:bg-transparent";
 const STATUS_BADGE = { DRAFT: "bg-amber-100 text-amber-700", POSTED: "bg-green-100 text-green-700", CANCELLED: "bg-neutral-100 text-neutral-500" };
 
-export function RunEditor({ companyId, run, rules, group, items, lines: initialLines, available, canEdit, canCancel }: {
-  companyId: string; run: Run; rules: PayrollRules; group: GroupRules; items: PayItem[]; lines: Line[];
+export function RunEditor({ companyId, run, rules, group, items, lines: initialLines, available, canEdit, canCancel, shift }: {
+  companyId: string; run: Run; rules: PayrollRules; group: GroupRules; items: PayItem[]; lines: Line[]; shift: Shift;
   available: { employeeId: string; label: string }[]; canEdit: boolean; canCancel: boolean;
 }) {
   const router = useRouter();
@@ -50,6 +53,18 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [addId, setAddId] = useState("");
+  const [importing, setImporting] = useState(false);
+
+  /** Merges imported attendance into the lines; the user reviews and saves. */
+  function applyImport(patches: Map<string, LinePatch>) {
+    setLines((ls) => ls.map((l) => {
+      const p = patches.get(l.employeeId);
+      return p ? { ...l, ...p, absentDays: l.payBasis === "MONTHLY" ? p.absentDays : l.absentDays } : l;
+    }));
+    setDirty(true);
+    setImporting(false);
+    setMsg({ ok: true, text: `Imported biometric attendance for ${patches.size} employee(s). Review the figures, then Save.` });
+  }
 
   const dates = useMemo(() => periodDates(run.periodStart, run.periodEnd), [run.periodStart, run.periodEnd]);
   const daily = lines.filter((l) => l.payBasis === "DAILY");
@@ -205,6 +220,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {canEdit && <>
+            <button onClick={() => setImporting(!importing)} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Import biometrics</button>
             <button onClick={save} disabled={busy || !dirty} className="rounded border border-brand-blue px-3 py-1.5 text-sm text-brand-blue hover:bg-blue-50 disabled:opacity-40">Save</button>
             <button onClick={post} disabled={busy || lines.length === 0} className="rounded bg-brand-navy px-3 py-1.5 text-sm text-white hover:bg-brand-navyLight disabled:opacity-50">Post to GL</button>
             <button onClick={remove} disabled={busy} className="rounded px-3 py-1.5 text-sm text-red-600 hover:bg-red-50">Delete draft</button>
@@ -223,6 +239,21 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
           <div key={k} className="rounded-lg border border-neutral-200 px-3 py-2"><div className="text-[11px] uppercase tracking-wide text-neutral-500">{k}</div><div className="font-mono text-lg text-neutral-900">{v}</div></div>
         ))}
       </div>
+
+      {importing && canEdit && (
+        <BiometricImport
+          periodStart={run.periodStart}
+          periodEnd={run.periodEnd}
+          dayTypes={dayTypes}
+          shift={shift}
+          lines={lines.map((l) => ({
+            employeeId: l.employeeId, code: l.code, name: l.name, payBasis: l.payBasis, biometricId: l.biometricId,
+            shiftStart: l.shiftStart, shiftEnd: l.shiftEnd, leaveDates: l.leaves.map((x) => x.date),
+          }))}
+          onApply={applyImport}
+          onClose={() => setImporting(false)}
+        />
+      )}
 
       {/* Day types of the period (DOLE handbook pay rates apply per date) */}
       <section className="mt-6 rounded-lg border border-neutral-200 p-4 print:hidden">
