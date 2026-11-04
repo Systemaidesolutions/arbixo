@@ -5,6 +5,7 @@ import { getCurrentPayrollPrices, getCurrentPrice } from "@/lib/subscriptionPric
 import { activePayrollEmployees } from "@/lib/payroll/subscription";
 import { monthKey, monthName } from "@/lib/payroll/subscriptionTiers";
 import { PayrollSubscriptionPanel } from "../PayrollSubscriptionPanel";
+import { PendingPaymentsPanel } from "../PendingPaymentsPanel";
 import { AdminCompanyForm } from "../AdminCompanyForm";
 import { AuditToggle } from "../AuditToggle";
 import { SubscriptionPanel } from "../SubscriptionPanel";
@@ -40,6 +41,10 @@ export default async function EditCompanyPage({ params }: { params: { id: string
       byMonth.set(k, { maxEmployees: Math.max(cur.maxEmployees, p.maxEmployees ?? 0), amount: cur.amount + Number(p.amountDue) });
     }
   }
+  const pendingPayments = await prisma.subscriptionPayment.findMany({
+    where: { companyId: params.id, status: "PENDING" },
+    orderBy: { createdAt: "asc" },
+  });
   const ym = (k: number) => `${Math.floor(k / 12)}-${String((k % 12) + 1).padStart(2, "0")}`;
   const payrollMonths = [...byMonth].sort((a, b) => b[0] - a[0]).map(([k, v]) => ({ month: ym(k), label: monthName(k), maxEmployees: v.maxEmployees, amount: v.amount, free: v.amount === 0 }));
 
@@ -84,6 +89,19 @@ export default async function EditCompanyPage({ params }: { params: { id: string
           </ul>
         )}
       </section>
+
+      {/* Payments the company submitted, waiting for approval */}
+      {pendingPayments.length > 0 && (
+        <div className="mt-6">
+          <PendingPaymentsPanel
+            payments={pendingPayments.map((p) => ({
+              id: p.id, app: p.app, month: p.periodStart ? monthName(monthKey(p.periodStart)) : "—", priceName: p.priceName,
+              amountDue: Number(p.amountDue), currency: p.currency, gcashRef: p.gcashRef, receiptImage: p.receiptImage,
+              createdByEmail: p.createdByEmail, createdAt: p.createdAt.toISOString(),
+            }))}
+          />
+        </div>
+      )}
 
       {/* Subscription + company access */}
       <div className="mt-6">

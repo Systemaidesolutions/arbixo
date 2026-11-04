@@ -18,6 +18,7 @@ export default async function AdminCompaniesPage() {
     include: { users: { select: { email: true } } },
     orderBy: { createdAt: "desc" },
   });
+  const pendingPayments = await prisma.subscriptionPayment.count({ where: { status: "PENDING" } });
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-12">
@@ -35,6 +36,12 @@ export default async function AdminCompaniesPage() {
           + Create company
         </a>
       </div>
+
+      {pendingPayments > 0 && (
+        <a href="/subscription/payments" className="mt-4 block rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:bg-amber-100">
+          <b>{pendingPayments} subscription payment(s) waiting for your approval.</b> Open Subscription › Payments to verify them →
+        </a>
+      )}
 
       <div className="mt-6 overflow-x-auto rounded-lg border border-neutral-200">
         <table className="w-full min-w-[640px] text-sm">

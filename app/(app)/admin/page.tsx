@@ -95,6 +95,8 @@ export default async function AdminDashboardPage() {
     .slice(0, 12);
   const maxSize = Math.max(1, ...sizeRows.map((r) => r.count));
 
+  const pendingPayments = await prisma.subscriptionPayment.count({ where: { status: "PENDING" } });
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-12">
       <div className="flex items-center gap-2">
@@ -102,6 +104,11 @@ export default async function AdminDashboardPage() {
         <h1 className="text-xl font-medium text-neutral-900">Admin dashboard</h1>
       </div>
       <p className="mt-1 text-sm text-neutral-500">Signed in as {admin.email} (Arbixo admin).</p>
+      {pendingPayments > 0 && (
+        <a href="/subscription/payments" className="mt-4 block rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:bg-amber-100">
+          <b>{pendingPayments} subscription payment(s) waiting for your approval.</b> Open Subscription › Payments to verify them →
+        </a>
+      )}
 
       {/* Subscription overview */}
       <h2 className="mt-8 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-400">

@@ -45,6 +45,7 @@ function monthLabel(periodStart: string | null, periodEnd: string | null): strin
 
 export function PaymentsClient({ refreshSignal }: { refreshSignal?: number } = {}) {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [canVerify, setCanVerify] = useState(false);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -54,6 +55,7 @@ export function PaymentsClient({ refreshSignal }: { refreshSignal?: number } = {
     const res = await fetch("/api/subscription/payments");
     const data = await res.json();
     setIsAdmin(!!data.isAdmin);
+    setCanVerify(!!data.canVerify);
     setPayments(data.payments ?? []);
     setLoading(false);
   }
@@ -95,12 +97,12 @@ export function PaymentsClient({ refreshSignal }: { refreshSignal?: number } = {
             <th className="px-3 py-2">Receipt</th>
             <th className="px-3 py-2">Status</th>
             <th className="px-3 py-2">Invoice</th>
-            {isAdmin && <th className="px-3 py-2" />}
+            {canVerify && <th className="px-3 py-2" />}
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
           {payments.length === 0 ? (
-            <tr><td colSpan={isAdmin ? 12 : 10} className="px-3 py-3 text-neutral-400">No payments yet.</td></tr>
+            <tr><td colSpan={10 + (isAdmin ? 1 : 0) + (canVerify ? 1 : 0)} className="px-3 py-3 text-neutral-400">No payments yet.</td></tr>
           ) : (
             payments.map((p) => (
               <tr key={p.id}>
@@ -137,7 +139,7 @@ export function PaymentsClient({ refreshSignal }: { refreshSignal?: number } = {
                     <span className="text-neutral-400">—</span>
                   )}
                 </td>
-                {isAdmin && (
+                {canVerify && (
                   <td className="px-3 py-1.5 text-right">
                     {p.status === "PENDING" && (
                       <div className="flex justify-end gap-2">

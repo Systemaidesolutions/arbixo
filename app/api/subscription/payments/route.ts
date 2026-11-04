@@ -18,9 +18,9 @@ export async function GET() {
   const payments = await prisma.subscriptionPayment.findMany({
     where: isPlatformAdmin ? {} : { companyId: companyId ?? "" },
     include: { company: { select: { tradeName: true, registeredName: true } } },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ status: "asc" }, { createdAt: "desc" }], // PENDING first
     take: 500,
   });
 
-  return NextResponse.json({ isAdmin: isPlatformAdmin, payments });
+  return NextResponse.json({ isAdmin: isPlatformAdmin, canVerify: user.role === "ADMIN", payments });
 }
