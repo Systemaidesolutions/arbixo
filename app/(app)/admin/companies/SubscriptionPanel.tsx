@@ -97,7 +97,7 @@ export function SubscriptionPanel({
   return (
     <section className="rounded-lg border border-neutral-200 p-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-neutral-800">Subscription</h2>
+        <h2 className="text-sm font-medium text-neutral-800">Accounting subscription</h2>
         <span className={`rounded px-2 py-0.5 text-xs ${badge.cls}`}>
           {badge.text}
           {status.daysLeft !== null && status.state !== "expired" && ` · ${status.daysLeft}d left`}

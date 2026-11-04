@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPrice } from "@/lib/subscriptionPricing";
+import { getCurrentPayrollPrices, getCurrentPrice } from "@/lib/subscriptionPricing";
+import { activePayrollEmployees } from "@/lib/payroll/subscription";
+import { monthKey, monthName } from "@/lib/payroll/subscriptionTiers";
+import { PayrollSubscriptionPanel } from "../PayrollSubscriptionPanel";
 import { AdminCompanyForm } from "../AdminCompanyForm";
 import { AuditToggle } from "../AuditToggle";
 import { SubscriptionPanel } from "../SubscriptionPanel";
@@ -19,6 +22,26 @@ export default async function EditCompanyPage({ params }: { params: { id: string
   if (!company) notFound();
 
   const price = await getCurrentPrice();
+
+  // ARbixo Payroll subscription: one row per month paid (highest tier wins).
+  const [payrollPayments, payrollEmployees, payrollPrices] = await Promise.all([
+    prisma.subscriptionPayment.findMany({
+      where: { companyId: params.id, app: "PAYROLL", status: "VERIFIED", periodStart: { not: null }, periodEnd: { not: null } },
+      select: { periodStart: true, periodEnd: true, maxEmployees: true, amountDue: true },
+    }),
+    activePayrollEmployees(params.id),
+    getCurrentPayrollPrices(),
+  ]);
+  const byMonth = new Map<number, { maxEmployees: number; amount: number }>();
+  for (const p of payrollPayments) {
+    const last = monthKey(new Date(p.periodEnd!.getTime() - 1));
+    for (let k = monthKey(p.periodStart!); k <= last; k++) {
+      const cur = byMonth.get(k) ?? { maxEmployees: 0, amount: 0 };
+      byMonth.set(k, { maxEmployees: Math.max(cur.maxEmployees, p.maxEmployees ?? 0), amount: cur.amount + Number(p.amountDue) });
+    }
+  }
+  const ym = (k: number) => `${Math.floor(k / 12)}-${String((k % 12) + 1).padStart(2, "0")}`;
+  const payrollMonths = [...byMonth].sort((a, b) => b[0] - a[0]).map(([k, v]) => ({ month: ym(k), label: monthName(k), maxEmployees: v.maxEmployees, amount: v.amount, free: v.amount === 0 }));
 
   const branches = await prisma.location.findMany({
     where: { companyId: params.id },
@@ -73,6 +96,17 @@ export default async function EditCompanyPage({ params }: { params: { id: string
             subscriptionEndsAt: company.subscriptionEndsAt?.toISOString() ?? null,
           }}
           price={price ? { name: price.name, amount: Number(price.amount), currency: price.currency } : null}
+        />
+      </div>
+
+      {/* ARbixo Payroll subscription (separate from Accounting) */}
+      <div className="mt-6">
+        <PayrollSubscriptionPanel
+          companyId={company.id}
+          months={payrollMonths}
+          activeEmployees={payrollEmployees}
+          prices={payrollPrices.map((p) => ({ maxEmployees: p.maxEmployees!, name: p.name, amount: Number(p.amount), currency: p.currency }))}
+          currentMonth={ym(monthKey(new Date()))}
         />
       </div>
 
