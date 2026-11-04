@@ -86,6 +86,7 @@ export function PaymentsClient({ refreshSignal }: { refreshSignal?: number } = {
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500">
+            {canVerify && <th className="px-3 py-2">Approve</th>}
             <th className="px-3 py-2">Date</th>
             {isAdmin && <th className="px-3 py-2">Company</th>}
             <th className="px-3 py-2">Month</th>
@@ -97,7 +98,6 @@ export function PaymentsClient({ refreshSignal }: { refreshSignal?: number } = {
             <th className="px-3 py-2">Receipt</th>
             <th className="px-3 py-2">Status</th>
             <th className="px-3 py-2">Invoice</th>
-            {canVerify && <th className="px-3 py-2" />}
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
@@ -106,6 +106,16 @@ export function PaymentsClient({ refreshSignal }: { refreshSignal?: number } = {
           ) : (
             payments.map((p) => (
               <tr key={p.id}>
+                {canVerify && (
+                  <td className="px-3 py-1.5">
+                    {p.status === "PENDING" ? (
+                      <div className="flex items-center gap-2 whitespace-nowrap">
+                        <button onClick={() => act(p, "VERIFIED")} disabled={busy === p.id} className="rounded bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50">Verify</button>
+                        <button onClick={() => act(p, "REJECTED")} disabled={busy === p.id} className="text-xs text-red-600 hover:underline disabled:opacity-50">Reject</button>
+                      </div>
+                    ) : <span className="text-xs text-neutral-300">—</span>}
+                  </td>
+                )}
                 <td className="px-3 py-1.5 text-xs">{p.createdAt.slice(0, 10)}</td>
                 {isAdmin && <td className="px-3 py-1.5">{p.company.tradeName}</td>}
                 <td className="px-3 py-1.5 text-xs">{monthLabel(p.periodStart, p.periodEnd)}</td>
@@ -139,16 +149,6 @@ export function PaymentsClient({ refreshSignal }: { refreshSignal?: number } = {
                     <span className="text-neutral-400">—</span>
                   )}
                 </td>
-                {canVerify && (
-                  <td className="px-3 py-1.5 text-right">
-                    {p.status === "PENDING" && (
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => act(p, "VERIFIED")} disabled={busy === p.id} className="text-xs font-medium text-green-700 hover:underline disabled:opacity-50">Verify</button>
-                        <button onClick={() => act(p, "REJECTED")} disabled={busy === p.id} className="text-xs text-red-600 hover:underline disabled:opacity-50">Reject</button>
-                      </div>
-                    )}
-                  </td>
-                )}
               </tr>
             ))
           )}

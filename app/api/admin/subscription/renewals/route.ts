@@ -6,6 +6,7 @@ import { voucherDiscount, voucherStatus } from "@/lib/vouchers";
 import { setAuditSuppressed } from "@/lib/auditContext";
 import { monthStringToPeriod, recomputeCompanySubscriptionSummary } from "@/lib/subscriptionCoverage";
 import { issueInvoiceNumber } from "@/lib/subscriptionInvoice";
+import { monthKey } from "@/lib/payroll/subscriptionTiers";
 import { postSubscriptionPaymentToArbixoBooks } from "@/lib/arbixoBookkeeping";
 
 function round2(n: number) {
@@ -29,9 +30,30 @@ export async function GET() {
   ]);
   const payrollPrices = await getCurrentPayrollPrices();
 
+  // ARbixo Payroll per company: tier paid this month and next, and active payroll employees.
+  const thisMonth = monthKey(new Date());
+  const [payrollPaid, payrollActive] = await Promise.all([
+    prisma.subscriptionPayment.findMany({
+      where: { app: "PAYROLL", status: "VERIFIED", periodStart: { not: null }, periodEnd: { not: null } },
+      select: { companyId: true, periodStart: true, periodEnd: true, maxEmployees: true },
+    }),
+    prisma.payrollProfile.groupBy({ by: ["companyId"], where: { isActive: true, employee: { isActive: true } }, _count: true }),
+  ]);
+  const payroll: Record<string, { thisMonth: number | null; nextMonth: number | null; active: number }> = {};
+  for (const c of companies) payroll[c.id] = { thisMonth: null, nextMonth: null, active: payrollActive.find((a) => a.companyId === c.id)?._count ?? 0 };
+  for (const p of payrollPaid) {
+    const row = payroll[p.companyId];
+    if (!row) continue;
+    const first = monthKey(p.periodStart!), last = monthKey(new Date(p.periodEnd!.getTime() - 1));
+    const tier = p.maxEmployees ?? 0;
+    if (thisMonth >= first && thisMonth <= last) row.thisMonth = Math.max(row.thisMonth ?? 0, tier);
+    if (thisMonth + 1 >= first && thisMonth + 1 <= last) row.nextMonth = Math.max(row.nextMonth ?? 0, tier);
+  }
+
   return NextResponse.json({
     companies,
     price: price ? { name: price.name, amount: Number(price.amount), currency: price.currency } : null,
+    payroll,
     payrollPrices: payrollPrices.map((p) => ({ maxEmployees: p.maxEmployees, name: p.name, amount: Number(p.amount), currency: p.currency })),
     gcash: { name: settings?.gcashName ?? "", number: settings?.gcashNumber ?? "", qrImage: settings?.gcashQrImage ?? null },
   });

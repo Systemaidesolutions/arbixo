@@ -7,6 +7,7 @@ type Data = {
   companies: Company[];
   price: { name: string; amount: number; currency: string } | null;
   payrollPrices: { maxEmployees: number; name: string; amount: number; currency: string }[];
+  payroll: Record<string, { thisMonth: number | null; nextMonth: number | null; active: number }>;
   gcash: { name: string; number: string; qrImage: string | null };
 };
 
@@ -50,13 +51,20 @@ export function RenewalsClient() {
     refresh();
   }, []);
 
-  function toggle(id: string, endsAt: string | null) {
-    setOpenId((cur) => (cur === id ? null : id));
+  function toggle(id: string, endsAt: string | null, forApp: "ACCOUNTING" | "PAYROLL" = "ACCOUNTING") {
+    const same = openId === id && app === forApp;
+    setOpenId(same ? null : id);
+    setApp(forApp);
+    if (forApp === "PAYROLL") {
+      // Smallest priced tier that fits the company's active payroll employees.
+      const active = data?.payroll?.[id]?.active ?? 0;
+      const fit = data?.payrollPrices?.find((p) => p.maxEmployees >= active) ?? data?.payrollPrices?.[data.payrollPrices.length - 1];
+      setTier(fit?.maxEmployees ?? null);
+    }
     setMonth(defaultMonth(endsAt));
     setVoucher("");
     setGcashRef("");
     setRowMsg(null);
-    setTier((t) => t ?? data?.payrollPrices?.[0]?.maxEmployees ?? null);
   }
 
   async function cancel(companyId: string, name: string) {
@@ -95,6 +103,7 @@ export function RenewalsClient() {
     if (app === "PAYROLL") {
       setRowMsg({ id: companyId, ok: true, text: `Recorded — ARbixo Payroll paid for ${month}, up to ${tier} employees.` });
       setOpenId(null);
+      refresh();
       return;
     }
     setRowMsg({ id: companyId, ok: true, text: `Recorded — now covered through ${String(j.subscriptionEndsAt).slice(0, 10)}.` });
@@ -146,7 +155,7 @@ export function RenewalsClient() {
 
       {/* Bulk: mark one month paid for every company at once. */}
       <div className="mb-4 rounded-lg border border-neutral-200 bg-neutral-50/60 p-4">
-        <div className="text-sm font-medium text-neutral-800">Apply a month to all companies</div>
+        <div className="text-sm font-medium text-neutral-800">Apply an Accounting month to all companies</div>
         <p className="mt-1 text-xs text-neutral-500">
           Marks the chosen month as covered for every company as a $0 administrative grant — for platform-wide grants or
           promotions, not for recording a real payment. Use the per-company Renew below for that.
@@ -174,8 +183,9 @@ export function RenewalsClient() {
           <thead>
             <tr className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500">
               <th className="px-4 py-2">Company</th>
-              <th className="px-4 py-2">Subscription ends</th>
-              <th className="px-4 py-2">Status</th>
+              <th className="px-4 py-2">Accounting ends</th>
+              <th className="px-4 py-2">Accounting</th>
+              <th className="px-4 py-2">Payroll (this / next month)</th>
               <th className="px-4 py-2" />
             </tr>
           </thead>
@@ -189,6 +199,16 @@ export function RenewalsClient() {
                     <td className="px-4 py-2 font-medium text-neutral-800">{c.tradeName}</td>
                     <td className="px-4 py-2">{c.subscriptionEndsAt ? c.subscriptionEndsAt.slice(0, 10) : "—"}</td>
                     <td className="px-4 py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span></td>
+                    <td className="px-4 py-2 text-xs">
+                      {(() => {
+                        const pr = data.payroll?.[c.id];
+                        if (!pr) return "—";
+                        const cell = (t: number | null) =>
+                          t == null ? <span className="text-neutral-400">none</span>
+                            : <span className={t < pr.active ? "text-red-600" : "text-green-700"}>up to {t}</span>;
+                        return <>{cell(pr.thisMonth)} / {cell(pr.nextMonth)}<div className="text-neutral-400">{pr.active} active employee(s)</div></>;
+                      })()}
+                    </td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-3">
                         {c.subscriptionEndsAt && (
@@ -196,15 +216,18 @@ export function RenewalsClient() {
                             Cancel
                           </button>
                         )}
-                        <button onClick={() => toggle(c.id, c.subscriptionEndsAt)} disabled={!price && !data.payrollPrices?.length} className="text-xs font-medium text-brand-blue hover:underline disabled:opacity-40">
-                          {isOpen ? "Close" : "Renew"}
+                        <button onClick={() => toggle(c.id, c.subscriptionEndsAt, "ACCOUNTING")} disabled={!price} className="text-xs font-medium text-brand-blue hover:underline disabled:opacity-40">
+                          {isOpen && app === "ACCOUNTING" ? "Close" : "Renew accounting"}
+                        </button>
+                        <button onClick={() => toggle(c.id, c.subscriptionEndsAt, "PAYROLL")} disabled={!data.payrollPrices?.length} className="text-xs font-medium text-brand-blue hover:underline disabled:opacity-40">
+                          {isOpen && app === "PAYROLL" ? "Close" : "Renew payroll"}
                         </button>
                       </div>
                     </td>
                   </tr>
                   {isOpen && (
                     <tr className="bg-neutral-50/60">
-                      <td colSpan={4} className="px-4 py-4">
+                      <td colSpan={5} className="px-4 py-4">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <div className="space-y-3">
                             <div className="inline-flex rounded border border-neutral-300 p-0.5 text-xs">

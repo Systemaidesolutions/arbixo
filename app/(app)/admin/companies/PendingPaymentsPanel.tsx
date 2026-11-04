@@ -31,13 +31,20 @@ export function PendingPaymentsPanel({ payments }: { payments: Pending[] }) {
     <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
       <h2 className="text-sm font-medium text-amber-900">Waiting for your approval ({payments.length})</h2>
       <p className="mt-1 text-xs text-amber-800">Check the reference or receipt, then Verify to activate the month, or Reject.</p>
-      <table className="mt-3 w-full text-sm">
+      <div className="mt-3 overflow-x-auto">
+      <table className="w-full text-sm">
         <thead className="text-left text-xs text-amber-800">
-          <tr><th className="py-1 pr-3 font-medium">App</th><th className="py-1 pr-3 font-medium">Month</th><th className="py-1 pr-3 font-medium">Price</th><th className="py-1 pr-3 text-right font-medium">Amount</th><th className="py-1 pr-3 font-medium">Ref / receipt</th><th className="py-1 pr-3 font-medium">Submitted by</th><th /></tr>
+          <tr><th className="py-1 pr-3 font-medium">Approve</th><th className="py-1 pr-3 font-medium">App</th><th className="py-1 pr-3 font-medium">Month</th><th className="py-1 pr-3 font-medium">Price</th><th className="py-1 pr-3 text-right font-medium">Amount</th><th className="py-1 pr-3 font-medium">Ref / receipt</th><th className="py-1 pr-3 font-medium">Submitted by</th></tr>
         </thead>
         <tbody className="divide-y divide-amber-100">
           {payments.map((p) => (
             <tr key={p.id}>
+              <td className="py-1.5 pr-3">
+                <div className="flex items-center gap-2 whitespace-nowrap">
+                  <button onClick={() => act(p, "VERIFIED")} disabled={busy === p.id} className="rounded bg-green-600 px-3 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50">Verify</button>
+                  <button onClick={() => act(p, "REJECTED")} disabled={busy === p.id} className="text-xs text-red-600 hover:underline disabled:opacity-50">Reject</button>
+                </div>
+              </td>
               <td className="py-1.5 pr-3">{p.app === "PAYROLL" ? "Payroll" : "Accounting"}</td>
               <td className="py-1.5 pr-3">{p.month}</td>
               <td className="py-1.5 pr-3 text-xs">{p.priceName}</td>
@@ -47,16 +54,11 @@ export function PendingPaymentsPanel({ payments }: { payments: Pending[] }) {
                 {p.receiptImage && <button onClick={() => setZoom(p.receiptImage)} className="ml-2 text-brand-blue hover:underline">receipt</button>}
               </td>
               <td className="py-1.5 pr-3 text-xs">{p.createdByEmail ?? "—"}<div className="text-neutral-500">{p.createdAt.slice(0, 10)}</div></td>
-              <td className="py-1.5 text-right">
-                <div className="flex justify-end gap-3">
-                  <button onClick={() => act(p, "VERIFIED")} disabled={busy === p.id} className="rounded bg-green-600 px-3 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50">Verify</button>
-                  <button onClick={() => act(p, "REJECTED")} disabled={busy === p.id} className="text-xs text-red-600 hover:underline disabled:opacity-50">Reject</button>
-                </div>
-              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
       {zoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6" onClick={() => setZoom(null)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
