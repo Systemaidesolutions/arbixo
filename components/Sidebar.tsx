@@ -36,6 +36,7 @@ import {
   Sparkles,
   Banknote,
   SlidersHorizontal,
+  CalendarDays,
   type LucideIcon,
 } from "lucide-react";
 import type { SubscriberSubtype } from "@prisma/client";
@@ -133,6 +134,7 @@ const LINK_ICONS: Record<NavIcon, LucideIcon> = {
   contacts: Contact,
   payroll: Banknote,
   payrollSetup: SlidersHorizontal,
+  leave: CalendarDays,
 };
 
 function SidebarBrand() {

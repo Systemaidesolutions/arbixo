@@ -50,6 +50,8 @@ export type LineInput = {
   otHours?: number;
   nightDiffHours?: number;
   adjustments?: Adjustment[];
+  // Approved leave in the period, one entry per date (see lib/payroll/leave.ts).
+  leaves?: { date: string; days: number; paid: boolean }[] | null;
 };
 
 export type RunContext = {
@@ -64,6 +66,9 @@ export type LineResult = {
   daysWorked: number;
   basicPay: number;
   premiumPay: number;
+  leaveDays: number;
+  leavePay: number;
+  unpaidLeaveDays: number;
   otPay: number;
   nightDiffPay: number;
   lateDeduction: number;
@@ -157,14 +162,24 @@ export function computeLine(input: LineInput, ctx: RunContext): LineResult {
   let daysWorked = 0;
   let basicPay = 0;
   let premiumPay = 0;
+  let leavePay = 0;
+  const leaves = input.leaves ?? [];
+  const leaveDays = leaves.filter((l) => l.paid).reduce((s, l) => s + (Number(l.days) || 0), 0);
+  const unpaidLeaveDays = leaves.filter((l) => !l.paid).reduce((s, l) => s + (Number(l.days) || 0), 0);
 
   if (input.payBasis === "DAILY") {
     // Pay per date actually worked; the date's day type sets the multiplier.
     // The 100% part goes to basic pay, anything above it to premium pay.
     const att = input.attendance ?? {};
+    const paidLeave = new Map<string, number>();
+    for (const l of leaves) if (l.paid) paidLeave.set(l.date, (paidLeave.get(l.date) ?? 0) + (Number(l.days) || 0));
     for (const date of dates) {
       const days = Math.max(0, Number(att[date]) || 0);
       const type = dayTypes[date] ?? "REG";
+      // Paid leave pays the daily rate on a workday or special day. A rest day
+      // isn't paid anyway, and an unworked regular holiday is already paid below.
+      const onLeave = paidLeave.get(date) ?? 0;
+      if (onLeave > 0 && (type === "REG" || type === "SH")) leavePay += dailyRate * Math.min(1, onLeave);
       if (days > 0) {
         daysWorked += days;
         const mult =
@@ -179,10 +194,11 @@ export function computeLine(input: LineInput, ctx: RunContext): LineResult {
       }
     }
   } else {
-    // Fixed salary split evenly across the month's runs, less absences.
-    const absent = Math.max(0, input.absentDays ?? 0);
+    // Fixed salary split evenly across the month's runs, less absences and
+    // unpaid leave. Paid leave is already covered by the salary.
+    const absent = Math.max(0, input.absentDays ?? 0) + unpaidLeaveDays;
     basicPay = input.rate / runsPerMonth - dailyRate * absent;
-    daysWorked = Math.max(0, rules.workDaysPerYear / ppy - absent);
+    daysWorked = Math.max(0, rules.workDaysPerYear / ppy - absent - leaveDays);
   }
 
   const otPay = hourlyRate * rules.otMultiplier * Math.max(0, input.otHours ?? 0);
@@ -198,16 +214,17 @@ export function computeLine(input: LineInput, ctx: RunContext): LineResult {
   const r = {
     basicPay: round2(Math.max(0, basicPay)),
     premiumPay: round2(premiumPay),
+    leavePay: round2(leavePay),
     otPay: round2(otPay),
     nightDiffPay: round2(nightDiffPay),
     lateDeduction: round2(lateDeduction),
   };
-  const grossPay = round2(r.basicPay + r.premiumPay + r.otPay + r.nightDiffPay - r.lateDeduction + otherEarnings);
+  const grossPay = round2(r.basicPay + r.premiumPay + r.leavePay + r.otPay + r.nightDiffPay - r.lateDeduction + otherEarnings);
 
   // Contributions are computed on a monthly-equivalent of this run's basic pay
   // and split evenly across the month's runs, so a weekly-paid contractual pays
   // roughly the same monthly total as a monthly-paid employee on the same wage.
-  const monthlyBasic = Math.max(0, (r.basicPay - r.lateDeduction) * runsPerMonth);
+  const monthlyBasic = Math.max(0, (r.basicPay + r.leavePay - r.lateDeduction) * runsPerMonth);
   const per = (m: { ee: number; er: number }, on: boolean) =>
     on ? { ee: round2(m.ee / runsPerMonth), er: round2(m.er / runsPerMonth) } : { ee: 0, er: 0 };
   const sss = per(sssMonthly(monthlyBasic), group.deductSss);
@@ -224,6 +241,8 @@ export function computeLine(input: LineInput, ctx: RunContext): LineResult {
   return {
     daysWorked: round2(daysWorked),
     ...r,
+    leaveDays: round2(leaveDays),
+    unpaidLeaveDays: round2(unpaidLeaveDays),
     otherEarnings: round2(otherEarnings),
     grossPay,
     sssEe: sss.ee,

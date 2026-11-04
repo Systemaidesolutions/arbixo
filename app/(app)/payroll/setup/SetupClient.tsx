@@ -8,6 +8,7 @@ type Account = { id: string; code: string; title: string };
 type Setup = {
   workDaysPerYear: number; hoursPerDay: number; otMultiplier: number; restDayMultiplier: number;
   specialHolidayMultiplier: number; regularHolidayMultiplier: number; nightDiffRate: number; payUnworkedRegularHoliday: boolean;
+  restWeekdays: number[];
   salariesExpenseAccountId: string | null; contributionsExpenseAccountId: string | null; sssPayableAccountId: string | null;
   philhealthPayableAccountId: string | null; hdmfPayableAccountId: string | null; withholdingTaxPayableAccountId: string | null;
   otherDeductionsAccountId: string | null; netPayAccountId: string | null;
@@ -88,6 +89,18 @@ export function SetupClient({ setup, groups, items, accounts, canEdit }: { setup
             <input type="checkbox" className="mt-1" disabled={!canEdit} checked={form.payUnworkedRegularHoliday} onChange={(e) => setForm({ ...form, payUnworkedRegularHoliday: e.target.checked })} />
             <span>Pay daily-rate employees for unworked regular holidays (100%)</span>
           </label>
+        </div>
+        <div className="mt-4">
+          <span className={label}>Rest days <span className="text-neutral-400">(skipped when counting leave days)</span></span>
+          <div className="mt-1 flex flex-wrap gap-3 text-sm text-neutral-700">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => (
+              <label key={d} className="flex items-center gap-1">
+                <input type="checkbox" disabled={!canEdit} checked={form.restWeekdays.includes(i)}
+                  onChange={(e) => setForm({ ...form, restWeekdays: e.target.checked ? [...form.restWeekdays, i] : form.restWeekdays.filter((x) => x !== i) })} />
+                {d}
+              </label>
+            ))}
+          </div>
         </div>
 
         <h2 className="mt-6 text-sm font-medium text-neutral-800">Posting accounts</h2>

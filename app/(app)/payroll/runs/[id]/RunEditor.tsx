@@ -7,12 +7,14 @@ import {
   computeLine, DAY_TYPE_LABEL, periodDates,
   type Adjustment, type DayType, type GroupRules, type LineResult, type PayrollRules,
 } from "@/lib/payroll/compute";
+import type { RunLeave } from "@/lib/payroll/leave";
 
 type PayItem = { id: string; code: string; name: string; kind: "EARNING" | "DEDUCTION"; taxable: boolean; isActive: boolean };
 type Line = {
   employeeId: string; code: string; name: string; position: string | null; payBasis: "MONTHLY" | "DAILY"; rate: number; isMinimumWage: boolean;
   attendance: Record<string, number>; absentDays: number; lateMinutes: number; otHours: number; nightDiffHours: number;
   adjustments: { payItemId: string; amount: number }[];
+  leaves: RunLeave[]; // approved leave in the period (read-only here; managed under Payroll › Leave)
 };
 type Run = {
   id: string; runNo: string; status: "DRAFT" | "POSTED" | "CANCELLED"; groupName: string; branch: string | null;
@@ -81,7 +83,8 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
     setLines((ls) => ls.map((l) => {
       if (l.payBasis !== "DAILY" || (only && l.employeeId !== only)) return l;
       const att = { ...l.attendance };
-      for (const d of dates) if ((dayTypes[d] ?? "REG") === "REG" && att[d] == null) att[d] = 1;
+      const onLeave = new Set(l.leaves.filter((x) => x.days >= 1).map((x) => x.date));
+      for (const d of dates) if ((dayTypes[d] ?? "REG") === "REG" && att[d] == null && !onLeave.has(d)) att[d] = 1;
       return { ...l, attendance: att };
     }));
     setDirty(true);
@@ -176,7 +179,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-sm font-medium text-neutral-800">Daily attendance: daily-rate employees ({daily.length})</h2>
-              <p className="text-xs text-neutral-500">Days worked per date (1 = full day, 0.5 = half day). Set each date&apos;s type in the header row. Rest days and holidays apply their premium automatically.</p>
+              <p className="text-xs text-neutral-500">Days worked per date (1 = full day, 0.5 = half day). Set each date&apos;s type in the header row. Rest days and holidays apply their premium automatically. Approved leave shows as a code (e.g. SIL) and is paid when the leave is with pay.</p>
             </div>
             {canEdit && <button onClick={() => fillRegular()} className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">Fill regular days for everyone</button>}
           </div>
@@ -209,14 +212,18 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
                         <div className="text-neutral-800">{l.name}</div>
                         {canEdit && <button onClick={() => fillRegular(l.employeeId)} className="text-[10px] text-brand-blue hover:underline">fill regular days</button>}
                       </td>
-                      {dates.map((d) => (
-                        <td key={d} className={`px-0.5 py-1 text-center ${DAY_TYPE_STYLE[dayTypes[d] ?? "REG"]}`}>
-                          <input value={l.attendance[d] ?? ""} disabled={ro} inputMode="decimal" onChange={(e) => setCell(l, d, e.target.value)} className={`${cellInput} w-10 text-center`} />
-                        </td>
-                      ))}
+                      {dates.map((d) => {
+                        const lv = l.leaves.find((x) => x.date === d);
+                        return (
+                          <td key={d} className={`px-0.5 py-1 text-center ${DAY_TYPE_STYLE[dayTypes[d] ?? "REG"]}`}>
+                            {lv && <div title={`${lv.code}${lv.days < 1 ? " (half day)" : ""}${lv.paid ? ", with pay" : ", without pay"}`} className={`mx-auto mb-0.5 w-10 rounded px-0.5 text-[10px] font-medium ${lv.paid ? "bg-blue-100 text-brand-blue" : "bg-neutral-200 text-neutral-600"}`}>{lv.code}{lv.days < 1 ? "½" : ""}</div>}
+                            {(!lv || lv.days < 1 || l.attendance[d] != null) && <input value={l.attendance[d] ?? ""} disabled={ro} inputMode="decimal" onChange={(e) => setCell(l, d, e.target.value)} className={`${cellInput} w-10 text-center`} />}
+                          </td>
+                        );
+                      })}
                       <td className="px-2 py-1 text-right font-mono">{r.daysWorked}</td>
                       <td className="px-2 py-1 text-right font-mono">{formatPeso(l.rate)}</td>
-                      <td className="px-2 py-1 text-right font-mono">{formatPeso(r.basicPay + r.premiumPay)}</td>
+                      <td className="px-2 py-1 text-right font-mono">{formatPeso(r.basicPay + r.premiumPay + r.leavePay)}</td>
                     </tr>
                   );
                 })}
@@ -255,6 +262,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
                   <th className="py-2 pr-2 text-right" title="Late + undertime minutes">Late min</th>
                   <th className="py-2 pr-2 text-right">OT hrs</th>
                   <th className="py-2 pr-2 text-right">ND hrs</th>
+                  <th className="py-2 pr-2 text-right" title="Approved leave in the period">Leave</th>
                   <th className="py-2 pr-2 text-right">Basic</th>
                   <th className="py-2 pr-2 text-right">Prem/OT/ND</th>
                   <th className="py-2 pr-2 text-right">Other earn.</th>
@@ -289,7 +297,12 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
                             <input value={String(l[k] || "")} disabled={ro} inputMode="decimal" onChange={(e) => patch(l.employeeId, { [k]: e.target.value as unknown as number })} className={cellInput} />
                           </td>
                         ))}
-                        <td className="py-1.5 pr-2 text-right font-mono">{num(r.basicPay)}</td>
+                        <td className="py-1.5 pr-2 text-right text-[11px]">
+                          {r.leaveDays > 0 && <div title={l.payBasis === "DAILY" ? "Paid leave at the daily rate" : "Paid leave (covered by the salary)"}>{r.leaveDays}d{r.leavePay ? ` · ${formatPeso(r.leavePay)}` : ""}</div>}
+                          {r.unpaidLeaveDays > 0 && <div className="text-neutral-500" title={l.payBasis === "MONTHLY" ? "Deducted like an absence" : "Not paid"}>{r.unpaidLeaveDays}d no pay</div>}
+                          {!r.leaveDays && !r.unpaidLeaveDays && <span className="text-neutral-300">–</span>}
+                        </td>
+                        <td className="py-1.5 pr-2 text-right font-mono">{num(r.basicPay + r.leavePay)}</td>
                         <td className="py-1.5 pr-2 text-right font-mono">{num(r.premiumPay + r.otPay + r.nightDiffPay - r.lateDeduction)}</td>
                         <td className="py-1.5 pr-2 text-right font-mono">{num(r.otherEarnings)}</td>
                         <td className="py-1.5 pr-2 text-right font-mono font-medium">{num(r.grossPay)}</td>
@@ -306,7 +319,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
                       </tr>
                       {open && (
                         <tr className="bg-neutral-50 print:hidden">
-                          <td colSpan={16} className="px-3 py-2">
+                          <td colSpan={17} className="px-3 py-2">
                             <div className="text-[11px] font-medium text-neutral-600">Earnings & deductions for this run</div>
                             {l.adjustments.map((a, i) => (
                               <div key={i} className="mt-1 flex items-center gap-2">
@@ -324,6 +337,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
                               <span>Taxable income: <b>{formatPeso(r.taxableIncome)}</b></span>
                               <span>Late/undertime: <b>{formatPeso(r.lateDeduction)}</b></span>
                               <span>Employer share: <b>{formatPeso(r.sssEr + r.philhealthEr + r.hdmfEr)}</b></span>
+                              {l.leaves.length > 0 && <span className="col-span-2 sm:col-span-4">Leave: {l.leaves.map((x) => `${x.code} ${x.date.slice(5)}${x.days < 1 ? " (½)" : ""}`).join(", ")}</span>}
                             </div>
                           </td>
                         </tr>
@@ -334,7 +348,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-neutral-300 font-mono font-medium">
-                  <td className="py-2 pr-2 font-sans text-xs uppercase text-neutral-500" colSpan={8}>Totals</td>
+                  <td className="py-2 pr-2 font-sans text-xs uppercase text-neutral-500" colSpan={9}>Totals</td>
                   <td className="py-2 pr-2 text-right">{formatPeso(totals.gross)}</td>
                   <td className="py-2 pr-2 text-right">{formatPeso(totals.sss)}</td>
                   <td className="py-2 pr-2 text-right">{formatPeso(totals.ph)}</td>

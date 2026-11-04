@@ -22,6 +22,11 @@ export async function PUT(request: NextRequest) {
     data[f] = f === "workDaysPerYear" ? Math.round(v) : v;
   }
   if (typeof body.payUnworkedRegularHoliday === "boolean") data.payUnworkedRegularHoliday = body.payUnworkedRegularHoliday;
+  if ("restWeekdays" in body) {
+    const days = Array.isArray(body.restWeekdays) ? [...new Set((body.restWeekdays as unknown[]).map(Number))] : [];
+    if (days.some((d) => !Number.isInteger(d) || d < 0 || d > 6) || days.length > 6) return NextResponse.json({ error: "Invalid rest days." }, { status: 400 });
+    data.restWeekdays = days.sort();
+  }
 
   const ids = ACCOUNT_FIELDS.map((f) => body[f]).filter((v): v is string => typeof v === "string" && !!v);
   const valid = new Set(

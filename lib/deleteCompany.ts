@@ -28,6 +28,9 @@ export async function deleteCompany(companyId: string): Promise<void> {
         await tx.payGroup.deleteMany({ where: { companyId } });
         await tx.payItem.deleteMany({ where: { companyId } });
         await tx.payrollSetup.deleteMany({ where: { companyId } });
+        await tx.leaveRequest.deleteMany({ where: { companyId } });
+        await tx.leaveCredit.deleteMany({ where: { companyId } });
+        await tx.leaveType.deleteMany({ where: { companyId } });
         await tx.transactionAttachment.deleteMany({ where: { companyId } });
         await tx.taxPostingSetup.deleteMany({ where: { companyId } });
         await tx.numberSeries.deleteMany({ where: { companyId } });

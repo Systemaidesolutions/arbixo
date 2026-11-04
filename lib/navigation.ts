@@ -33,7 +33,8 @@ export type NavIcon =
   | "employees"
   | "contacts"
   | "payroll"
-  | "payrollSetup";
+  | "payrollSetup"
+  | "leave";
 
 export type NavLink = { href: string; label: string; icon: NavIcon };
 // A collapsible sub-group of links nested inside a section (e.g. "Relief Files"
@@ -158,6 +159,7 @@ export const PAYROLL_NAV_SECTIONS: NavSection[] = [
     links: [
       { href: "/payroll/runs", label: "Payroll runs", icon: "payroll" },
       { href: "/payroll/employees", label: "Payroll employees", icon: "employees" },
+      { href: "/payroll/leaves", label: "Leave", icon: "leave" },
     ],
   },
   {
@@ -165,6 +167,7 @@ export const PAYROLL_NAV_SECTIONS: NavSection[] = [
     icon: "settings",
     links: [
       { href: "/payroll/setup", label: "Payroll setup", icon: "payrollSetup" },
+      { href: "/payroll/leave-types", label: "Leave types", icon: "leave" },
       { href: "/agents/employees", label: "Employees", icon: "employees" },
       { href: "/company/branches", label: "Branches", icon: "companies" },
       { href: "/company/setup", label: "Company details", icon: "company" },

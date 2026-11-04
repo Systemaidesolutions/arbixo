@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { EmploymentType, PayBasis, PayFrequency, PayItemKind, Prisma } from "@prisma/client";
+import type { EmploymentType, PayBasis, PayFrequency, PayItemKind, Prisma, Sex } from "@prisma/client";
 
 // Save handlers for the payroll master data: pay groups, pay items and the
 // per-employee payroll profile. `id` null = create.
@@ -82,6 +82,8 @@ export async function saveProfile(companyId: string, employeeId: string, raw: Re
     philhealthNo: clean(raw.philhealthNo),
     pagibigNo: clean(raw.pagibigNo),
     isMinimumWage: raw.isMinimumWage === true,
+    sex: raw.sex === "MALE" || raw.sex === "FEMALE" ? (raw.sex as Sex) : null,
+    isSoloParent: raw.isSoloParent === true,
     recurring,
     bankName: clean(raw.bankName),
     bankAccountNo: clean(raw.bankAccountNo),

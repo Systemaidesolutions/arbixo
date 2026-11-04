@@ -39,7 +39,7 @@ export default async function PayrollSetupPage() {
             workDaysPerYear: setup.workDaysPerYear, hoursPerDay: n(setup.hoursPerDay), otMultiplier: n(setup.otMultiplier),
             restDayMultiplier: n(setup.restDayMultiplier), specialHolidayMultiplier: n(setup.specialHolidayMultiplier),
             regularHolidayMultiplier: n(setup.regularHolidayMultiplier), nightDiffRate: n(setup.nightDiffRate),
-            payUnworkedRegularHoliday: setup.payUnworkedRegularHoliday,
+            payUnworkedRegularHoliday: setup.payUnworkedRegularHoliday, restWeekdays: setup.restWeekdays,
             salariesExpenseAccountId: setup.salariesExpenseAccountId, contributionsExpenseAccountId: setup.contributionsExpenseAccountId,
             sssPayableAccountId: setup.sssPayableAccountId, philhealthPayableAccountId: setup.philhealthPayableAccountId,
             hdmfPayableAccountId: setup.hdmfPayableAccountId, withholdingTaxPayableAccountId: setup.withholdingTaxPayableAccountId,

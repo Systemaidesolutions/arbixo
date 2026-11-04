@@ -387,6 +387,7 @@ model Company {
   payGroups      PayGroup[]
   payItems       PayItem[]
   payrollRuns    PayrollRun[]
+  leaveTypes     LeaveType[]
   items          Item[]
   stockMovements StockMovement[]
   transactionAttachments TransactionAttachment[]
@@ -751,6 +752,8 @@ model Employee {
   ledgerEntries  LedgerEntry[]
   payrollProfile PayrollProfile?
   payrollLines   PayrollRunLine[]
+  leaveCredits   LeaveCredit[]
+  leaveRequests  LeaveRequest[]
 
   @@unique([companyId, code])
 }
@@ -1151,6 +1154,9 @@ model PayrollSetup {
   nightDiffRate             Decimal @default(0.10) @db.Decimal(6, 4)
   // Daily-paid employees still get 100% of the daily rate on an unworked regular holiday.
   payUnworkedRegularHoliday Boolean @default(true)
+  // Weekdays that are rest days (0 = Sunday … 6 = Saturday). Leave filings
+  // skip these when counting working days.
+  restWeekdays              Int[]   @default([0])
 
   // GL accounts (plain Account ids).
   salariesExpenseAccountId       String?
@@ -1230,6 +1236,9 @@ model PayrollProfile {
   pagibigNo     String?
   // Minimum wage earner: exempt from withholding tax on compensation.
   isMinimumWage Boolean @default(false)
+  // Used for leave eligibility (maternity, paternity, solo parent, VAWC…).
+  sex           Sex?
+  isSoloParent  Boolean @default(false)
 
   // Recurring earnings/deductions copied into every new run: [{ payItemId, amount }].
   recurring Json?
@@ -1300,11 +1309,17 @@ model PayrollRunLine {
   nightDiffHours Decimal @default(0) @db.Decimal(8, 2)
   // This run's earnings/deductions: [{ payItemId, amount }].
   adjustments    Json?
+  // Approved leave falling in the period, refreshed on every recompute while
+  // the run is a draft: [{ date, days, paid, code, leaveRequestId }].
+  leaves         Json?
 
   // --- Computed ---
   daysWorked      Decimal @default(0) @db.Decimal(8, 2)
   basicPay        Decimal @default(0) @db.Decimal(18, 2)
   premiumPay      Decimal @default(0) @db.Decimal(18, 2) // rest day / holiday premiums
+  leaveDays       Decimal @default(0) @db.Decimal(8, 2) // paid leave days
+  leavePay        Decimal @default(0) @db.Decimal(18, 2) // DAILY basis: paid leave at the daily rate
+  unpaidLeaveDays Decimal @default(0) @db.Decimal(8, 2)
   otPay           Decimal @default(0) @db.Decimal(18, 2)
   nightDiffPay    Decimal @default(0) @db.Decimal(18, 2)
   lateDeduction   Decimal @default(0) @db.Decimal(18, 2)
@@ -1324,4 +1339,128 @@ model PayrollRunLine {
 
   @@unique([runId, employeeId])
   @@index([employeeId])
+}
+
+// ============================================================
+// LEAVE
+// Company-defined leave types (seeded with the Philippine statutory leaves),
+// yearly credits per employee, and leave filings. Approved leave is pulled
+// into draft payroll runs automatically: paid leave pays daily-rate staff for
+// the day and is not an absence for monthly-paid staff; unpaid leave is
+// deducted from monthly-paid staff.
+// ============================================================
+enum Sex {
+  MALE
+  FEMALE
+}
+
+enum LeaveCreditBasis {
+  ANNUAL // yearly credits per employee (SIL, VL, SL, solo parent)
+  PER_EVENT // up to `days` per filing (maternity, paternity, VAWC)
+  UNLIMITED // no balance check (leave without pay)
+}
+
+enum LeaveAccrual {
+  UPFRONT // full year's credits available from January
+  MONTHLY // credits earned 1/12 per month
+}
+
+enum LeaveEligibility {
+  ANY
+  FEMALE
+  MALE
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model LeaveType {
+  id          String  @id @default(cuid())
+  company     Company @relation(fields: [companyId], references: [id])
+  companyId   String
+  code        String
+  name        String
+  description String?
+  legalBasis  String? // e.g. "Labor Code Art. 95", "RA 11210"
+  isStatutory Boolean @default(false)
+
+  isPaid            Boolean          @default(true)
+  creditBasis       LeaveCreditBasis @default(ANNUAL)
+  days              Decimal          @default(0) @db.Decimal(8, 2) // credits per year, or max per filing
+  accrual           LeaveAccrual     @default(UPFRONT)
+  countCalendarDays Boolean          @default(false) // true = rest days count too (maternity)
+  allowHalfDay      Boolean          @default(true)
+  allowNegative     Boolean          @default(false) // may file beyond the balance
+
+  // Eligibility
+  minServiceMonths Int              @default(0)
+  eligibility      LeaveEligibility @default(ANY)
+  soloParentOnly   Boolean          @default(false)
+  employmentTypes  EmploymentType[] // empty = every employment type
+
+  // Year-end
+  maxCarryOver      Decimal @default(0) @db.Decimal(8, 2)
+  convertibleToCash Boolean @default(false)
+
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  credits  LeaveCredit[]
+  requests LeaveRequest[]
+
+  @@unique([companyId, code])
+}
+
+// An employee's credits for one ANNUAL leave type in one calendar year.
+// Available = granted (accrued) + carriedOver + adjustment - used.
+model LeaveCredit {
+  id          String    @id @default(cuid())
+  companyId   String
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId  String
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  leaveTypeId String
+  year        Int
+  granted     Decimal   @default(0) @db.Decimal(8, 2)
+  carriedOver Decimal   @default(0) @db.Decimal(8, 2)
+  adjustment  Decimal   @default(0) @db.Decimal(8, 2)
+  remarks     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([employeeId, leaveTypeId, year])
+  @@index([companyId, year])
+}
+
+model LeaveRequest {
+  id          String      @id @default(cuid())
+  companyId   String
+  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId  String
+  leaveType   LeaveType   @relation(fields: [leaveTypeId], references: [id])
+  leaveTypeId String
+  startDate   DateTime
+  endDate     DateTime
+  // Each leave date and how much of it is taken: [{ date: "2026-11-03", days: 1 }].
+  dates       Json
+  days        Decimal     @db.Decimal(8, 2)
+  isPaid      Boolean // snapshot of the leave type when filed
+  reason      String?
+  status      LeaveStatus @default(PENDING)
+
+  filedById    String?
+  decidedById  String?
+  decidedAt    DateTime?
+  decisionNote String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([companyId, startDate])
+  @@index([employeeId, startDate])
 }

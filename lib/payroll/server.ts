@@ -4,6 +4,7 @@ import { setAuditSuppressed } from "@/lib/auditContext";
 import { postDocument, type LedgerLineInput } from "@/lib/ledgerPosting";
 import type { PayrollSetup, PayGroup, Prisma } from "@prisma/client";
 import { computeLine, periodDates, type Adjustment, type DayType, type GroupRules, type PayrollRules, type RunContext } from "./compute";
+import { leaveForRun } from "./leaveServer";
 
 export type PayrollAuth =
   | { ok: true; companyId: string; userId: string }
@@ -185,7 +186,7 @@ export async function saveRunInputs(companyId: string, runId: string, body: { da
   return { status: 200, ok: true };
 }
 
-/** Recomputes every line of a draft run from its inputs and refreshes the run totals. */
+/** Recomputes every line of a draft run from its inputs (plus approved leave in the period) and refreshes the run totals. */
 export async function recomputeRun(companyId: string, runId: string) {
   const run = await prisma.payrollRun.findFirst({
     where: { id: runId, companyId },
@@ -201,11 +202,13 @@ export async function recomputeRun(companyId: string, runId: string) {
     group: toGroupRules(run.payGroup),
   };
 
+  const leaves = await leaveForRun(companyId, run.lines.map((l) => l.employeeId), ctx.periodStart, ctx.periodEnd);
   const totals = { gross: 0, ded: 0, net: 0, er: 0 };
   setAuditSuppressed(true);
   try {
     for (const line of run.lines) {
       const adjustments = await resolveAdjustments(companyId, line.adjustments);
+      const lineLeaves = leaves.get(line.employeeId) ?? [];
       const r = computeLine(
         {
           payBasis: line.payBasis,
@@ -217,10 +220,11 @@ export async function recomputeRun(companyId: string, runId: string) {
           otHours: n(line.otHours),
           nightDiffHours: n(line.nightDiffHours),
           adjustments,
+          leaves: lineLeaves,
         },
         ctx
       );
-      await prisma.payrollRunLine.update({ where: { id: line.id }, data: r });
+      await prisma.payrollRunLine.update({ where: { id: line.id }, data: { ...r, leaves: lineLeaves } });
       totals.gross += r.grossPay;
       totals.ded += r.totalDeductions;
       totals.net += r.netPay;
@@ -271,7 +275,7 @@ export async function postRun(companyId: string, userId: string, runId: string) 
 
   for (const l of run.lines) {
     // Earnings: base pay on the salaries account, pay items on their own account when set.
-    add(debit, acct("salariesExpenseAccountId"), n(l.basicPay) + n(l.premiumPay) + n(l.otPay) + n(l.nightDiffPay) - n(l.lateDeduction));
+    add(debit, acct("salariesExpenseAccountId"), n(l.basicPay) + n(l.premiumPay) + n(l.leavePay) + n(l.otPay) + n(l.nightDiffPay) - n(l.lateDeduction));
     for (const a of (Array.isArray(l.adjustments) ? l.adjustments : []) as { payItemId: string; amount: number }[]) {
       const it = payItems.find((p) => p.id === a.payItemId);
       if (!it) continue;

@@ -28,7 +28,8 @@ export default async function PayslipsPage({ params, searchParams }: { params: {
         const adj = (Array.isArray(l.adjustments) ? l.adjustments : []) as { payItemId: string; amount: number }[];
         const named = adj.flatMap((a) => { const it = items.find((i) => i.id === a.payItemId); return it ? [{ ...it, amount: Math.abs(Number(a.amount) || 0) }] : []; });
         const earnings: [string, number][] = [
-          [l.payBasis === "DAILY" ? `Basic pay (${n(l.daysWorked)} day/s × ${formatPeso(n(l.rate))})` : "Basic pay", n(l.basicPay)],
+          [l.payBasis === "DAILY" ? `Basic pay (${n(l.daysWorked)} day/s × ${formatPeso(n(l.rate))})` : `Basic pay${n(l.unpaidLeaveDays) ? ` (less ${n(l.unpaidLeaveDays)} day/s leave without pay)` : ""}`, n(l.basicPay)],
+          [`Paid leave (${n(l.leaveDays)} day/s)`, n(l.leavePay)],
           ["Rest day / holiday premium", n(l.premiumPay)],
           ["Overtime", n(l.otPay)],
           ["Night differential", n(l.nightDiffPay)],

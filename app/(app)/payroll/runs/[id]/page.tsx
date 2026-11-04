@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import { getCurrentCompany, getCurrentCapability } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateSetup, isoDate, toGroupRules, toRules } from "@/lib/payroll/server";
+import { leaveForRun } from "@/lib/payroll/leaveServer";
 import type { DayType } from "@/lib/payroll/compute";
+import type { RunLeave } from "@/lib/payroll/leave";
 import { RunEditor } from "./RunEditor";
 
 export default async function PayrollRunPage({ params }: { params: { id: string } }) {
@@ -25,6 +27,9 @@ export default async function PayrollRunPage({ params }: { params: { id: string 
     }),
     run.locationId ? prisma.location.findUnique({ where: { id: run.locationId }, select: { name: true } }) : null,
   ]);
+  // Drafts show the leave that's approved right now (saving stores it on the
+  // line); posted runs show what was paid.
+  const liveLeaves = run.status === "DRAFT" ? await leaveForRun(company.id, inRun, isoDate(run.periodStart), isoDate(run.periodEnd)) : null;
   const num = (v: unknown) => Number(v);
   const lines = run.lines
     .map((l) => ({
@@ -41,6 +46,7 @@ export default async function PayrollRunPage({ params }: { params: { id: string 
       otHours: num(l.otHours),
       nightDiffHours: num(l.nightDiffHours),
       adjustments: (Array.isArray(l.adjustments) ? l.adjustments : []) as { payItemId: string; amount: number }[],
+      leaves: liveLeaves ? liveLeaves.get(l.employeeId) ?? [] : ((Array.isArray(l.leaves) ? l.leaves : []) as RunLeave[]),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
