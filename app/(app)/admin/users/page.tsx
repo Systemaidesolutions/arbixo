@@ -29,6 +29,7 @@ export default async function AdminUsersPage() {
     email: u.email,
     role: u.role,
     subscriberSubtype: u.subscriberSubtype,
+    appAccess: u.appAccess,
     companyId: u.companyId,
     companyName: u.company?.tradeName ?? null,
     isVerified: u.isVerified,

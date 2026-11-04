@@ -239,6 +239,10 @@ model User {
   // and any still-valid session is rejected on the next page load.
   isDisabled            Boolean   @default(false)
 
+  // ARbixo apps this subscriber may open ("accounting", "payroll"). Set by a
+  // platform admin; ignored for ADMIN accounts. See lib/appAccess.ts.
+  appAccess             String[]  @default(["accounting", "payroll"])
+
   // Password reset — admin (or a future "forgot password" flow) issues a
   // single-use token emailed to the user; it verifies against this hash
   // and expires. Stored hashed so a leaked DB row can't be used to reset.

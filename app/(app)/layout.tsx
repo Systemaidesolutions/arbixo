@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { appForRequestPath, currentRequestPath, userApps } from "@/lib/appAccess";
 import { APP_COOKIE, type AppKey } from "@/lib/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord } from "@/lib/currentUser";
@@ -67,6 +68,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
   }
 
+  // App access: a page of an app this user isn't assigned goes back to the
+  // launcher, which only offers their apps.
+  const allowedApps = userApps(record);
+  const pathApp = appForRequestPath(currentRequestPath());
+  if (pathApp && !allowedApps.includes(pathApp)) redirect("/apps");
+  const cookieApp: AppKey = cookies().get(APP_COOKIE)?.value === "payroll" ? "payroll" : "accounting";
+  const selectedApp: AppKey = allowedApps.includes(cookieApp) ? cookieApp : allowedApps[0];
+
   const user: SessionPayload = { sub: record.id, email: record.email, role: record.role };
 
   // For nav/capability purposes, an admin acting inside a company presents
@@ -88,7 +97,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       actingAsCompanyName={actingAsCompanyName}
       switcherCompanies={switcherCompanies}
       activeCompanyId={activeCompanyId}
-      selectedApp={cookies().get(APP_COOKIE)?.value === "payroll" ? "payroll" : ("accounting" as AppKey)}
+      selectedApp={selectedApp}
+      appCount={allowedApps.length}
     >
       {children}
     </AppShell>

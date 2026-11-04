@@ -30,6 +30,7 @@ export function AppShell({
   switcherCompanies = [],
   activeCompanyId = null,
   selectedApp = null,
+  appCount = 2,
   children,
 }: {
   user: SessionPayload | null;
@@ -50,6 +51,7 @@ export function AppShell({
   activeCompanyId?: string | null;
   // Accounting or Payroll, as last picked on /apps (APP_COOKIE).
   selectedApp?: AppKey | null;
+  appCount?: number; // apps this user may open; the app switcher shows only with 2+
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -121,7 +123,7 @@ export function AppShell({
         hasCompanyLogo={hasCompanyLogo}
         switcherCompanies={switcherCompanies}
         activeCompanyId={activeCompanyId}
-        showAppSwitcher={role === "USER"}
+        showAppSwitcher={role === "USER" && appCount > 1}
         selectedApp={selectedApp}
       />
 

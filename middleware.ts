@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+// Same value as PATH_HEADER in lib/appAccess.ts (not imported: edge bundle).
+const PATH_HEADER = "x-arbixo-path";
 
 const PUBLIC_PREFIXES = ["/login", "/register", "/verify", "/reset-password", "/forgot-password", "/api/auth"];
 
@@ -24,7 +26,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  // Lets pages and API routes check the user's app access (lib/appAccess.ts).
+  const forwarded = new Headers(request.headers);
+  forwarded.set(PATH_HEADER, pathname);
+  return NextResponse.next({ request: { headers: forwarded } });
 }
 
 export const config = {

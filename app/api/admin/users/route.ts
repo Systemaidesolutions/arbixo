@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cleanAppList } from "@/lib/appAccess";
 import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/currentUser";
 import { hashPassword } from "@/lib/password";
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest) {
         password?: string;
         role?: UserRole;
         subscriberSubtype?: SubscriberSubtype | null;
+        appAccess?: string[];
         companyId?: string | null;
       }
     | null;
@@ -62,6 +64,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "A user with that email already exists." }, { status: 409 });
   }
 
+  const appAccess = body.appAccess === undefined ? ["accounting", "payroll"] : cleanAppList(body.appAccess);
+  if (role === "USER" && appAccess.length === 0) {
+    return NextResponse.json({ error: "Give the user access to at least one app." }, { status: 400 });
+  }
+
   const passwordHash = await hashPassword(password);
   const user = await prisma.user.create({
     data: {
@@ -70,6 +77,7 @@ export async function POST(request: NextRequest) {
       role,
       subscriberSubtype,
       companyId,
+      appAccess,
       isVerified: true, // admin-created accounts skip email verification
     },
   });

@@ -23,6 +23,7 @@ export function AdminUserForm({
     role: UserRole;
     subscriberSubtype: SubscriberSubtype | null;
     companyId: string | null;
+    appAccess?: string[];
   };
   companies: CompanyOption[];
   // Companies (beyond the primary one below) this user can already switch
@@ -35,6 +36,7 @@ export function AdminUserForm({
   const [role, setRole] = useState<UserRole>(initial?.role ?? "USER");
   const [subtype, setSubtype] = useState<SubscriberSubtype>(initial?.subscriberSubtype ?? "USER");
   const [companyId, setCompanyId] = useState<string>(initial?.companyId ?? "");
+  const [apps, setApps] = useState<string[]>(initial?.appAccess?.length ? initial.appAccess : ["accounting", "payroll"]);
   const [companyAccessIds, setCompanyAccessIds] = useState<string[]>(initialCompanyAccessIds);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -54,7 +56,7 @@ export function AdminUserForm({
     const payload =
       role === "ADMIN"
         ? { email, password, role }
-        : { email, password, role, subscriberSubtype: subtype, companyId: companyId || null };
+        : { email, password, role, subscriberSubtype: subtype, companyId: companyId || null, appAccess: apps };
 
     const res =
       mode === "create"
@@ -69,7 +71,7 @@ export function AdminUserForm({
             body: JSON.stringify(
               role === "ADMIN"
                 ? { role }
-                : { role, subscriberSubtype: subtype, companyId: companyId || null }
+                : { role, subscriberSubtype: subtype, companyId: companyId || null, appAccess: apps }
             ),
           });
     if (!res.ok) {
@@ -161,6 +163,31 @@ export function AdminUserForm({
               {SUBTYPE_DESCRIPTIONS[subtype]}
             </span>
           </label>
+
+          <div>
+            <span className={label}>
+              App access <span className="text-red-500">*</span>
+            </span>
+            <div className="mt-1 flex flex-wrap gap-4 rounded border border-neutral-300 p-2 text-sm text-neutral-700">
+              {[
+                { key: "accounting", name: "ARbixo Accounting" },
+                { key: "payroll", name: "ARbixo Payroll" },
+              ].map((a) => (
+                <label key={a.key} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={apps.includes(a.key)}
+                    onChange={(e) => setApps(e.target.checked ? [...apps, a.key] : apps.filter((x) => x !== a.key))}
+                  />
+                  {a.name}
+                </label>
+              ))}
+            </div>
+            <span className="mt-1 block text-[11px] text-neutral-400">
+              Which apps this user can open after logging in. With only one, they go straight into it. Shared pages
+              (profile, company details, employees, branches) stay available in either app.
+            </span>
+          </div>
 
           <label className={label}>
             Company (optional)

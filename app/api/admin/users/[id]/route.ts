@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/currentUser";
 import type { Prisma, SubscriberSubtype, UserRole } from "@prisma/client";
+import { cleanAppList } from "@/lib/appAccess";
 
 const SUBTYPES: SubscriberSubtype[] = ["MANAGER", "USER", "REPORT_CREATOR"];
 
@@ -18,6 +19,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         companyId?: string | null;
         role?: UserRole;
         subscriberSubtype?: SubscriberSubtype | null;
+        appAccess?: string[];
       }
     | null;
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
@@ -33,6 +35,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   const data: Prisma.UserUpdateInput = {};
 
   if (typeof body.isDisabled === "boolean") data.isDisabled = body.isDisabled;
+  if (body.appAccess !== undefined) {
+    const apps = cleanAppList(body.appAccess);
+    if (apps.length === 0) return NextResponse.json({ error: "Give the user access to at least one app." }, { status: 400 });
+    data.appAccess = apps;
+  }
   if (body.isVerified === true) {
     data.isVerified = true;
     data.verificationCode = null;
@@ -108,6 +115,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       isDisabled: user.isDisabled,
       isVerified: user.isVerified,
       companyId: user.companyId,
+      appAccess: user.appAccess,
     },
   });
 }

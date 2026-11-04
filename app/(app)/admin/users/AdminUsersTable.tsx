@@ -10,6 +10,7 @@ export type AdminUserRow = {
   email: string;
   role: "ADMIN" | "USER";
   subscriberSubtype: SubscriberSubtype | null;
+  appAccess: string[];
   companyId: string | null;
   companyName: string | null;
   isVerified: boolean;
@@ -143,7 +144,12 @@ export function AdminUsersTable({ users }: { users: AdminUserRow[] }) {
                     {u.role === "ADMIN" || !u.subscriberSubtype ? (
                       <span className="text-neutral-400">—</span>
                     ) : (
-                      SUBTYPE_LABELS[u.subscriberSubtype]
+                      <>
+                        {SUBTYPE_LABELS[u.subscriberSubtype]}
+                        <span className="block text-[11px] text-neutral-400">
+                          {u.appAccess.length === 1 ? (u.appAccess[0] === "payroll" ? "Payroll only" : "Accounting only") : "Accounting + Payroll"}
+                        </span>
+                      </>
                     )}
                   </td>
                   <td className="px-3 py-2 text-neutral-500">{u.companyName ?? "—"}</td>

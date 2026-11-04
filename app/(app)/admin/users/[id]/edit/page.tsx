@@ -28,6 +28,7 @@ export default async function EditUserPage({ params }: { params: { id: string } 
           role: user.role,
           subscriberSubtype: user.subscriberSubtype,
           companyId: user.companyId,
+          appAccess: user.appAccess,
         }}
         companies={companies}
         initialCompanyAccessIds={existingAccess.map((a) => a.companyId)}

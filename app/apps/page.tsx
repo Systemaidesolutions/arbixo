@@ -4,6 +4,7 @@ import { BookText, Banknote, ArrowRight } from "lucide-react";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
 import { brandingFlags } from "@/lib/branding";
+import { userApps } from "@/lib/appAccess";
 import { LogoutButton } from "@/components/LogoutButton";
 
 // App launcher shown after login: ARbixo Accounting and ARbixo Payroll share
@@ -31,6 +32,10 @@ export default async function AppsPage() {
   if (!user || user.isDisabled) redirect("/login");
   // Platform admins manage ARbixo itself, not a company's books or payroll.
   if (user.role === "ADMIN" && !getAdminActingAsCompanyId()) redirect("/dashboard");
+  // Only the apps assigned to this user; with just one, open it directly.
+  const allowed = userApps(user);
+  const apps = APPS.filter((a) => (allowed as string[]).includes(a.key));
+  if (apps.length === 1) redirect(`/apps/open?app=${apps[0].key}`);
 
   return (
     <main
@@ -45,7 +50,7 @@ export default async function AppsPage() {
         <div className="rounded-2xl bg-[#123A73] p-6 shadow-[0_25px_60px_-15px_rgba(11,42,95,0.55)] ring-1 ring-white/10 sm:p-8">
           <h1 className="text-center text-lg font-medium text-white">Welcome{user.name ? `, ${user.name.split(" ")[0]}` : ""}. Which app do you want to open?</h1>
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {APPS.map((a) => (
+            {apps.map((a) => (
               <a
                 key={a.key}
                 href={`/apps/open?app=${a.key}`}
