@@ -8,13 +8,18 @@ import { SUBTYPE_LABELS, SUBTYPE_DESCRIPTIONS } from "@/lib/permissions";
 type CompanyOption = { id: string; tradeName: string };
 
 const SUBTYPES: SubscriberSubtype[] = ["MANAGER", "USER", "REPORT_CREATOR"];
+const APPS = [
+  { key: "accounting", name: "Accounting" },
+  { key: "payroll", name: "Payroll" },
+];
+const BOTH = ["accounting", "payroll"];
 
 export function AdminUserForm({
   mode,
   userId,
   initial,
   companies,
-  initialCompanyAccessIds = [],
+  initialCompanyAccess = [],
 }: {
   mode: "create" | "edit";
   userId?: string;
@@ -27,8 +32,9 @@ export function AdminUserForm({
   };
   companies: CompanyOption[];
   // Companies (beyond the primary one below) this user can already switch
-  // into — see lib/userCompanyAccess.ts. Only meaningful in edit mode.
-  initialCompanyAccessIds?: string[];
+  // into, with the apps they may open in each — see lib/userCompanyAccess.ts.
+  // Only meaningful in edit mode.
+  initialCompanyAccess?: { companyId: string; apps: string[] }[];
 }) {
   const router = useRouter();
   const [email, setEmail] = useState(initial?.email ?? "");
@@ -37,12 +43,27 @@ export function AdminUserForm({
   const [subtype, setSubtype] = useState<SubscriberSubtype>(initial?.subscriberSubtype ?? "USER");
   const [companyId, setCompanyId] = useState<string>(initial?.companyId ?? "");
   const [apps, setApps] = useState<string[]>(initial?.appAccess?.length ? initial.appAccess : ["accounting", "payroll"]);
-  const [companyAccessIds, setCompanyAccessIds] = useState<string[]>(initialCompanyAccessIds);
+  // Additional company id -> apps in that company.
+  const [grants, setGrants] = useState<Record<string, string[]>>(() =>
+    Object.fromEntries(initialCompanyAccess.map((g) => [g.companyId, g.apps.length ? g.apps : BOTH]))
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   function toggleCompanyAccess(id: string, checked: boolean) {
-    setCompanyAccessIds((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)));
+    setGrants((prev) => {
+      const next = { ...prev };
+      if (checked) next[id] = BOTH;
+      else delete next[id];
+      return next;
+    });
+  }
+
+  function toggleGrantApp(id: string, app: string, checked: boolean) {
+    setGrants((prev) => {
+      const cur = prev[id] ?? [];
+      return { ...prev, [id]: BOTH.filter((a) => (a === app ? checked : cur.includes(a))) };
+    });
   }
 
   const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
@@ -51,6 +72,13 @@ export function AdminUserForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (role === "USER" && apps.length === 0) return setError("Tick at least one app for the primary company.");
+    const extra = Object.entries(grants).filter(([id]) => id !== companyId);
+    const noApps = extra.find(([, a]) => a.length === 0);
+    if (role === "USER" && noApps) {
+      const name = companies.find((c) => c.id === noApps[0])?.tradeName ?? "an additional company";
+      return setError(`Tick Accounting or Payroll for ${name}, or untick the company.`);
+    }
     setSaving(true);
 
     const payload =
@@ -89,7 +117,7 @@ export function AdminUserForm({
       const accessRes = await fetch(`/api/admin/users/${userId}/company-access`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyIds: companyAccessIds }),
+        body: JSON.stringify({ grants: extra.map(([cid, a]) => ({ companyId: cid, apps: a })) }),
       });
       if (!accessRes.ok) {
         setSaving(false);
@@ -164,31 +192,6 @@ export function AdminUserForm({
             </span>
           </label>
 
-          <div>
-            <span className={label}>
-              App access <span className="text-red-500">*</span>
-            </span>
-            <div className="mt-1 flex flex-wrap gap-4 rounded border border-neutral-300 p-2 text-sm text-neutral-700">
-              {[
-                { key: "accounting", name: "ARbixo Accounting" },
-                { key: "payroll", name: "ARbixo Payroll" },
-              ].map((a) => (
-                <label key={a.key} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={apps.includes(a.key)}
-                    onChange={(e) => setApps(e.target.checked ? [...apps, a.key] : apps.filter((x) => x !== a.key))}
-                  />
-                  {a.name}
-                </label>
-              ))}
-            </div>
-            <span className="mt-1 block text-[11px] text-neutral-400">
-              Which apps this user can open after logging in. With only one, they go straight into it. Shared pages
-              (profile, company details, employees, branches) stay available in either app.
-            </span>
-          </div>
-
           <label className={label}>
             Company (optional)
             <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={field}>
@@ -204,28 +207,85 @@ export function AdminUserForm({
             </span>
           </label>
 
+          <div>
+            <span className={label}>
+              Apps in {companies.find((c) => c.id === companyId)?.tradeName ?? "the primary company"}{" "}
+              <span className="text-red-500">*</span>
+            </span>
+            <div className="mt-1 flex flex-wrap gap-4 rounded border border-neutral-300 p-2 text-sm text-neutral-700">
+              {APPS.map((a) => (
+                <label key={a.key} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={apps.includes(a.key)}
+                    onChange={(e) => setApps(BOTH.filter((k) => (k === a.key ? e.target.checked : apps.includes(k))))}
+                  />
+                  ARbixo {a.name}
+                </label>
+              ))}
+            </div>
+            <span className="mt-1 block text-[11px] text-neutral-400">
+              Which apps this user can open while working in their primary company. With only one, they go straight
+              into it.
+            </span>
+          </div>
+
           {mode === "edit" && (
             <div>
-              <span className={label}>Additional companies (optional)</span>
+              <span className={label}>Additional companies and their apps (optional)</span>
               <p className="mt-1 text-[11px] text-neutral-400">
-                Lets this user switch into these companies too, from a dropdown next to their company name — e.g.
-                a bookkeeper handling several clients. Their primary company above doesn&apos;t need to be checked
-                here; it&apos;s always accessible.
+                Lets this user switch into these companies too, from the dropdown next to their company name — e.g. a
+                bookkeeper handling several clients. Tick a company, then choose which apps they can open in it.
               </p>
-              <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded border border-neutral-300 p-2">
-                {companies
-                  .filter((c) => c.id !== companyId)
-                  .map((c) => (
-                    <label key={c.id} className="flex items-center gap-2 text-sm text-neutral-700">
-                      <input
-                        type="checkbox"
-                        checked={companyAccessIds.includes(c.id)}
-                        onChange={(e) => toggleCompanyAccess(c.id, e.target.checked)}
-                      />
-                      {c.tradeName}
-                    </label>
-                  ))}
-                {companies.length <= 1 && <p className="text-xs text-neutral-400">No other companies exist yet.</p>}
+              <div className="mt-2 max-h-72 overflow-y-auto rounded border border-neutral-300">
+                <table className="w-full text-sm text-neutral-700">
+                  <thead className="sticky top-0 bg-neutral-50 text-left text-xs text-neutral-500">
+                    <tr>
+                      <th className="px-2 py-1.5 font-medium">Company</th>
+                      {APPS.map((a) => (
+                        <th key={a.key} className="w-24 px-2 py-1.5 text-center font-medium">
+                          {a.name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {companies
+                      .filter((c) => c.id !== companyId)
+                      .map((c) => {
+                        const g = grants[c.id];
+                        return (
+                          <tr key={c.id} className={g ? "bg-green-50/50" : ""}>
+                            <td className="px-2 py-1">
+                              <label className="flex items-center gap-2">
+                                <input type="checkbox" checked={!!g} onChange={(e) => toggleCompanyAccess(c.id, e.target.checked)} />
+                                {c.tradeName}
+                              </label>
+                            </td>
+                            {APPS.map((a) => (
+                              <td key={a.key} className="px-2 py-1 text-center">
+                                <input
+                                  type="checkbox"
+                                  aria-label={`${a.name} in ${c.tradeName}`}
+                                  disabled={!g}
+                                  checked={!!g?.includes(a.key)}
+                                  onChange={(e) => toggleGrantApp(c.id, a.key, e.target.checked)}
+                                  className="disabled:opacity-30"
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+                    {companies.length <= 1 && (
+                      <tr>
+                        <td colSpan={3} className="px-2 py-2 text-xs text-neutral-400">
+                          No other companies exist yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

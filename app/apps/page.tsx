@@ -4,7 +4,7 @@ import { BookText, Banknote, ArrowRight } from "lucide-react";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
 import { brandingFlags } from "@/lib/branding";
-import { userApps } from "@/lib/appAccess";
+import { resolveActiveCompanyApps } from "@/lib/userCompanyAccess";
 import { LogoutButton } from "@/components/LogoutButton";
 
 // App launcher shown after login: ARbixo Accounting and ARbixo Payroll share
@@ -33,7 +33,7 @@ export default async function AppsPage() {
   // Platform admins manage ARbixo itself, not a company's books or payroll.
   if (user.role === "ADMIN" && !getAdminActingAsCompanyId()) redirect("/dashboard");
   // Only the apps assigned to this user; with just one, open it directly.
-  const allowed = userApps(user);
+  const allowed = await resolveActiveCompanyApps(user);
   const apps = APPS.filter((a) => (allowed as string[]).includes(a.key));
   if (apps.length === 1) redirect(`/apps/open?app=${apps[0].key}`);
 

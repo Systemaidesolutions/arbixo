@@ -6,8 +6,7 @@ import type { Company, User } from "@prisma/client";
 import { capabilitiesFor, type Capability } from "@/lib/permissions";
 import { setAuditActor } from "@/lib/auditContext";
 import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
-import { resolveActiveCompanyId } from "@/lib/userCompanyAccess";
-import { canUseCurrentPath } from "@/lib/appAccess";
+import { resolveActiveCompanyId, canUseCurrentPathInActiveCompany } from "@/lib/userCompanyAccess";
 
 /**
  * The JWT session payload only carries id/email/role — enough for
@@ -55,7 +54,7 @@ export const getCurrentCompany = cache(async (): Promise<Company | null> => {
   const user = await getCurrentUserRecord();
   if (!user) return null;
   if (user.role === "USER") {
-    if (!canUseCurrentPath(user)) return null; // app not assigned to this user
+    if (!(await canUseCurrentPathInActiveCompany(user))) return null; // app not assigned to this user in this company
     const activeCompanyId = await resolveActiveCompanyId(user);
     if (!activeCompanyId) return null;
     return prisma.company.findUnique({ where: { id: activeCompanyId } });
@@ -79,7 +78,7 @@ export const getCurrentCompany = cache(async (): Promise<Company | null> => {
 export async function effectiveCompanyId(): Promise<string | null> {
   const user = await getCurrentUserRecord();
   if (!user) return null;
-  if (user.role === "USER") return canUseCurrentPath(user) ? resolveActiveCompanyId(user) : null;
+  if (user.role === "USER") return (await canUseCurrentPathInActiveCompany(user)) ? resolveActiveCompanyId(user) : null;
   if (user.role === "ADMIN") return getAdminActingAsCompanyId();
   return null;
 }

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { effectiveCompanyId, getCurrentUserRecord, resolvePoster } from "@/lib/currentUser";
-import { userApps } from "@/lib/appAccess";
+import { resolveActiveCompanyApps } from "@/lib/userCompanyAccess";
 import { setAuditSuppressed } from "@/lib/auditContext";
 import { postDocument, type LedgerLineInput } from "@/lib/ledgerPosting";
 import type { PayrollSetup, PayGroup, Prisma } from "@prisma/client";
@@ -17,7 +17,7 @@ export type PayrollAuth =
 /** Payroll writes need posting rights on the caller's active company. */
 export async function payrollAuth(need: "canPost" | "canCancel" = "canPost"): Promise<PayrollAuth> {
   const me = await getCurrentUserRecord();
-  if (me && !userApps(me).includes("payroll")) return { ok: false, status: 403, error: "You don't have access to ARbixo Payroll. Ask your administrator." };
+  if (me && !(await resolveActiveCompanyApps(me)).includes("payroll")) return { ok: false, status: 403, error: "You don't have access to ARbixo Payroll in this company. Ask your administrator." };
   const companyId = await effectiveCompanyId();
   if (!companyId) return { ok: false, status: 403, error: "No company selected." };
   const auth = await resolvePoster(companyId, need);

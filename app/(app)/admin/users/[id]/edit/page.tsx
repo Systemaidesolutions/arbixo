@@ -9,7 +9,7 @@ export default async function EditUserPage({ params }: { params: { id: string } 
   const [user, companies, existingAccess] = await Promise.all([
     prisma.user.findUnique({ where: { id: params.id } }),
     prisma.company.findMany({ select: { id: true, tradeName: true }, orderBy: { tradeName: "asc" } }),
-    prisma.companyAccess.findMany({ where: { userId: params.id }, select: { companyId: true } }),
+    prisma.companyAccess.findMany({ where: { userId: params.id }, select: { companyId: true, appAccess: true } }),
   ]);
   if (!user) notFound();
 
@@ -31,7 +31,7 @@ export default async function EditUserPage({ params }: { params: { id: string } 
           appAccess: user.appAccess,
         }}
         companies={companies}
-        initialCompanyAccessIds={existingAccess.map((a) => a.companyId)}
+        initialCompanyAccess={existingAccess.map((a) => ({ companyId: a.companyId, apps: a.appAccess }))}
       />
     </main>
   );

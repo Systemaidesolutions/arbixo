@@ -2,6 +2,8 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import type { User, Company } from "@prisma/client";
+import { ALL_APPS, appForRequestPath, cleanAppList, currentRequestPath, userApps } from "@/lib/appAccess";
+import type { AppKey } from "@/lib/navigation";
 
 // Lets a USER (subscriber) account work across more than one company —
 // e.g. an outsourced bookkeeper handling several clients — without needing
@@ -52,6 +54,29 @@ export const resolveActiveCompanyId = cache(async (user: User): Promise<string |
   });
   return allowed ? cookieCompanyId : user.companyId;
 });
+
+/**
+ * The ARbixo apps this user may open in the company they're working in now:
+ * User.appAccess for their primary company, the CompanyAccess grant's own
+ * list for any other company. Admins: all. Cached per request.
+ */
+export const resolveActiveCompanyApps = cache(async (user: User): Promise<AppKey[]> => {
+  if (user.role === "ADMIN") return ALL_APPS;
+  const active = await resolveActiveCompanyId(user);
+  if (!active || active === user.companyId) return userApps(user);
+  const grant = await prisma.companyAccess.findUnique({
+    where: { userId_companyId: { userId: user.id, companyId: active } },
+    select: { appAccess: true },
+  });
+  const list = cleanAppList(grant?.appAccess);
+  return list.length ? list : ALL_APPS;
+});
+
+/** True when this user may use, in their active company, the app the current request belongs to. */
+export async function canUseCurrentPathInActiveCompany(user: User): Promise<boolean> {
+  const app = appForRequestPath(currentRequestPath());
+  return !app || (await resolveActiveCompanyApps(user)).includes(app);
+}
 
 export function setActiveCompanyCookie(response: { cookies: { set: (name: string, value: string, opts: Record<string, unknown>) => void } }, companyId: string) {
   response.cookies.set(ACTIVE_COMPANY_COOKIE, companyId, {

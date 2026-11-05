@@ -304,6 +304,9 @@ model CompanyAccess {
   company     Company  @relation("CompanyUserAccess", fields: [companyId], references: [id])
   companyId   String
   grantedById String?
+  // ARbixo apps this user may open IN THIS COMPANY (the primary company uses
+  // User.appAccess). See lib/userCompanyAccess.ts resolveActiveCompanyApps.
+  appAccess   String[] @default(["accounting", "payroll"])
   createdAt   DateTime @default(now())
 
   @@unique([userId, companyId])

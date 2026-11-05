@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { appForRequestPath, currentRequestPath, userApps } from "@/lib/appAccess";
+import { appForRequestPath, currentRequestPath } from "@/lib/appAccess";
 import { APP_COOKIE, type AppKey } from "@/lib/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRecord } from "@/lib/currentUser";
 import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
-import { resolveActiveCompanyId, getAccessibleCompanies } from "@/lib/userCompanyAccess";
+import { resolveActiveCompanyId, getAccessibleCompanies, resolveActiveCompanyApps } from "@/lib/userCompanyAccess";
 import { brandingFlags } from "@/lib/branding";
 import { cleanDenied, pageRequirement, unmet } from "@/lib/userPermissions";
 import { AppShell } from "@/components/AppShell";
@@ -71,7 +71,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   // App access: a page of an app this user isn't assigned goes back to the
   // launcher, which only offers their apps.
-  const allowedApps = userApps(record);
+  // Per company: a user can have Accounting in one company and Payroll in another.
+  const allowedApps = await resolveActiveCompanyApps(record);
   const pathApp = appForRequestPath(currentRequestPath());
   if (pathApp && !allowedApps.includes(pathApp)) redirect("/apps");
   const cookieApp: AppKey = cookies().get(APP_COOKIE)?.value === "payroll" ? "payroll" : "accounting";
