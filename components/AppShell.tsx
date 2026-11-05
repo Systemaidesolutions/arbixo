@@ -6,6 +6,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Sidebar } from "@/components/Sidebar";
 import { Footer } from "@/components/Footer";
 import { AdminActingAsBanner } from "@/components/AdminActingAsBanner";
+import { AccessHider } from "@/components/AccessHider";
 import { PageStackProvider, PageStackOverlay, BaseLinkInterceptor, EmbedLinkInterceptor } from "@/components/PageStack";
 import type { SessionPayload } from "@/lib/auth";
 import type { SubscriberSubtype } from "@prisma/client";
@@ -31,6 +32,7 @@ export function AppShell({
   activeCompanyId = null,
   selectedApp = null,
   appCount = 2,
+  denied = [],
   children,
 }: {
   user: SessionPayload | null;
@@ -52,6 +54,7 @@ export function AppShell({
   // Accounting or Payroll, as last picked on /apps (APP_COOKIE).
   selectedApp?: AppKey | null;
   appCount?: number; // apps this user may open; the app switcher shows only with 2+
+  denied?: string[]; // access groups removed from this user (lib/userPermissions.ts)
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -81,6 +84,7 @@ export function AppShell({
     return (
       <div className="min-h-screen">
         <EmbedLinkInterceptor />
+        <AccessHider denied={denied} />
         {children}
       </div>
     );
@@ -112,6 +116,7 @@ export function AppShell({
         )}
       </div>
 
+      <AccessHider denied={denied} />
       {actingAsCompanyName && <AdminActingAsBanner companyName={actingAsCompanyName} />}
 
       <AppHeader
@@ -132,6 +137,7 @@ export function AppShell({
           role={role}
           subtype={subtype}
           selectedApp={selectedApp}
+          denied={denied}
           mobileOpen={mobileOpen}
           onCloseMobile={() => setMobileOpen(false)}
         />

@@ -259,6 +259,10 @@ model User {
   // platform admin; ignored for ADMIN accounts. See lib/appAccess.ts.
   appAccess             String[]  @default(["accounting", "payroll"])
 
+  // Accounting access groups an admin REMOVED from this user (Admin › User
+  // access). Empty = full access. See lib/userPermissions.ts.
+  deniedPermissions     String[]  @default([])
+
   // Password reset — admin (or a future "forgot password" flow) issues a
   // single-use token emailed to the user; it verifies against this hash
   // and expires. Stored hashed so a leaked DB row can't be used to reset.

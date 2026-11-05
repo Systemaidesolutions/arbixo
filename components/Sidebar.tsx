@@ -55,6 +55,7 @@ import {
   type NavSection,
 } from "@/lib/navigation";
 import { capabilitiesFor } from "@/lib/permissions";
+import { allowed, pageRequirement } from "@/lib/userPermissions";
 import { usePageStack } from "@/components/PageStack";
 
 const REVIEW_SECTION: NavSection = {
@@ -101,6 +102,21 @@ function sectionsFor(role: "ADMIN" | "USER", subtype: SubscriberSubtype | null, 
     s.title === "Setup" ? { ...s, links: [...s.links, COMPANY_BACKUP_LINK, SUBSCRIPTION_PAYMENTS_LINK] } : s
   );
   return [...managerSections, REVIEW_SECTION];
+}
+
+// Drops links whose page needs an access group removed from this user
+// (Admin › User access), then any group or section left empty.
+function filterByAccess(sections: NavSection[], denied: string[]): NavSection[] {
+  if (!denied.length) return sections;
+  const ok = (l: NavLink) => allowed(denied, pageRequirement(l.href));
+  return sections
+    .map((s) => ({
+      ...s,
+      links: s.links
+        .map((i) => (isNavGroup(i) ? { ...i, links: i.links.filter(ok) } : i))
+        .filter((i) => (isNavGroup(i) ? i.links.length > 0 : ok(i))),
+    }))
+    .filter((s) => s.links.length > 0);
 }
 
 const LINK_ICONS: Record<NavIcon, LucideIcon> = {
@@ -271,18 +287,20 @@ export function Sidebar({
   role,
   subtype = null,
   selectedApp = null,
+  denied = [],
   mobileOpen = false,
   onCloseMobile,
 }: {
   role: "ADMIN" | "USER";
   subtype?: SubscriberSubtype | null;
   selectedApp?: AppKey | null;
+  denied?: string[];
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
 }) {
   const pathname = usePathname();
   const app = appForPath(pathname, selectedApp);
-  const sections = sectionsFor(role, subtype, app);
+  const sections = filterByAccess(sectionsFor(role, subtype, app), denied);
   const dashboardHref = role === "ADMIN" ? "/admin" : APP_HOME[app];
   const storageKey = `arbixo:navOpen:${role}:${app}`;
 

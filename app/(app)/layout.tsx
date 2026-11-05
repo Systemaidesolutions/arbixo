@@ -7,6 +7,7 @@ import { getCurrentUserRecord } from "@/lib/currentUser";
 import { getAdminActingAsCompanyId } from "@/lib/adminActingAs";
 import { resolveActiveCompanyId, getAccessibleCompanies } from "@/lib/userCompanyAccess";
 import { brandingFlags } from "@/lib/branding";
+import { cleanDenied, pageRequirement, unmet } from "@/lib/userPermissions";
 import { AppShell } from "@/components/AppShell";
 import type { SessionPayload } from "@/lib/auth";
 import type { SubscriberSubtype } from "@prisma/client";
@@ -76,6 +77,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const cookieApp: AppKey = cookies().get(APP_COOKIE)?.value === "payroll" ? "payroll" : "accounting";
   const selectedApp: AppKey = allowedApps.includes(cookieApp) ? cookieApp : allowedApps[0];
 
+  // Access groups (Admin › User access): a page this user's access doesn't
+  // cover shows the no-access page instead. Admins (also acting inside a
+  // company) are never restricted.
+  const denied = record.role === "USER" ? cleanDenied(record.deniedPermissions) : [];
+  const path = currentRequestPath();
+  const missing = unmet(denied, pageRequirement(path));
+  if (missing) redirect(`/no-access?need=${missing.join(",")}`);
+
   const user: SessionPayload = { sub: record.id, email: record.email, role: record.role };
 
   // For nav/capability purposes, an admin acting inside a company presents
@@ -99,6 +108,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       activeCompanyId={activeCompanyId}
       selectedApp={selectedApp}
       appCount={allowedApps.length}
+      denied={denied}
     >
       {children}
     </AppShell>

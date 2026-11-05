@@ -213,6 +213,7 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
     // Dashboard is the top-level nav button, so it isn't repeated here.
     links: [
       { href: "/admin/users", label: "User list", icon: "users" },
+      { href: "/admin/user-access", label: "User access", icon: "users" },
       { href: "/admin/companies", label: "Company list", icon: "companies" },
       { href: "/admin/atc-codes", label: "ATC codes", icon: "withholding" },
       { href: "/admin/accounts/standard-chart", label: "Chart of accounts", icon: "accounts" },
