@@ -8,6 +8,7 @@ import { PayrollSubscriptionPanel } from "../PayrollSubscriptionPanel";
 import { PendingPaymentsPanel } from "../PendingPaymentsPanel";
 import { AdminCompanyForm } from "../AdminCompanyForm";
 import { AuditToggle } from "../AuditToggle";
+import { LoginHoursPanel } from "../LoginHoursPanel";
 import { SubscriptionPanel } from "../SubscriptionPanel";
 import { LogoField } from "../LogoField";
 import { BranchesManager } from "@/components/BranchesManager";
@@ -47,6 +48,10 @@ export default async function EditCompanyPage({ params }: { params: { id: string
   });
   const ym = (k: number) => `${Math.floor(k / 12)}-${String((k % 12) + 1).padStart(2, "0")}`;
   const payrollMonths = [...byMonth].sort((a, b) => b[0] - a[0]).map(([k, v]) => ({ month: ym(k), label: monthName(k), maxEmployees: v.maxEmployees, amount: v.amount, free: v.amount === 0 }));
+
+  const usersWithout2fa = await prisma.user.count({
+    where: { companyId: params.id, role: "USER", isDisabled: false, totpEnabled: false },
+  });
 
   const branches = await prisma.location.findMany({
     where: { companyId: params.id },
@@ -141,6 +146,20 @@ export default async function EditCompanyPage({ params }: { params: { id: string
       {/* Settings — audit logging on/off */}
       <section className="mt-6 rounded-lg border border-neutral-200 p-4">
         <AuditToggle companyId={company.id} initialEnabled={company.auditLogEnabled} />
+      </section>
+
+      {/* Security — allowed login hours; outside them, two-factor is required */}
+      <section className="mt-4 rounded-lg border border-neutral-200 p-4">
+        <LoginHoursPanel
+          companyId={company.id}
+          initial={{
+            loginHoursEnabled: company.loginHoursEnabled,
+            loginStart: company.loginStart,
+            loginEnd: company.loginEnd,
+            loginDays: company.loginDays,
+          }}
+          usersWithout2fa={usersWithout2fa}
+        />
       </section>
 
       <h2 className="mt-8 text-sm font-medium text-neutral-700">Update details</h2>

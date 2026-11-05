@@ -15,6 +15,7 @@ export type AdminUserRow = {
   companyName: string | null;
   isVerified: boolean;
   isDisabled: boolean;
+  totpEnabled: boolean;
   createdAt: string;
   transactionCount: number;
   isSelf: boolean;
@@ -71,6 +72,12 @@ export function AdminUsersTable({ users }: { users: AdminUserRow[] }) {
       // Email isn't configured yet — show the link so the admin can relay it.
       setResetLink({ email, url: data.resetUrl });
     }
+  }
+
+  async function resetTwoFactor(id: string, email: string) {
+    if (!confirm(`Turn off two-factor for ${email}? They can set it up again from My Profile.`)) return;
+    const data = await act(id, () => fetch(`/api/admin/users/${id}/two-factor`, { method: "DELETE" }));
+    if (data) setNotice(`Two-factor turned off for ${email}.`);
   }
 
   const btn =
@@ -214,6 +221,16 @@ export function AdminUsersTable({ users }: { users: AdminUserRow[] }) {
                       >
                         Reset password
                       </button>
+                      {u.totpEnabled && (
+                        <button
+                          onClick={() => resetTwoFactor(u.id, u.email)}
+                          disabled={busy}
+                          title="Two-factor is on. Use this if they lost their phone."
+                          className={`${btn} border-amber-300 text-amber-700 hover:bg-amber-50`}
+                        >
+                          Reset 2FA
+                        </button>
+                      )}
                       <button
                         onClick={() => del(u.id, u.email)}
                         disabled={busy || u.isSelf || u.transactionCount > 0}

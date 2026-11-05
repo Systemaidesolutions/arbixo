@@ -34,6 +34,7 @@ export default async function AdminUsersPage() {
     companyName: u.company?.tradeName ?? null,
     isVerified: u.isVerified,
     isDisabled: u.isDisabled,
+    totpEnabled: u.totpEnabled,
     createdAt: u.createdAt.toISOString(),
     transactionCount: u.companyId ? txByCompany.get(u.companyId) ?? 0 : 0,
     isSelf: u.id === admin.id,

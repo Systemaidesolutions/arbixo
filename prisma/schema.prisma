@@ -263,6 +263,16 @@ model User {
   // access). Empty = full access. See lib/userPermissions.ts.
   deniedPermissions     String[]  @default([])
 
+  // Two-factor authentication (authenticator app, TOTP). totpPendingSecret
+  // holds the secret during enrolment until the user confirms a code.
+  // totpLastStep blocks reusing the same code; totpFailedCount locks the
+  // code step after repeated wrong codes. See lib/totp.ts.
+  totpEnabled           Boolean   @default(false)
+  totpSecret            String?
+  totpPendingSecret     String?
+  totpLastStep          Int?
+  totpFailedCount       Int       @default(0)
+
   // Password reset — admin (or a future "forgot password" flow) issues a
   // single-use token emailed to the user; it verifies against this hash
   // and expires. Stored hashed so a leaked DB row can't be used to reset.
@@ -349,6 +359,14 @@ model Company {
   // When off, no audit-trail entries are recorded for this company —
   // an admin control to cap log growth / database size.
   auditLogEnabled      Boolean  @default(true)
+
+  // Allowed login hours (Philippine time). Outside them, users of this
+  // company must sign in with two-factor authentication. Days: 0=Sun..6=Sat.
+  // start > end means the window crosses midnight. See lib/loginHours.ts.
+  loginHoursEnabled    Boolean  @default(false)
+  loginStart           String   @default("08:00")
+  loginEnd             String   @default("20:00")
+  loginDays            Int[]    @default([1, 2, 3, 4, 5, 6])
 
   // Company logo (image URL) — shown on the subscriber dashboard.
   logoUrl              String?

@@ -41,6 +41,7 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
   try {
     const { payload } = await jwtVerify(token, getSecret());
     if (typeof payload.sub !== "string" || typeof payload.email !== "string") return null;
+    if (payload.purpose) return null; // a 2FA login ticket is never a session
     return { sub: payload.sub, email: payload.email, role: payload.role as "ADMIN" | "USER" };
   } catch {
     return null;
@@ -52,4 +53,28 @@ export function generateVerificationCode(): string {
   // from "enter the code we emailed you" flows.
   const n = Math.floor(Math.random() * 1_000_000);
   return n.toString().padStart(6, "0");
+}
+
+// Short-lived ticket issued after a correct password when the second factor
+// is still needed. It is NOT a session: middleware never accepts it, and
+// it's only exchanged at /api/auth/login/verify together with a valid code.
+const TICKET_PURPOSE = "2fa-login";
+
+export async function createLoginTicket(userId: string): Promise<string> {
+  return new SignJWT({ purpose: TICKET_PURPOSE })
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(userId)
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(getSecret());
+}
+
+export async function verifyLoginTicket(ticket: string): Promise<string | null> {
+  try {
+    const { payload } = await jwtVerify(ticket, getSecret());
+    if (payload.purpose !== TICKET_PURPOSE || typeof payload.sub !== "string") return null;
+    return payload.sub;
+  } catch {
+    return null;
+  }
 }

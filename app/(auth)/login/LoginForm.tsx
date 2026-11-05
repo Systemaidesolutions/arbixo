@@ -10,6 +10,42 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Second step (two-factor): set once the password checks out.
+  const [ticket, setTicket] = useState<string | null>(null);
+  const [reason, setReason] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+
+  function goIn() {
+    router.push(searchParams.get("next") ?? "/apps");
+    router.refresh();
+  }
+
+  async function submitCode(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    const res = await fetch("/api/auth/login/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticket, code }),
+    }).catch(() => null);
+    if (!res) {
+      setLoading(false);
+      return setError("Couldn't reach the server. Check your connection and try again.");
+    }
+    if (!res.ok) {
+      setLoading(false);
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "That code didn't work.");
+      setCode("");
+      if (data.restart) {
+        setTicket(null);
+        setPassword("");
+      }
+      return;
+    }
+    goIn();
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,16 +74,68 @@ export function LoginForm() {
       return;
     }
 
+    const data = await res.json().catch(() => ({}));
+    if (data.needCode && data.ticket) {
+      setLoading(false);
+      setTicket(data.ticket);
+      setReason(data.reason ?? null);
+      return;
+    }
+
     // Success: keep the button disabled while we navigate to the main page.
     // This component unmounts on navigation, so we deliberately do NOT clear
     // `loading` here — otherwise the button re-enables during the (possibly
     // slow) page load and the user could submit again.
-    router.push(searchParams.get("next") ?? "/apps");
-    router.refresh();
+    goIn();
   }
 
   const field = "mt-1 w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900";
   const label = "block text-xs text-blue-100";
+
+  if (ticket) {
+    return (
+      <form onSubmit={submitCode} className="space-y-3">
+        <p className="text-sm text-white">Two-factor authentication</p>
+        {reason && <p className="text-xs text-amber-200">{reason}</p>}
+        <label className={label}>
+          Enter the 6-digit code from your authenticator app
+          <input
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="[0-9 ]{6,7}"
+            maxLength={7}
+            required
+            autoFocus
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            className={`${field} text-center text-lg tracking-[0.4em]`}
+          />
+        </label>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50"
+        >
+          {loading ? "Checking…" : "Verify"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setTicket(null);
+            setCode("");
+            setError(null);
+          }}
+          className="w-full text-center text-sm text-sky-300 hover:text-white hover:underline"
+        >
+          Back
+        </button>
+        <p className="text-center text-[11px] text-blue-100">
+          Lost your phone? Ask your administrator to reset two-factor on your account.
+        </p>
+      </form>
+    );
+  }
 
   return (
     <div>
