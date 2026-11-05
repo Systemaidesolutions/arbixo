@@ -375,3 +375,53 @@ export async function sendVoucherEmail(
   }
   return { sent: true };
 }
+
+/**
+ * Security alert: someone signed in during night hours (8 PM–4 AM PH time).
+ * Sent to every admin. Best-effort: never throws, so login is never blocked.
+ */
+export async function sendNightLoginAlert(
+  to: string[],
+  info: { email: string; role: string; companyName?: string | null; when: string; ip?: string | null; userAgent?: string | null }
+): Promise<{ sent: boolean }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM ?? "Arbixo <onboarding@resend.dev>";
+  console.log(`[mail] Night-time login alert: ${info.email} at ${info.when} PH (ip ${info.ip ?? "?"}) -> ${to.join(", ")}`);
+  if (!apiKey || to.length === 0) return { sent: false };
+
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+  const row = (k: string, v: string) =>
+    `<tr><td style="padding:4px 12px 4px 0; color:#666;">${k}</td><td style="padding:4px 0;"><strong>${esc(v)}</strong></td></tr>`;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from,
+      to,
+      subject: `[Arbixo security] Night-time login: ${info.email}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto;">
+          <h2 style="color: #B91C1C;">Night-time login alert</h2>
+          <p>A user signed in to Arbixo outside regular hours (8:00 PM – 4:00 AM, Philippine time).</p>
+          <table style="font-size: 14px; border-collapse: collapse;">
+            ${row("User", info.email)}
+            ${row("Type", info.role === "ADMIN" ? "Admin" : "Subscriber")}
+            ${info.companyName ? row("Company", info.companyName) : ""}
+            ${row("Time (PH)", info.when)}
+            ${row("IP address", info.ip ?? "unknown")}
+            ${row("Device", info.userAgent ?? "unknown")}
+          </table>
+          <p style="color: #666; font-size: 13px; margin-top: 16px;">If this wasn't expected, disable the account from Admin › Users and reset its password.</p>
+        </div>
+      `,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error(`[mail] Resend rejected the night-time login alert (${res.status}): ${body}`);
+    return { sent: false };
+  }
+  return { sent: true };
+}

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { createSessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { verifyPassword } from "@/lib/password";
 import { logAudit, getClientIp } from "@/lib/audit";
+import { isNightLoginPH, formatPH } from "@/lib/loginAlert";
+import { sendNightLoginAlert } from "@/lib/mail";
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
@@ -63,6 +65,33 @@ export async function POST(request: NextRequest) {
       action: "Logged in",
       ipAddress: getClientIp(request),
     });
+  }
+
+  // Security: a sign-in between 8 PM and 4 AM Philippine time emails every
+  // admin. Best-effort — a failed alert never blocks the login.
+  const now = new Date();
+  if (isNightLoginPH(now)) {
+    try {
+      const [admins, company] = await Promise.all([
+        prisma.user.findMany({ where: { role: "ADMIN", isDisabled: false }, select: { email: true } }),
+        user.companyId
+          ? prisma.company.findUnique({ where: { id: user.companyId }, select: { tradeName: true } })
+          : null,
+      ]);
+      await sendNightLoginAlert(
+        admins.map((a) => a.email),
+        {
+          email: user.email,
+          role: user.role,
+          companyName: company?.tradeName ?? null,
+          when: formatPH(now),
+          ip: getClientIp(request),
+          userAgent: request.headers.get("user-agent"),
+        }
+      );
+    } catch (err) {
+      console.error("[login] night-time alert failed", err);
+    }
   }
 
   const token = await createSessionToken({ sub: user.id, email: user.email, role: user.role });
