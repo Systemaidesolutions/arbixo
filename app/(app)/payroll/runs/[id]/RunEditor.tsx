@@ -20,6 +20,7 @@ type Line = {
   leaves: RunLeave[]; // approved leave in the period (read-only here; managed under Payroll › Leave)
   dayHours: Record<string, DayHours>; // work/OT/night hours on specific dates
   leaveConversionDays: number; // unused leave converted to cash, paid this run
+  reimbursements: number; // approved reimbursements paid with this run (net pay only, not taxed)
   benefitsExemptRemaining: number; // left of the yearly 13th-month/bonus exemption
   biometricId: string | null; shiftStart: string | null; shiftEnd: string | null; // for the biometric import
   restDayMode: "FIXED" | "FLEXIBLE"; // FLEXIBLE = no fixed rest day, marked here every run
@@ -111,7 +112,9 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
         const it = items.find((i) => i.id === a.payItemId);
         return it && Number(a.amount) ? [{ payItemId: it.id, code: it.code, name: it.name, kind: it.kind, taxable: it.taxable, isOtherBenefit: it.isOtherBenefit, amount: Math.abs(Number(a.amount)) }] : [];
       });
-      map.set(l.employeeId, computeLine({ ...l, absentDays: absentDaysOf(l), lateMinutes: lateMinutesOf(l), adjustments }, ctx));
+      const r = computeLine({ ...l, absentDays: absentDaysOf(l), lateMinutes: lateMinutesOf(l), adjustments }, ctx);
+      // Reimbursements go on top of net pay only (not gross, not taxed).
+      map.set(l.employeeId, l.reimbursements ? { ...r, netPay: Math.round((r.netPay + l.reimbursements) * 100) / 100 } : r);
     }
     return map;
   }, [lines, dayTypes, rules, group, items, run.periodStart, run.periodEnd]);
@@ -531,7 +534,10 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
                         <td className="py-1.5 pr-2 text-right font-mono">{num(r.hdmfEe)}</td>
                         <td className="py-1.5 pr-2 text-right font-mono">{num(r.withholdingTax)}</td>
                         <td className="py-1.5 pr-2 text-right font-mono">{num(r.otherDeductions)}</td>
-                        <td className="py-1.5 pr-2 text-right font-mono font-semibold">{formatPeso(r.netPay)}</td>
+                        <td className="py-1.5 pr-2 text-right font-mono font-semibold" title={l.reimbursements ? `Incl. reimbursements ${formatPeso(l.reimbursements)} (not taxed)` : undefined}>
+                          {formatPeso(r.netPay)}
+                          {l.reimbursements > 0 && <div className="text-[10px] font-normal text-blue-700">incl. reimb. {formatPeso(l.reimbursements)}</div>}
+                        </td>
                         <td className="whitespace-nowrap py-1.5 text-right print:hidden">
                           <button onClick={() => setExpanded(open ? null : l.employeeId)} className="rounded px-1.5 py-0.5 text-[11px] text-brand-blue hover:bg-blue-50">{open ? "Hide" : `Items${l.adjustments.length ? ` (${l.adjustments.length})` : ""}`}</button>
                           {canEdit && <button onClick={() => removeEmployee(l)} className="rounded px-1.5 py-0.5 text-[11px] text-red-600 hover:bg-red-50">×</button>}

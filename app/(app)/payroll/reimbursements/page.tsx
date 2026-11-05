@@ -29,6 +29,7 @@ export default async function ReimbursementsPage({ searchParams }: { searchParam
       include: {
         employee: { select: { code: true, lastName: true, firstName: true } },
         attachments: { select: { id: true, fileName: true, contentType: true } },
+        payrollRun: { select: { id: true, runNo: true, status: true } },
       },
       orderBy: tab === "PENDING" ? [{ createdAt: "asc" }] : [{ updatedAt: "desc" }],
       take: 300,
@@ -42,7 +43,8 @@ export default async function ReimbursementsPage({ searchParams }: { searchParam
       <h1 className="text-xl font-medium text-neutral-900">Reimbursements</h1>
       <p className="mt-1 max-w-3xl text-sm text-neutral-500">
         Expenses employees file from the <a href="/payroll/leave-portal" className="text-brand-blue hover:underline">employee portal</a>, with
-        photos of their receipts. Approve or reject each one, then mark it paid once you&apos;ve released the money.
+        photos of their receipts. Approve or reject each one. Approved ones are added to the employee&apos;s next payroll run (net pay
+        only, not taxed) and marked paid when that run is posted. You can also mark one paid by hand if you pay it outside payroll.
       </p>
       <ReimbursementsClient
         canEdit={Boolean(capability?.canPost)}
@@ -67,6 +69,7 @@ export default async function ReimbursementsPage({ searchParams }: { searchParam
           paidNote: r.paidNote,
           paidAt: r.paidAt ? r.paidAt.toISOString() : null,
           attachments: r.attachments,
+          run: r.payrollRun ? { id: r.payrollRun.id, runNo: r.payrollRun.runNo, status: r.payrollRun.status } : null,
         }))}
       />
     </main>

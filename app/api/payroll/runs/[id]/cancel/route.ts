@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { payrollAuth } from "@/lib/payroll/server";
+import { releaseRunReimbursements } from "@/lib/payroll/reimbursementServer";
 
 // The GL side is reversed first through the shared /api/ledger-entries/cancel
 // (General Journal, document no. = run no.); this then marks the run itself
@@ -16,5 +17,7 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
   });
   if (live > 0) return NextResponse.json({ error: "Reverse the journal entry first." }, { status: 400 });
   await prisma.payrollRun.update({ where: { id: run.id }, data: { status: "CANCELLED" } });
+  // Reimbursements it paid go back to approved, for the next run.
+  await releaseRunReimbursements(auth.companyId, run.id);
   return NextResponse.json({ ok: true });
 }

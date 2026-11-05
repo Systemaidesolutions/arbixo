@@ -11,7 +11,7 @@ type Setup = {
   regularHolidayMultiplier: number; regularHolidayRestDayMultiplier: number; doubleHolidayMultiplier: number; doubleHolidayRestDayMultiplier: number;
   nightDiffRate: number; payUnworkedRegularHoliday: boolean; holidayRequiresPriorPresence: boolean;
   monthlyIncludesRestDays: boolean; monthlyIncludesSpecialDays: boolean; benefitsExemptCap: number;
-  restWeekdays: number[]; thirteenthMonthAccountId: string | null; leaveMonthlyAccrual: boolean;
+  restWeekdays: number[]; thirteenthMonthAccountId: string | null; reimbursementAccountId: string | null; leaveMonthlyAccrual: boolean;
   shiftStart: string; shiftEnd: string; breakMinutes: number; lateGraceMinutes: number; otMinimumMinutes: number; otRoundingMinutes: number;
   salariesExpenseAccountId: string | null; contributionsExpenseAccountId: string | null; sssPayableAccountId: string | null;
   philhealthPayableAccountId: string | null; hdmfPayableAccountId: string | null; withholdingTaxPayableAccountId: string | null;
@@ -176,6 +176,10 @@ export function SetupClient({ setup, groups, items, accounts, canEdit }: { setup
           <label className={label}>
             13th-month pay expense (Dr)
             <AccountSelect accounts={accounts} disabled={!canEdit} value={form.thirteenthMonthAccountId} onChange={(v) => setForm({ ...form, thirteenthMonthAccountId: v })} placeholder="Same as salaries & wages" />
+          </label>
+          <label className={label}>
+            Employee reimbursements (Dr)
+            <AccountSelect accounts={accounts} disabled={!canEdit} value={form.reimbursementAccountId} onChange={(v) => setForm({ ...form, reimbursementAccountId: v })} placeholder="Needed once a run pays reimbursements" />
           </label>
         </div>
         {canEdit && (

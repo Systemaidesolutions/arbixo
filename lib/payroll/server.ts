@@ -9,6 +9,7 @@ import {
   type Adjustment, type DayHours, type DayType, type GroupRules, type PayrollRules, type RunContext,
 } from "./compute";
 import { conversionsForRun, leaveForRun } from "./leaveServer";
+import { claimReimbursementsForRun, markRunReimbursementsPaid } from "./reimbursementServer";
 
 export type PayrollAuth =
   | { ok: true; companyId: string; userId: string; isAdmin: boolean }
@@ -335,6 +336,9 @@ export async function recomputeRun(companyId: string, runId: string) {
 
   const leaves = await leaveForRun(companyId, ids, ctx.periodStart, ctx.periodEnd);
   const conversions = await conversionsForRun(companyId, ids, ctx.periodStart, ctx.periodEnd);
+  // Approved reimbursements ride on the run: added to net pay only (not gross,
+  // not taxable, no contributions).
+  const reimbursements = await claimReimbursementsForRun(companyId, run.id, ids);
   setAuditSuppressed(true);
   try {
     for (const line of run.lines) {
@@ -360,10 +364,12 @@ export async function recomputeRun(companyId: string, runId: string) {
         },
         ctx
       );
-      await prisma.payrollRunLine.update({ where: { id: line.id }, data: { ...r, leaves: lineLeaves, restDates } });
+      const reimb = reimbursements.get(line.employeeId) ?? 0;
+      const netPay = round2(r.netPay + reimb);
+      await prisma.payrollRunLine.update({ where: { id: line.id }, data: { ...r, reimbursements: reimb, netPay, leaves: lineLeaves, restDates } });
       totals.gross += r.grossPay;
       totals.ded += r.totalDeductions;
-      totals.net += r.netPay;
+      totals.net += netPay;
       totals.er += r.sssEr + r.philhealthEr + r.hdmfEr;
     }
     await prisma.payrollRun.update({
@@ -403,6 +409,7 @@ export async function postRun(companyId: string, userId: string, runId: string) 
   // A 13th-month run only touches salaries/13th-month expense, withholding tax and net pay.
   const needed = thirteenth ? required.filter(([k]) => ["salariesExpenseAccountId", "withholdingTaxPayableAccountId", "netPayAccountId"].includes(k)) : required;
   const missing = needed.filter(([k]) => !setup[k]).map(([, label]) => label);
+  if (!thirteenth && !setup.reimbursementAccountId && run.lines.some((l) => n(l.reimbursements))) missing.push("Employee reimbursements");
   if (missing.length) return { status: 400, error: `Set these accounts in Payroll setup first: ${missing.join(", ")}.` };
 
   const payItems = await prisma.payItem.findMany({ where: { companyId } });
@@ -424,6 +431,7 @@ export async function postRun(companyId: string, userId: string, runId: string) 
       else add(credit, it.accountId ?? acct("otherDeductionsAccountId"), amt);
     }
     add(debit, acct("contributionsExpenseAccountId"), n(l.sssEr) + n(l.philhealthEr) + n(l.hdmfEr));
+    if (setup.reimbursementAccountId) add(debit, setup.reimbursementAccountId, n(l.reimbursements));
     add(credit, acct("sssPayableAccountId"), n(l.sssEe) + n(l.sssEr));
     add(credit, acct("philhealthPayableAccountId"), n(l.philhealthEe) + n(l.philhealthEr));
     add(credit, acct("hdmfPayableAccountId"), n(l.hdmfEe) + n(l.hdmfEr));
@@ -469,5 +477,6 @@ export async function postRun(companyId: string, userId: string, runId: string) 
     skipSubscriptionCheck: true,
   });
   await prisma.payrollRun.update({ where: { id: runId }, data: { status: "POSTED", postedAt: new Date(), postedById: userId } });
+  if (!thirteenth) await markRunReimbursementsPaid(companyId, runId, run.runNo, userId);
   return { status: 200, ok: true };
 }

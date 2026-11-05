@@ -128,7 +128,12 @@ export default async function PayslipsPage({ params, searchParams }: { params: {
               );
             })()}
             <div className="mt-3 flex items-end justify-between border-t border-neutral-400 pt-2">
-              <div className="text-sm">NET PAY: <b className="font-mono">{formatPeso(n(l.netPay))}</b></div>
+              <div>
+                {n(l.reimbursements) > 0 && (
+                  <div className="text-neutral-600">Add: reimbursements (not taxed) <span className="font-mono">{formatPeso(n(l.reimbursements))}</span></div>
+                )}
+                <div className="text-sm">NET PAY: <b className="font-mono">{formatPeso(n(l.netPay))}</b></div>
+              </div>
               <div className="w-56 border-t border-neutral-500 pt-0.5 text-center text-neutral-500">Received by / date</div>
             </div>
           </section>

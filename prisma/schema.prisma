@@ -1274,6 +1274,7 @@ model PayrollSetup {
   otherDeductionsAccountId       String? // fallback for deduction pay items without their own account
   netPayAccountId                String? // Salaries payable (or Cash in bank)
   thirteenthMonthAccountId       String? // 13th-month pay expense (falls back to salaries)
+  reimbursementAccountId         String? // employee reimbursements paid through payroll (expense)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1408,6 +1409,8 @@ model PayrollRun {
   updatedAt   DateTime  @updatedAt
 
   lines PayrollRunLine[]
+  // Approved reimbursements paid through this run (added to net pay, not taxed).
+  reimbursements Reimbursement[]
 
   @@unique([companyId, runNo])
   @@index([companyId, periodStart])
@@ -1472,6 +1475,9 @@ model PayrollRunLine {
   withholdingTax  Decimal @default(0) @db.Decimal(18, 2)
   otherDeductions Decimal @default(0) @db.Decimal(18, 2)
   totalDeductions Decimal @default(0) @db.Decimal(18, 2)
+  // Approved reimbursements paid with this line: added to net pay only (not
+  // gross, not taxable, no contributions). See lib/payroll/server.ts.
+  reimbursements  Decimal @default(0) @db.Decimal(18, 2)
   netPay          Decimal @default(0) @db.Decimal(18, 2)
 
   @@unique([runId, employeeId])
@@ -1648,6 +1654,10 @@ model Reimbursement {
   paidById       String?
   paidAt         DateTime?
   paidNote       String?
+  // Set while the reimbursement rides on a payroll run (draft = reserved,
+  // posted = paid). Released when the run is deleted or cancelled.
+  payrollRun     PayrollRun?         @relation(fields: [payrollRunId], references: [id], onDelete: SetNull)
+  payrollRunId   String?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
@@ -1655,6 +1665,7 @@ model Reimbursement {
 
   @@index([companyId, status])
   @@index([employeeId, expenseDate])
+  @@index([payrollRunId])
 }
 
 // Receipt images / PDFs, stored as base64 data URLs like TransactionAttachment.

@@ -7,6 +7,7 @@ type Row = {
   id: string; employee: string; employeeCode: string; date: string; filedAt: string; category: string; description: string;
   amount: number; status: string; viaPortal: boolean; decisionNote: string | null; paidNote: string | null; paidAt: string | null;
   attachments: { id: string; fileName: string; contentType: string }[];
+  run: { id: string; runNo: string; status: string } | null;
 };
 type Summary = Record<"PENDING" | "APPROVED" | "PAID", { count: number; amount: number }>;
 
@@ -115,9 +116,16 @@ export function ReimbursementsClient({ canEdit, tab, summary, rows }: { canEdit:
                     <div className="text-xs font-medium text-neutral-700">{r.category}</div>
                     <div className="break-words text-xs text-neutral-600">{r.description}</div>
                     {r.decisionNote && <div className="text-[11px] text-neutral-400">Note: {r.decisionNote}</div>}
+                    {r.run && r.status === "APPROVED" && (
+                      <div className="text-[11px] text-blue-700">
+                        In draft payroll run <a href={`/payroll/runs/${r.run.id}`} className="underline">{r.run.runNo}</a>
+                      </div>
+                    )}
+                    {r.status === "APPROVED" && !r.run && <div className="text-[11px] text-neutral-400">Goes into the next payroll run</div>}
                     {r.status === "PAID" && (
                       <div className="text-[11px] text-neutral-400">
                         Paid {r.paidAt ? fmt(r.paidAt) : ""}{r.paidNote ? ` · ${r.paidNote}` : ""}
+                        {r.run && <> · <a href={`/payroll/runs/${r.run.id}`} className="underline">{r.run.runNo}</a></>}
                       </div>
                     )}
                   </td>

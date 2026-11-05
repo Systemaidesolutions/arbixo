@@ -5,6 +5,7 @@ import { payrollSubscriptionProblem } from "@/lib/payroll/subscription";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateSetup, isoDate, lineRestDates, recomputeRun, scheduledRestDates, toGroupRules, toRules } from "@/lib/payroll/server";
 import { conversionsForRun, leaveForRun } from "@/lib/payroll/leaveServer";
+import { claimReimbursementsForRun } from "@/lib/payroll/reimbursementServer";
 import type { DayHours, DayType } from "@/lib/payroll/compute";
 import type { RunLeave } from "@/lib/payroll/leave";
 import { RunEditor } from "./RunEditor";
@@ -48,6 +49,8 @@ export default async function PayrollRunPage({ params }: { params: { id: string 
   // line); posted runs show what was paid.
   const liveLeaves = run.status === "DRAFT" ? await leaveForRun(company.id, inRun, isoDate(run.periodStart), isoDate(run.periodEnd)) : null;
   const liveConversions = run.status === "DRAFT" ? await conversionsForRun(company.id, inRun, isoDate(run.periodStart), isoDate(run.periodEnd)) : null;
+  // Approved reimbursements are reserved for a draft run as soon as it's opened.
+  const liveReimb = run.status === "DRAFT" && run.kind === "REGULAR" ? await claimReimbursementsForRun(company.id, run.id, inRun) : null;
   const num = (v: unknown) => Number(v);
   // What's left of each employee's yearly 13th-month/bonus exemption, from their other posted runs this year.
   const year = run.payDate.getUTCFullYear();
@@ -96,6 +99,7 @@ export default async function PayrollRunPage({ params }: { params: { id: string 
       leaves: liveLeaves ? liveLeaves.get(l.employeeId) ?? [] : ((Array.isArray(l.leaves) ? l.leaves : []) as RunLeave[]),
       dayHours: (l.dayHours ?? {}) as Record<string, DayHours>,
       leaveConversionDays: liveConversions ? liveConversions.get(l.employeeId) ?? 0 : num(l.leaveConversionDays),
+      reimbursements: liveReimb ? liveReimb.get(l.employeeId) ?? 0 : num(l.reimbursements),
       benefitsExemptRemaining: exemptLeft(l.employeeId),
       biometricId: l.employee.payrollProfile?.biometricId ?? null,
       shiftStart: l.employee.payrollProfile?.shiftStart ?? null,
