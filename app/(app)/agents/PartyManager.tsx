@@ -1,5 +1,6 @@
 "use client";
 
+import { EmployeeLeavePanel } from "./EmployeeLeavePanel";
 import { useEffect, useState } from "react";
 import type { CustomerType, RegistrationType, TaxClassification, VendorType } from "@prisma/client";
 import { TAX_CLASSIFICATION_LABELS, REGISTRATION_TYPE_LABELS } from "@/lib/company";
@@ -367,7 +368,7 @@ export function PartyManager({
         </div>
       </section>
 
-      <aside className="sticky top-8 self-start rounded-lg border border-neutral-200 p-4">
+      <aside className="sticky top-8 max-h-[calc(100vh-4rem)] self-start overflow-y-auto rounded-lg border border-neutral-200 p-4">
         {!form ? (
           <p className="text-sm text-neutral-500">
             Select a {PARTY_LABELS[entityType].singular.toLowerCase()} to edit it, or use "+{" "}
@@ -694,6 +695,9 @@ export function PartyManager({
               )}
             </div>
           </form>
+        )}
+        {isEmployee && form?.mode === "edit" && form.id && (
+          <EmployeeLeavePanel employeeId={form.id} employeeName={`${form.firstName} ${form.lastName}`.trim()} employeeCode={form.code} />
         )}
       </aside>
     </div>
