@@ -12,7 +12,7 @@ type Employee = { id: string; code: string; name: string; active: boolean; facts
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
 type Request = {
   id: string; employeeId: string; employee: string; code: string; typeName: string; startDate: string; endDate: string;
-  days: number; isPaid: boolean; reason: string; status: Status; decisionNote: string; kind: "FILING" | "CONVERSION";
+  days: number; isPaid: boolean; reason: string; viaPortal?: boolean; status: Status; decisionNote: string; kind: "FILING" | "CONVERSION";
 };
 export type Balance = { employeeId: string; leaveTypeId: string; granted: number; carriedOver: number; adjustment: number; earned: number; used: number };
 
@@ -199,7 +199,7 @@ function Filings({ canEdit, year, restWeekdays, types, employees, requests, bala
                 <td className="py-1.5 pr-3"><span className="font-mono text-xs">{r.code}</span> <span className="text-xs text-neutral-500">{r.typeName}{r.isPaid ? "" : " (no pay)"}</span>{r.kind === "CONVERSION" && <span className="ml-1 rounded bg-blue-50 px-1 text-[10px] text-brand-blue">cash conversion</span>}</td>
                 <td className="py-1.5 pr-3 text-xs">{r.kind === "CONVERSION" ? `Paid in run covering ${mdy(r.startDate)}` : r.startDate === r.endDate ? mdy(r.startDate) : `${mdy(r.startDate)} – ${mdy(r.endDate)}`}</td>
                 <td className="py-1.5 pr-3 text-right font-mono">{r.days}</td>
-                <td className="py-1.5 pr-3 text-xs text-neutral-600">{r.reason}{r.decisionNote && <div className="text-neutral-400">Note: {r.decisionNote}</div>}</td>
+                <td className="py-1.5 pr-3 text-xs text-neutral-600">{r.viaPortal && <span className="mr-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">Filed by employee</span>}{r.reason}{r.decisionNote && <div className="text-neutral-400">Note: {r.decisionNote}</div>}</td>
                 <td className="py-1.5 pr-3"><span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE[r.status]}`}>{r.status}</span></td>
                 <td className="whitespace-nowrap py-1.5 text-right">
                   {canEdit && r.status === "PENDING" && <>

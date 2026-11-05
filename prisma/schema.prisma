@@ -371,6 +371,10 @@ model Company {
   loginEnd             String   @default("20:00")
   loginDays            Int[]    @default([1, 2, 3, 4, 5, 6])
 
+  // Employee leave portal: the shareable link is /leave/<leavePortalCode>.
+  leavePortalEnabled   Boolean  @default(false)
+  leavePortalCode      String?  @unique
+
   // Company logo (image URL) — shown on the subscriber dashboard.
   logoUrl              String?
 
@@ -796,6 +800,14 @@ model Employee {
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  // Employee leave portal (/leave/<company code>): the employee signs in with
+  // their employee code + this PIN. Only payroll staff set or reset it.
+  // portalPinSetAt also invalidates portal sessions when the PIN is reset.
+  portalPinHash     String?
+  portalPinSetAt    DateTime?
+  portalFailedCount Int       @default(0)
+  portalLockedUntil DateTime?
 
   ledgerEntries  LedgerEntry[]
   payrollProfile PayrollProfile?
@@ -1592,6 +1604,8 @@ model LeaveRequest {
   kind        LeaveRequestKind @default(FILING)
 
   filedById    String?
+  // Filed by the employee from the leave portal (filedById is then null).
+  filedViaPortal Boolean @default(false)
   decidedById  String?
   decidedAt    DateTime?
   decisionNote String?

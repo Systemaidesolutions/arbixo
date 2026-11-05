@@ -5,7 +5,9 @@ import { apiRequirement, deniedMessage, unmet } from "@/lib/userPermissions";
 // Same value as PATH_HEADER in lib/appAccess.ts (not imported: edge bundle).
 const PATH_HEADER = "x-arbixo-path";
 
-const PUBLIC_PREFIXES = ["/login", "/register", "/verify", "/reset-password", "/forgot-password", "/api/auth"];
+// "/leave" + "/api/leave-portal" = employee leave portal; it has its own
+// employee-code + PIN sign-in (lib/leavePortal.ts), not an ARbixo account.
+const PUBLIC_PREFIXES = ["/login", "/register", "/verify", "/reset-password", "/forgot-password", "/api/auth", "/leave", "/api/leave-portal"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

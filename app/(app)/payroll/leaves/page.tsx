@@ -88,7 +88,7 @@ export default async function LeavesPage({ searchParams }: { searchParams: { yea
             .sort((a, b) => a.name.localeCompare(b.name))}
           requests={requests.map((r) => ({
             id: r.id, employeeId: r.employeeId, employee: name(r.employee), code: r.leaveType.code, typeName: r.leaveType.name,
-            startDate: isoDate(r.startDate), endDate: isoDate(r.endDate), days: Number(r.days), isPaid: r.isPaid, reason: r.reason ?? "",
+            startDate: isoDate(r.startDate), endDate: isoDate(r.endDate), days: Number(r.days), isPaid: r.isPaid, reason: r.reason ?? "", viaPortal: r.filedViaPortal,
             status: r.status, decisionNote: r.decisionNote ?? "", kind: r.kind,
           }))}
           balances={balances}

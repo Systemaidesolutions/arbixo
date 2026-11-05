@@ -133,7 +133,12 @@ export type FileLeaveInput = {
 };
 
 /** Files a leave (PENDING, or APPROVED right away when `approve` is set) after eligibility, overlap and balance checks. */
-export async function fileLeave(companyId: string, userId: string, raw: FileLeaveInput): Promise<LeaveResult> {
+export async function fileLeave(
+  companyId: string,
+  userId: string | null,
+  raw: FileLeaveInput,
+  opts: { viaPortal?: boolean } = {}
+): Promise<LeaveResult> {
   if (!raw.employeeId || !raw.leaveTypeId || !isDate(raw.startDate) || !isDate(raw.endDate)) return { status: 400, error: "Employee, leave type and dates are required." };
   if (raw.endDate < raw.startDate) return { status: 400, error: "End date is before start date." };
   const t = await prisma.leaveType.findFirst({ where: { id: raw.leaveTypeId, companyId } });
@@ -199,15 +204,43 @@ export async function fileLeave(companyId: string, userId: string, raw: FileLeav
     }
   }
 
-  const approve = raw.approve === true;
+  // Employees filing from the portal can never approve their own leave.
+  const approve = raw.approve === true && !opts.viaPortal && !!userId;
   const record = await prisma.leaveRequest.create({
     data: {
       companyId, employeeId: raw.employeeId, leaveTypeId: t.id, startDate: utc(dates[0].date), endDate: utc(dates[dates.length - 1].date),
-      dates, days, isPaid: t.isPaid, reason: clean(raw.reason), status: approve ? "APPROVED" : "PENDING", filedById: userId,
+      dates, days, isPaid: t.isPaid, reason: clean(raw.reason), status: approve ? "APPROVED" : "PENDING", filedById: userId, filedViaPortal: !!opts.viaPortal,
       ...(approve ? { decidedById: userId, decidedAt: new Date() } : {}),
     },
   });
   return { status: 200, record };
+}
+
+export type EmployeeBalance = { leaveTypeId: string; code: string; name: string; earned: number; used: number; left: number };
+
+/** One employee's ANNUAL leave balances for a year (pending + approved count as used). */
+export async function employeeBalances(companyId: string, employeeId: string, year: number, now: Date = new Date()): Promise<EmployeeBalance[]> {
+  const [types, credits, setup, profile, reqs] = await Promise.all([
+    prisma.leaveType.findMany({ where: { companyId, isActive: true, creditBasis: "ANNUAL" }, orderBy: [{ sortOrder: "asc" }, { code: "asc" }] }),
+    prisma.leaveCredit.findMany({ where: { companyId, employeeId, year } }),
+    getOrCreateSetup(companyId),
+    prisma.payrollProfile.findUnique({ where: { employeeId }, select: { leaveMonthlyAccrual: true } }),
+    prisma.leaveRequest.findMany({
+      where: { companyId, employeeId, status: { in: ["PENDING", "APPROVED"] }, startDate: { lte: utc(`${year}-12-31`) }, endDate: { gte: utc(`${year}-01-01`) } },
+      select: { leaveTypeId: true, dates: true },
+    }),
+  ]);
+  const thisYear = now.getUTCFullYear();
+  const throughMonth = year < thisYear ? 12 : year === thisYear ? now.getUTCMonth() + 1 : 0;
+  const out: EmployeeBalance[] = [];
+  for (const t of types) {
+    const c = credits.find((x) => x.leaveTypeId === t.id);
+    const used = Math.round(reqs.filter((r) => r.leaveTypeId === t.id).reduce((s, r) => s + (daysByYear(r.dates as LeaveDate[]).get(year) ?? 0), 0) * 100) / 100;
+    if (!c && !used) continue;
+    const earned = Math.round((accruedCredits(n(c?.granted), effectiveAccrual(t.accrual, setup.leaveMonthlyAccrual, profile?.leaveMonthlyAccrual), throughMonth) + n(c?.carriedOver) + n(c?.adjustment)) * 100) / 100;
+    out.push({ leaveTypeId: t.id, code: t.code, name: t.name, earned, used, left: Math.round((earned - used) * 100) / 100 });
+  }
+  return out;
 }
 
 /** Dates of this filing already paid out in a posted payroll run. */

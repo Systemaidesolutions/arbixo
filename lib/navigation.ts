@@ -170,6 +170,7 @@ export const PAYROLL_NAV_SECTIONS: NavSection[] = [
     links: [
       { href: "/payroll/setup", label: "Payroll setup", icon: "payrollSetup" },
       { href: "/payroll/leave-types", label: "Leave types", icon: "leave" },
+      { href: "/payroll/leave-portal", label: "Employee leave portal", icon: "leave" },
       { href: "/agents/employees", label: "Employees", icon: "employees" },
       { href: "/company/branches", label: "Branches", icon: "companies" },
       { href: "/company/setup", label: "Company details", icon: "company" },
