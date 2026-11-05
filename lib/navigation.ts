@@ -162,6 +162,7 @@ export const PAYROLL_NAV_SECTIONS: NavSection[] = [
       { href: "/payroll/runs", label: "Payroll runs", icon: "payroll" },
       { href: "/payroll/employees", label: "Payroll employees", icon: "employees" },
       { href: "/payroll/leaves", label: "Leave", icon: "leave" },
+      { href: "/payroll/reimbursements", label: "Reimbursements", icon: "cashOut" },
     ],
   },
   {
@@ -170,7 +171,7 @@ export const PAYROLL_NAV_SECTIONS: NavSection[] = [
     links: [
       { href: "/payroll/setup", label: "Payroll setup", icon: "payrollSetup" },
       { href: "/payroll/leave-types", label: "Leave types", icon: "leave" },
-      { href: "/payroll/leave-portal", label: "Employee leave portal", icon: "leave" },
+      { href: "/payroll/leave-portal", label: "Employee portal", icon: "leave" },
       { href: "/payroll/employee-records", label: "Employees", icon: "employees" },
       { href: "/company/branches", label: "Branches", icon: "companies" },
       { href: "/company/setup", label: "Company details", icon: "company" },

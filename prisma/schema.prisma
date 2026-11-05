@@ -814,6 +814,7 @@ model Employee {
   payrollLines   PayrollRunLine[]
   leaveCredits   LeaveCredit[]
   leaveRequests  LeaveRequest[]
+  reimbursements Reimbursement[]
 
   @@unique([companyId, code])
 }
@@ -1614,4 +1615,58 @@ model LeaveRequest {
 
   @@index([companyId, startDate])
   @@index([employeeId, startDate])
+}
+
+// ============================================================
+// Employee reimbursements: an employee (from the leave portal) or payroll
+// staff files an expense with receipt photos; staff approve or reject it,
+// then mark it paid. See lib/payroll/reimbursement.ts.
+// ============================================================
+enum ReimbursementStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  PAID
+}
+
+model Reimbursement {
+  id             String              @id @default(cuid())
+  companyId      String
+  employee       Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId     String
+  expenseDate    DateTime
+  category       String
+  description    String
+  amount         Decimal             @db.Decimal(14, 2)
+  status         ReimbursementStatus @default(PENDING)
+  filedViaPortal Boolean             @default(false)
+  filedById      String?
+  decidedById    String?
+  decidedAt      DateTime?
+  decisionNote   String?
+  paidById       String?
+  paidAt         DateTime?
+  paidNote       String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  attachments ReimbursementAttachment[]
+
+  @@index([companyId, status])
+  @@index([employeeId, expenseDate])
+}
+
+// Receipt images / PDFs, stored as base64 data URLs like TransactionAttachment.
+model ReimbursementAttachment {
+  id              String        @id @default(cuid())
+  reimbursement   Reimbursement @relation(fields: [reimbursementId], references: [id], onDelete: Cascade)
+  reimbursementId String
+  fileName        String
+  contentType     String
+  sizeBytes       Int
+  data            String        @db.Text
+  createdAt       DateTime      @default(now())
+
+  @@index([reimbursementId])
 }

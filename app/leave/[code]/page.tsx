@@ -3,10 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { getPortalEmployee } from "@/lib/leavePortal";
 import { employeeBalances } from "@/lib/payroll/leaveServer";
 import { getOrCreateSetup, isoDate } from "@/lib/payroll/server";
+import { todayPH } from "@/lib/payroll/reimbursement";
 import { LeavePortalClient } from "./LeavePortalClient";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "File leave · ARbixo", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Leave & reimbursement · ARbixo", robots: { index: false, follow: false } };
 
 // Employee leave portal. Public link per company (/leave/<code>); employees
 // sign in with their employee number + PIN (no ARbixo account).
@@ -38,7 +39,7 @@ export default async function LeavePortalPage({ params }: { params: { code: stri
 
   const now = new Date();
   const year = now.getUTCFullYear();
-  const [balances, types, requests, setup, profile] = await Promise.all([
+  const [balances, types, requests, setup, profile, reimbs] = await Promise.all([
     employeeBalances(company.id, emp.id, year, now),
     prisma.leaveType.findMany({
       where: { companyId: company.id, isActive: true },
@@ -53,6 +54,15 @@ export default async function LeavePortalPage({ params }: { params: { code: stri
     }),
     getOrCreateSetup(company.id),
     prisma.payrollProfile.findUnique({ where: { employeeId: emp.id }, select: { id: true } }),
+    prisma.reimbursement.findMany({
+      where: { companyId: company.id, employeeId: emp.id },
+      select: {
+        id: true, expenseDate: true, category: true, description: true, amount: true, status: true, decisionNote: true,
+        attachments: { select: { id: true, fileName: true, contentType: true } },
+      },
+      orderBy: [{ createdAt: "desc" }],
+      take: 50,
+    }),
   ]);
 
   return shell(
@@ -75,6 +85,17 @@ export default async function LeavePortalPage({ params }: { params: { code: stri
         status: r.status,
         reason: r.reason,
         note: r.decisionNote,
+      }))}
+      today={todayPH(now)}
+      reimbursements={reimbs.map((r) => ({
+        id: r.id,
+        date: isoDate(r.expenseDate),
+        category: r.category,
+        description: r.description,
+        amount: Number(r.amount),
+        status: r.status,
+        note: r.decisionNote,
+        attachments: r.attachments,
       }))}
     />
   );

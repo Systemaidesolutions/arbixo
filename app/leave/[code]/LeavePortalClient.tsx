@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ReimbursementSection, type PortalReimb } from "./ReimbursementSection";
 
 type Balance = { leaveTypeId: string; code: string; name: string; earned: number; used: number; left: number };
 type LeaveTypeOpt = { id: string; code: string; name: string; allowHalfDay: boolean; isPaid: boolean };
@@ -20,6 +21,8 @@ type Props =
       balances: Balance[];
       types: LeaveTypeOpt[];
       requests: Req[];
+      reimbursements: PortalReimb[];
+      today: string;
     };
 
 const card = "rounded-xl bg-white p-5 shadow-sm";
@@ -48,7 +51,7 @@ function Header({ companyName, right }: { companyName: string; right?: React.Rea
     <div className="mb-4 flex items-center justify-between gap-3">
       <div>
         <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">{companyName}</div>
-        <h1 className="text-xl font-semibold text-[#0B2A5E]">Leave filing</h1>
+        <h1 className="text-xl font-semibold text-[#0B2A5E]">Leave &amp; reimbursement</h1>
       </div>
       {right}
     </div>
@@ -119,6 +122,7 @@ function Home(p: Extract<Props, { mode: "home" }>) {
   const [form, setForm] = useState({ leaveTypeId: p.types[0]?.id ?? "", startDate: today, endDate: today, halfDay: false, reason: "" });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [tab, setTab] = useState<"leave" | "reimb">("leave");
   const type = p.types.find((t) => t.id === form.leaveTypeId);
   const canHalf = !!type?.allowHalfDay && form.startDate === form.endDate;
 
@@ -175,6 +179,32 @@ function Home(p: Extract<Props, { mode: "home" }>) {
         Hi <b>{p.employee.name}</b> <span className="text-neutral-400">({p.employee.code})</span>
       </p>
 
+      <div role="tablist" className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-neutral-200 p-1">
+        {(
+          [
+            ["leave", "Leave"],
+            ["reimb", "Reimbursement"],
+          ] as const
+        ).map(([k, t]) => (
+          <button
+            key={k}
+            role="tab"
+            aria-selected={tab === k}
+            onClick={() => {
+              setTab(k);
+              setMsg(null);
+            }}
+            className={`rounded-lg py-2 text-sm font-medium ${tab === k ? "bg-white text-[#0B2A5E] shadow-sm" : "text-neutral-600"}`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {tab === "reimb" ? (
+        <ReimbursementSection items={p.reimbursements} ready={p.ready} today={p.today} />
+      ) : (
+      <>
       {msg && (
         <p className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"}`}>{msg.text}</p>
       )}
@@ -280,6 +310,8 @@ function Home(p: Extract<Props, { mode: "home" }>) {
           </ul>
         )}
       </section>
+      </>
+      )}
     </>
   );
 }

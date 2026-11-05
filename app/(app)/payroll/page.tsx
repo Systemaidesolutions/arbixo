@@ -21,7 +21,7 @@ export default async function PayrollHomePage() {
   }
   const setup = await getOrCreateSetup(company.id);
   const in30 = new Date(Date.now() + 30 * 86400000);
-  const [profiles, unassigned, drafts, recent, ending, postedThisYear, pendingLeave] = await Promise.all([
+  const [profiles, unassigned, drafts, recent, ending, postedThisYear, pendingLeave, pendingReimb] = await Promise.all([
     prisma.payrollProfile.groupBy({ by: ["payBasis"], where: { companyId: company.id, isActive: true, employee: { isActive: true } }, _count: true }),
     prisma.employee.count({ where: { companyId: company.id, isActive: true, payrollProfile: null } }),
     prisma.payrollRun.count({ where: { companyId: company.id, status: "DRAFT" } }),
@@ -36,6 +36,7 @@ export default async function PayrollHomePage() {
       _sum: { totalGross: true, totalNet: true },
     }),
     prisma.leaveRequest.count({ where: { companyId: company.id, status: "PENDING" } }),
+    prisma.reimbursement.count({ where: { companyId: company.id, status: "PENDING" } }),
   ]);
   const count = (b: "DAILY" | "MONTHLY") => profiles.find((p) => p.payBasis === b)?._count ?? 0;
   const accountsMissing = !setup.salariesExpenseAccountId || !setup.netPayAccountId || !setup.sssPayableAccountId;
@@ -57,11 +58,12 @@ export default async function PayrollHomePage() {
         <Link href="/payroll/runs" className="rounded bg-brand-navy px-3 py-1.5 text-sm text-white hover:bg-brand-navyLight">+ New payroll run</Link>
       </div>
 
-      {(accountsMissing || unassigned > 0 || pendingLeave > 0) && (
+      {(accountsMissing || unassigned > 0 || pendingLeave > 0 || pendingReimb > 0) && (
         <div className="mt-4 space-y-1 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {accountsMissing && <p>Posting accounts aren&apos;t set yet. <Link href="/payroll/setup" className="font-medium underline">Open Payroll setup</Link> before posting a run.</p>}
           {unassigned > 0 && <p>{unassigned} active employee(s) have no pay details yet. <Link href="/payroll/employees" className="font-medium underline">Set them up</Link>.</p>}
           {pendingLeave > 0 && <p>{pendingLeave} leave filing(s) waiting for approval. <Link href="/payroll/leaves" className="font-medium underline">Review leave</Link>.</p>}
+          {pendingReimb > 0 && <p>{pendingReimb} reimbursement(s) waiting for approval. <Link href="/payroll/reimbursements" className="font-medium underline">Review reimbursements</Link>.</p>}
         </div>
       )}
 
