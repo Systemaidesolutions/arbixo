@@ -42,29 +42,49 @@ export function AdminUserForm({
   const [role, setRole] = useState<UserRole>(initial?.role ?? "USER");
   const [subtype, setSubtype] = useState<SubscriberSubtype>(initial?.subscriberSubtype ?? "USER");
   const [companyId, setCompanyId] = useState<string>(initial?.companyId ?? "");
-  const [apps, setApps] = useState<string[]>(initial?.appAccess?.length ? initial.appAccess : ["accounting", "payroll"]);
-  // Additional company id -> apps in that company.
-  const [grants, setGrants] = useState<Record<string, string[]>>(() =>
-    Object.fromEntries(initialCompanyAccess.map((g) => [g.companyId, g.apps.length ? g.apps : BOTH]))
-  );
+  // One list for everything: every company this user can open (their home
+  // company included) -> the apps they may open there. The home company's
+  // apps are saved as User.appAccess, the others as CompanyAccess grants.
+  const [access, setAccess] = useState<Record<string, string[]>>(() => {
+    const m: Record<string, string[]> = Object.fromEntries(
+      initialCompanyAccess.map((g) => [g.companyId, g.apps.length ? g.apps : BOTH])
+    );
+    if (initial?.companyId) m[initial.companyId] = initial.appAccess?.length ? initial.appAccess : BOTH;
+    return m;
+  });
+  // Companies already ticked are listed first (fixed at load, so rows don't jump while ticking).
+  const [firstIds] = useState(() => new Set(Object.keys(access)));
+  const [filter, setFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  function toggleCompanyAccess(id: string, checked: boolean) {
-    setGrants((prev) => {
+  function toggleCompany(id: string, checked: boolean) {
+    setAccess((prev) => {
       const next = { ...prev };
       if (checked) next[id] = BOTH;
       else delete next[id];
       return next;
     });
+    if (checked && !companyId) setCompanyId(id);
+    if (!checked && id === companyId) setCompanyId("");
   }
 
-  function toggleGrantApp(id: string, app: string, checked: boolean) {
-    setGrants((prev) => {
+  function toggleApp(id: string, app: string, checked: boolean) {
+    setAccess((prev) => {
       const cur = prev[id] ?? [];
       return { ...prev, [id]: BOTH.filter((a) => (a === app ? checked : cur.includes(a))) };
     });
   }
+
+  function makeHome(id: string) {
+    setCompanyId(id);
+    setAccess((prev) => (prev[id] ? prev : { ...prev, [id]: BOTH }));
+  }
+
+  const listed = companies
+    .filter((c) => !filter || c.tradeName.toLowerCase().includes(filter.toLowerCase()))
+    .sort((a, b) => Number(firstIds.has(b.id)) - Number(firstIds.has(a.id)));
+  const tickedCount = Object.keys(access).length;
 
   const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
   const label = "block text-xs text-neutral-500";
@@ -72,13 +92,16 @@ export function AdminUserForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (role === "USER" && apps.length === 0) return setError("Tick at least one app for the primary company.");
-    const extra = Object.entries(grants).filter(([id]) => id !== companyId);
-    const noApps = extra.find(([, a]) => a.length === 0);
+    const noApps = Object.entries(access).find(([, a]) => a.length === 0);
     if (role === "USER" && noApps) {
-      const name = companies.find((c) => c.id === noApps[0])?.tradeName ?? "an additional company";
+      const name = companies.find((c) => c.id === noApps[0])?.tradeName ?? "a company";
       return setError(`Tick Accounting or Payroll for ${name}, or untick the company.`);
     }
+    if (role === "USER" && tickedCount > 0 && !companyId) {
+      return setError("Choose which ticked company is their Home company.");
+    }
+    const apps = companyId ? access[companyId] : BOTH;
+    const extra = Object.entries(access).filter(([id]) => id !== companyId);
     setSaving(true);
 
     const payload =
@@ -109,12 +132,12 @@ export function AdminUserForm({
       return;
     }
 
-    // Additional company access is only meaningful for an existing
-    // subscriber account — saved as a second step so a failure here (rare)
-    // doesn't read as "the whole save failed" when the user record itself
-    // already saved fine.
-    if (mode === "edit" && role === "USER") {
-      const accessRes = await fetch(`/api/admin/users/${userId}/company-access`, {
+    // Additional company access is saved as a second step so a failure here
+    // (rare) doesn't read as "the whole save failed" when the user record
+    // itself already saved fine. A new user needs the id the create returned.
+    const savedId = mode === "edit" ? userId : ((await res.json().catch(() => ({}))) as { user?: { id?: string } }).user?.id;
+    if (role === "USER" && savedId && (mode === "edit" || extra.length > 0)) {
+      const accessRes = await fetch(`/api/admin/users/${savedId}/company-access`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ grants: extra.map(([cid, a]) => ({ companyId: cid, apps: a })) }),
@@ -133,7 +156,7 @@ export function AdminUserForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 max-w-md space-y-4">
+    <form onSubmit={handleSubmit} className="mt-6 max-w-xl space-y-4">
       <label className={label}>
         Email
         <input
@@ -192,103 +215,87 @@ export function AdminUserForm({
             </span>
           </label>
 
-          <label className={label}>
-            Company (optional)
-            <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={field}>
-              <option value="">— Unassigned —</option>
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.tradeName}
-                </option>
-              ))}
-            </select>
-            <span className="mt-1 block text-[11px] text-neutral-400">
-              Their primary/home company — always accessible, and where they land after logging in.
-            </span>
-          </label>
-
           <div>
-            <span className={label}>
-              Apps in {companies.find((c) => c.id === companyId)?.tradeName ?? "the primary company"}{" "}
-              <span className="text-red-500">*</span>
-            </span>
-            <div className="mt-1 flex flex-wrap gap-4 rounded border border-neutral-300 p-2 text-sm text-neutral-700">
-              {APPS.map((a) => (
-                <label key={a.key} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={apps.includes(a.key)}
-                    onChange={(e) => setApps(BOTH.filter((k) => (k === a.key ? e.target.checked : apps.includes(k))))}
-                  />
-                  ARbixo {a.name}
-                </label>
-              ))}
+            <span className={label}>Companies and apps</span>
+            <p className="mt-1 text-[11px] text-neutral-400">
+              Tick each company this user can open and the apps they can use there. <b>Home</b> is where they land
+              after logging in; they switch to the others from the dropdown next to their company name. With only one
+              app in a company, they go straight into it.
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Find a company"
+                className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+              />
+              <span className="whitespace-nowrap text-xs text-neutral-500">{tickedCount} ticked</span>
             </div>
-            <span className="mt-1 block text-[11px] text-neutral-400">
-              Which apps this user can open while working in their primary company. With only one, they go straight
-              into it.
-            </span>
-          </div>
-
-          {mode === "edit" && (
-            <div>
-              <span className={label}>Additional companies and their apps (optional)</span>
-              <p className="mt-1 text-[11px] text-neutral-400">
-                Lets this user switch into these companies too, from the dropdown next to their company name — e.g. a
-                bookkeeper handling several clients. Tick a company, then choose which apps they can open in it.
-              </p>
-              <div className="mt-2 max-h-72 overflow-y-auto rounded border border-neutral-300">
-                <table className="w-full text-sm text-neutral-700">
-                  <thead className="sticky top-0 bg-neutral-50 text-left text-xs text-neutral-500">
-                    <tr>
-                      <th className="px-2 py-1.5 font-medium">Company</th>
-                      {APPS.map((a) => (
-                        <th key={a.key} className="w-24 px-2 py-1.5 text-center font-medium">
-                          {a.name}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
-                    {companies
-                      .filter((c) => c.id !== companyId)
-                      .map((c) => {
-                        const g = grants[c.id];
-                        return (
-                          <tr key={c.id} className={g ? "bg-green-50/50" : ""}>
-                            <td className="px-2 py-1">
-                              <label className="flex items-center gap-2">
-                                <input type="checkbox" checked={!!g} onChange={(e) => toggleCompanyAccess(c.id, e.target.checked)} />
-                                {c.tradeName}
-                              </label>
-                            </td>
-                            {APPS.map((a) => (
-                              <td key={a.key} className="px-2 py-1 text-center">
-                                <input
-                                  type="checkbox"
-                                  aria-label={`${a.name} in ${c.tradeName}`}
-                                  disabled={!g}
-                                  checked={!!g?.includes(a.key)}
-                                  onChange={(e) => toggleGrantApp(c.id, a.key, e.target.checked)}
-                                  className="disabled:opacity-30"
-                                />
-                              </td>
-                            ))}
-                          </tr>
-                        );
-                      })}
-                    {companies.length <= 1 && (
-                      <tr>
-                        <td colSpan={3} className="px-2 py-2 text-xs text-neutral-400">
-                          No other companies exist yet.
+            <div className="mt-2 max-h-80 overflow-y-auto rounded border border-neutral-300">
+              <table className="w-full text-sm text-neutral-700">
+                <thead className="text-left text-xs text-neutral-500">
+                  <tr>
+                    <th className="sticky top-0 z-10 bg-neutral-100 px-2 py-1.5 font-medium">Company</th>
+                    <th className="sticky top-0 z-10 w-14 bg-neutral-100 px-1 py-1.5 text-center font-medium">Home</th>
+                    {APPS.map((a) => (
+                      <th key={a.key} className="sticky top-0 z-10 w-20 bg-neutral-100 px-1 py-1.5 text-center font-medium">
+                        {a.name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {listed.map((c) => {
+                    const g = access[c.id];
+                    const home = c.id === companyId;
+                    return (
+                      <tr key={c.id} className={home ? "bg-blue-50/60" : g ? "bg-green-50/50" : ""}>
+                        <td className="px-2 py-1">
+                          <label className="flex items-center gap-2">
+                            <input type="checkbox" checked={!!g} onChange={(e) => toggleCompany(c.id, e.target.checked)} />
+                            {c.tradeName}
+                          </label>
                         </td>
+                        <td className="px-1 py-1 text-center">
+                          <input
+                            type="radio"
+                            name="homeCompany"
+                            aria-label={`Home company: ${c.tradeName}`}
+                            checked={home}
+                            onChange={() => makeHome(c.id)}
+                          />
+                        </td>
+                        {APPS.map((a) => (
+                          <td key={a.key} className="px-1 py-1 text-center">
+                            <input
+                              type="checkbox"
+                              aria-label={`${a.name} in ${c.tradeName}`}
+                              disabled={!g}
+                              checked={!!g?.includes(a.key)}
+                              onChange={(e) => toggleApp(c.id, a.key, e.target.checked)}
+                              className="disabled:opacity-30"
+                            />
+                          </td>
+                        ))}
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    );
+                  })}
+                  {listed.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-2 py-2 text-xs text-neutral-400">
+                        No companies match.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-          )}
+            {tickedCount === 0 && (
+              <p className="mt-1 text-[11px] text-neutral-400">
+                No company ticked: the user is unassigned for now.
+              </p>
+            )}
+          </div>
         </>
       )}
 
