@@ -51,6 +51,9 @@ export async function DELETE(request: NextRequest) {
   const user = await getCurrentUserRecord();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   if (!user.totpEnabled || !user.totpSecret) return NextResponse.json({ ok: true });
+  if (user.require2fa) {
+    return NextResponse.json({ error: "Your administrator requires two-factor on your account." }, { status: 400 });
+  }
 
   const body = await request.json().catch(() => ({}));
   const passwordOk = await verifyPassword(String(body?.password ?? ""), user.passwordHash);

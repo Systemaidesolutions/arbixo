@@ -4,7 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 
-export function TwoFactorSection({ initialEnabled, loginHours }: { initialEnabled: boolean; loginHours: string | null }) {
+export function TwoFactorSection({
+  initialEnabled,
+  loginHours,
+  required = false,
+}: {
+  initialEnabled: boolean;
+  loginHours: string | null;
+  required?: boolean;
+}) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(initialEnabled);
   const [setup, setSetup] = useState<{ secret: string; uri: string } | null>(null);
@@ -82,6 +90,9 @@ export function TwoFactorSection({ initialEnabled, loginHours }: { initialEnable
       <p className="mt-2 text-sm text-neutral-600">
         Use an authenticator app (Google Authenticator, Microsoft Authenticator, Authy…) for a 6-digit code at sign-in.
       </p>
+      {required && (
+        <p className="mt-1 text-xs text-blue-700">Your administrator requires two-factor on your account.</p>
+      )}
       {loginHours && (
         <p className="mt-1 text-xs text-amber-700">
           Your company allows sign-in {loginHours}. Outside those hours you can only sign in with two-factor.
@@ -134,7 +145,7 @@ export function TwoFactorSection({ initialEnabled, loginHours }: { initialEnable
         </form>
       )}
 
-      {enabled && !turningOff && (
+      {enabled && !turningOff && !required && (
         <button type="button" onClick={() => setTurningOff(true)} className={`${plain} mt-4`}>
           Turn off two-factor
         </button>

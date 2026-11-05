@@ -4,11 +4,14 @@ import { createLoginTicket } from "@/lib/auth";
 import { verifyPassword } from "@/lib/password";
 import { finishLogin, loginBlocker } from "@/lib/loginFinish";
 import { describeLoginHours, isWithinLoginHours } from "@/lib/loginHours";
+import { generateTotpSecret, totpUri } from "@/lib/totp";
 
 // Step 1 of sign-in: email + password. If the user has two-factor turned on,
 // or their company's allowed login hours are set and it's outside them, the
 // response is { needCode, ticket } and the client finishes at
-// /api/auth/login/verify with the authenticator code.
+// /api/auth/login/verify with the authenticator code. If an admin requires
+// two-factor and the user hasn't set it up, the response is
+// { needEnroll, ticket, secret, uri } and they enrol right there.
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const email = body?.email?.trim().toLowerCase();
@@ -70,6 +73,19 @@ export async function POST(request: NextRequest) {
       },
       { status: 403 }
     );
+  }
+
+  if (user.require2fa) {
+    // Required but not set up yet: enrol on the login screen. The secret
+    // only becomes active once /verify confirms a code from it.
+    const secret = generateTotpSecret();
+    await prisma.user.update({ where: { id: user.id }, data: { totpPendingSecret: secret, totpFailedCount: 0 } });
+    return NextResponse.json({
+      needEnroll: true,
+      ticket: await createLoginTicket(user.id),
+      secret,
+      uri: totpUri(secret, user.email),
+    });
   }
 
   return finishLogin(user, request, { twoFactor: false });

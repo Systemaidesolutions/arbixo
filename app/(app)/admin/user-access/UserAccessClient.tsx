@@ -5,6 +5,7 @@ import { PERMISSIONS, PERMISSION_KEYS, type PermissionKey } from "@/lib/userPerm
 
 export type AccessRow = {
   id: string; email: string; name: string | null; type: string; company: string; isDisabled: boolean; denied: PermissionKey[];
+  require2fa: boolean; has2fa: boolean;
 };
 
 export function UserAccessClient({ rows: initial }: { rows: AccessRow[] }) {
@@ -40,6 +41,29 @@ export function UserAccessClient({ rows: initial }: { rows: AccessRow[] }) {
     setMsg({ ok: true, text: `Saved access for ${row.email}.` });
   }
 
+  async function setRequire(row: AccessRow, require2fa: boolean) {
+    setBusy(row.id);
+    setMsg(null);
+    setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, require2fa } : r)));
+    const res = await fetch(`/api/admin/users/${row.id}/access`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ require2fa }),
+    });
+    setBusy(null);
+    if (!res.ok) {
+      setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, require2fa: !require2fa } : r)));
+      const j = await res.json().catch(() => ({}));
+      return setMsg({ ok: false, text: j.error ?? "Could not save." });
+    }
+    setMsg({
+      ok: true,
+      text: require2fa
+        ? `${row.email} must now sign in with two-factor${row.has2fa ? "." : " (they'll set it up on their next sign-in)."}`
+        : `Two-factor is now optional for ${row.email}.`,
+    });
+  }
+
   const toggle = (row: AccessRow, key: PermissionKey) =>
     save(
       row,
@@ -72,13 +96,16 @@ export function UserAccessClient({ rows: initial }: { rows: AccessRow[] }) {
                   {p.label.replace(/^Can /, "")}
                 </th>
               ))}
+              <th title="Must sign in with an authenticator code every time" className="w-24 border-l border-neutral-200 px-2 py-2 text-center align-bottom font-medium leading-tight">
+                Require 2FA
+              </th>
               <th className="px-3 py-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
             {shown.length === 0 && (
               <tr>
-                <td colSpan={PERMISSIONS.length + 2} className="px-3 py-4 text-neutral-400">No users match.</td>
+                <td colSpan={PERMISSIONS.length + 3} className="px-3 py-4 text-neutral-400">No users match.</td>
               </tr>
             )}
             {shown.map((r) => (
@@ -107,6 +134,28 @@ export function UserAccessClient({ rows: initial }: { rows: AccessRow[] }) {
                     />
                   </td>
                 ))}
+                <td className="border-l border-neutral-100 px-2 py-2 text-center">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={r.require2fa}
+                    aria-label={`Require two-factor for ${r.email}`}
+                    disabled={busy === r.id}
+                    onClick={() => setRequire(r, !r.require2fa)}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${
+                      r.require2fa ? "bg-brand-green" : "bg-neutral-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                        r.require2fa ? "translate-x-4" : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
+                  <div className={`mt-0.5 text-[10px] ${r.has2fa ? "text-green-700" : "text-neutral-400"}`}>
+                    {r.has2fa ? "set up" : "not set up"}
+                  </div>
+                </td>
                 <td className="whitespace-nowrap px-3 py-2 text-right">
                   {r.denied.length > 0 && (
                     <button onClick={() => save(r, [])} disabled={busy === r.id} className="text-xs text-brand-blue hover:underline disabled:opacity-50">

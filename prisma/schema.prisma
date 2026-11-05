@@ -272,6 +272,9 @@ model User {
   totpPendingSecret     String?
   totpLastStep          Int?
   totpFailedCount       Int       @default(0)
+  // Admin › User access: when true the user must sign in with two-factor
+  // every time. Not enrolled yet = they set it up on the login screen.
+  require2fa            Boolean   @default(false)
 
   // Password reset — admin (or a future "forgot password" flow) issues a
   // single-use token emailed to the user; it verifies against this hash

@@ -18,7 +18,12 @@ export async function POST(request: NextRequest) {
   if (!userId) return restart("Your sign-in timed out. Enter your email and password again.");
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user || !user.totpEnabled || !user.totpSecret) return restart("Enter your email and password again.");
+  if (!user) return restart("Enter your email and password again.");
+  // Enrolling (required by admin, not set up yet): check against the
+  // pending secret and switch two-factor on when it matches.
+  const enrolling = body?.enroll === true && user.require2fa && !user.totpEnabled && !!user.totpPendingSecret;
+  const secret = enrolling ? user.totpPendingSecret : user.totpEnabled ? user.totpSecret : null;
+  if (!secret) return restart("Enter your email and password again.");
 
   const blocked = await loginBlocker(user);
   if (blocked) return blocked;
@@ -27,7 +32,7 @@ export async function POST(request: NextRequest) {
     return restart("Too many wrong codes. Enter your email and password again.");
   }
 
-  const step = verifyTotp(user.totpSecret, code, { lastStep: user.totpLastStep });
+  const step = verifyTotp(secret, code, { lastStep: enrolling ? null : user.totpLastStep });
   if (step === null) {
     const failed = user.totpFailedCount + 1;
     await prisma.user.update({ where: { id: user.id }, data: { totpFailedCount: failed } });
@@ -38,6 +43,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  await prisma.user.update({ where: { id: user.id }, data: { totpLastStep: step, totpFailedCount: 0 } });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: enrolling
+      ? { totpEnabled: true, totpSecret: secret, totpPendingSecret: null, totpLastStep: step, totpFailedCount: 0 }
+      : { totpLastStep: step, totpFailedCount: 0 },
+  });
   return finishLogin(user, request, { twoFactor: true });
 }

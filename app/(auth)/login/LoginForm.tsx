@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 
 export function LoginForm() {
   const router = useRouter();
@@ -14,6 +15,8 @@ export function LoginForm() {
   const [ticket, setTicket] = useState<string | null>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [code, setCode] = useState("");
+  // Set when an admin requires two-factor and the user hasn't set it up yet.
+  const [enroll, setEnroll] = useState<{ secret: string; uri: string } | null>(null);
 
   function goIn() {
     router.push(searchParams.get("next") ?? "/apps");
@@ -27,7 +30,7 @@ export function LoginForm() {
     const res = await fetch("/api/auth/login/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticket, code }),
+      body: JSON.stringify({ ticket, code, enroll: !!enroll }),
     }).catch(() => null);
     if (!res) {
       setLoading(false);
@@ -40,6 +43,7 @@ export function LoginForm() {
       setCode("");
       if (data.restart) {
         setTicket(null);
+        setEnroll(null);
         setPassword("");
       }
       return;
@@ -79,6 +83,14 @@ export function LoginForm() {
       setLoading(false);
       setTicket(data.ticket);
       setReason(data.reason ?? null);
+      setEnroll(null);
+      return;
+    }
+    if (data.needEnroll && data.ticket) {
+      setLoading(false);
+      setTicket(data.ticket);
+      setReason(null);
+      setEnroll({ secret: data.secret, uri: data.uri });
       return;
     }
 
@@ -95,8 +107,26 @@ export function LoginForm() {
   if (ticket) {
     return (
       <form onSubmit={submitCode} className="space-y-3">
-        <p className="text-sm text-white">Two-factor authentication</p>
+        <p className="text-sm text-white">{enroll ? "Set up two-factor authentication" : "Two-factor authentication"}</p>
         {reason && <p className="text-xs text-amber-200">{reason}</p>}
+        {enroll && (
+          <div className="space-y-2 text-xs text-blue-100">
+            <p>Your administrator requires two-factor sign-in on this account. Set it up once now:</p>
+            <ol className="list-decimal space-y-1 pl-4">
+              <li>Install an authenticator app (Google Authenticator, Microsoft Authenticator, Authy…).</li>
+              <li>In the app, add an account and scan this QR code.</li>
+            </ol>
+            <div className="mx-auto w-fit rounded bg-white p-2">
+              <QRCodeSVG value={enroll.uri} size={160} />
+            </div>
+            <p>
+              Can&apos;t scan? Enter this key in the app:
+              <code className="mt-1 block break-all rounded bg-white/10 px-2 py-1 text-center font-mono tracking-wider text-white">
+                {enroll.secret.match(/.{1,4}/g)?.join(" ")}
+              </code>
+            </p>
+          </div>
+        )}
         <label className={label}>
           Enter the 6-digit code from your authenticator app
           <input
@@ -117,12 +147,13 @@ export function LoginForm() {
           disabled={loading}
           className="w-full rounded bg-[#0B2A5E] px-4 py-2 text-sm text-white hover:bg-[#123A73] disabled:opacity-50"
         >
-          {loading ? "Checking…" : "Verify"}
+          {loading ? "Checking…" : enroll ? "Turn on and sign in" : "Verify"}
         </button>
         <button
           type="button"
           onClick={() => {
             setTicket(null);
+            setEnroll(null);
             setCode("");
             setError(null);
           }}

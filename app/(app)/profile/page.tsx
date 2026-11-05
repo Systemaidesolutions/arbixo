@@ -34,6 +34,7 @@ export default async function ProfilePage() {
       <div className="mt-6">
         <TwoFactorSection
           initialEnabled={user.totpEnabled}
+          required={user.require2fa}
           loginHours={company?.loginHoursEnabled ? describeLoginHours(company) : null}
         />
       </div>
