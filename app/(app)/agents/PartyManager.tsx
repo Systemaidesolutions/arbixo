@@ -142,10 +142,14 @@ export function PartyManager({
   entityType,
   companyId,
   initialItems,
+  showLeave = false,
 }: {
   entityType: PartyEntityType;
   companyId: string;
   initialItems: PartyRecord[];
+  // Payroll's employee page only (app/(app)/payroll/employee-records): adds
+  // the Leave section to the edit form. Accounting never shows it.
+  showLeave?: boolean;
 }) {
   const [items, setItems] = useState<PartyRecord[]>(initialItems);
   const [form, setForm] = useState<FormState | null>(null);
@@ -696,7 +700,7 @@ export function PartyManager({
             </div>
           </form>
         )}
-        {isEmployee && form?.mode === "edit" && form.id && (
+        {isEmployee && showLeave && form?.mode === "edit" && form.id && (
           <EmployeeLeavePanel employeeId={form.id} employeeName={`${form.firstName} ${form.lastName}`.trim()} employeeCode={form.code} />
         )}
       </aside>

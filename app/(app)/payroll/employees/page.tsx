@@ -27,7 +27,7 @@ export default async function PayrollEmployeesPage() {
       <h1 className="text-xl font-medium text-neutral-900">Payroll employees</h1>
       <p className="mt-1 text-sm text-neutral-500">
         Pay details for each employee: pay group, monthly or daily rate, government numbers and recurring items. Add new people under{" "}
-        <a href="/agents/employees" className="text-brand-blue hover:underline">Master Data › Employees</a> first.
+        <a href="/payroll/employee-records" className="text-brand-blue hover:underline">Setup › Employees</a> first.
       </p>
       <div className="mt-6">
         <PayrollEmployeesClient

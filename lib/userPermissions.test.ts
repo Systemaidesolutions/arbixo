@@ -16,6 +16,7 @@ describe("user access groups", () => {
     expect(allowed(["printReports"], pageRequirement("/reports/trial-balance/print"))).toBe(false);
     expect(allowed(["printReports"], pageRequirement("/transactions/voucher/GENERAL_JOURNAL/GJ-1"))).toBe(false);
     expect(allowed(["viewSetup"], pageRequirement("/agents/customers"))).toBe(false);
+    expect(allowed(["viewSetup"], pageRequirement("/payroll/employee-records"))).toBe(false);
     expect(allowed(["viewHistory"], pageRequirement("/history/transactions/sales"))).toBe(false);
     expect(allowed(["viewHistory", "viewSetup", "transactions"], pageRequirement("/dashboard"))).toBe(true);
     expect(allowed(["viewHistory", "viewSetup"], pageRequirement("/payroll/runs"))).toBe(true);

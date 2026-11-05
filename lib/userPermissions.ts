@@ -56,7 +56,7 @@ export function pageRequirement(path: string): Requirement {
     req.push(["viewReports"]);
   } else if (under(path, "/history")) {
     req.push(["viewHistory"]);
-  } else if (["/company", "/accounts", "/agents", "/items"].some((p) => under(path, p))) {
+  } else if (["/company", "/accounts", "/agents", "/items", "/payroll/employee-records"].some((p) => under(path, p))) {
     req.push(["viewSetup"]);
   } else if (under(path, "/ask-arbi")) {
     req.push(["askArbi"]);
