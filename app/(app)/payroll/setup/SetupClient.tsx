@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FREQUENCY_LABEL, type PayFrequency } from "@/lib/payroll/compute";
+import { FREQUENCY_LABEL, type ContributionTiming, type PayFrequency } from "@/lib/payroll/compute";
 
 type Account = { id: string; code: string; title: string };
 type Setup = {
@@ -17,9 +17,10 @@ type Setup = {
   philhealthPayableAccountId: string | null; hdmfPayableAccountId: string | null; withholdingTaxPayableAccountId: string | null;
   otherDeductionsAccountId: string | null; netPayAccountId: string | null;
 };
-type Group = { id: string; code: string; name: string; frequency: PayFrequency; deductSss: boolean; deductPhilhealth: boolean; deductHdmf: boolean; withholdTax: boolean; isActive: boolean };
+type Group = { id: string; code: string; name: string; frequency: PayFrequency; weekStartDay: number; contributionTiming: ContributionTiming; deductSss: boolean; deductPhilhealth: boolean; deductHdmf: boolean; withholdTax: boolean; isActive: boolean };
 type Item = { id: string; code: string; name: string; kind: "EARNING" | "DEDUCTION"; taxable: boolean; isOtherBenefit: boolean; accountId: string | null; isActive: boolean };
 
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm disabled:bg-neutral-100";
 const label = "block text-xs text-neutral-500";
 const btn = "rounded bg-brand-navy px-3 py-1.5 text-sm text-white hover:bg-brand-navyLight disabled:opacity-50";
@@ -198,7 +199,7 @@ export function SetupClient({ setup, groups, items, accounts, canEdit }: { setup
 
 function PayGroups({ groups, canEdit }: { groups: Group[]; canEdit: boolean }) {
   const router = useRouter();
-  const blank: Omit<Group, "id"> = { code: "", name: "", frequency: "SEMI_MONTHLY", deductSss: true, deductPhilhealth: true, deductHdmf: true, withholdTax: true, isActive: true };
+  const blank: Omit<Group, "id"> = { code: "", name: "", frequency: "SEMI_MONTHLY", weekStartDay: 1, contributionTiming: "EVERY_RUN", deductSss: true, deductPhilhealth: true, deductHdmf: true, withholdTax: true, isActive: true };
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState(blank);
   const [error, setError] = useState<string | null>(null);
@@ -217,6 +218,30 @@ function PayGroups({ groups, canEdit }: { groups: Group[]; canEdit: boolean }) {
         <label className={`${label} sm:col-span-2`}>Name<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={field} placeholder="Site contractuals" /></label>
         <label className={label}>Pay frequency<select value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value as PayFrequency })} className={field}>{Object.entries(FREQUENCY_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></label>
       </div>
+      {form.frequency === "WEEKLY" && (
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <label className={label}>Pay week starts on
+            <select value={form.weekStartDay} onChange={(e) => setForm({ ...form, weekStartDay: Number(e.target.value) })} className={field}>
+              {WEEKDAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}
+            </select>
+          </label>
+        </div>
+      )}
+      {(form.frequency === "WEEKLY" || form.frequency === "SEMI_MONTHLY") && (
+        <label className={`${label} mt-3 block sm:max-w-md`}>SSS / PhilHealth / Pag-IBIG are deducted
+          <select value={form.contributionTiming} onChange={(e) => setForm({ ...form, contributionTiming: e.target.value as ContributionTiming })} className={field}>
+            <option value="EVERY_RUN">Every run (the monthly amount split across the runs)</option>
+            <option value="FIRST_RUN">First run of the month only (whole monthly amount)</option>
+            <option value="LAST_RUN">Last run of the month only (whole monthly amount)</option>
+          </select>
+          <span className="mt-1 block text-[11px] text-neutral-400">
+            {form.frequency === "WEEKLY"
+              ? "The run is placed by its pay date: first run = pay date on the 1st-7th, last run = pay date in the last 7 days of the month."
+              : "The run is placed by its pay date: first run = 1st-15th, last run = 16th onward."}
+            {" "}The whole-month amount is worked out from that run&apos;s pay as a monthly equivalent.
+          </span>
+        </label>
+      )}
       <div className="mt-3 flex flex-wrap gap-4 text-sm text-neutral-700">
         <span className="text-xs text-neutral-500">Deduct:</span>
         {flags.map(([k, t]) => (
@@ -250,7 +275,7 @@ function PayGroups({ groups, canEdit }: { groups: Group[]; canEdit: boolean }) {
             <tr key={g.id} className={g.isActive ? "" : "text-neutral-400"}>
               <td className="py-1.5 pr-3 font-mono text-xs">{g.code}</td>
               <td className="py-1.5 pr-3">{g.name}</td>
-              <td className="py-1.5 pr-3 text-xs">{FREQUENCY_LABEL[g.frequency]}</td>
+              <td className="py-1.5 pr-3 text-xs">{FREQUENCY_LABEL[g.frequency]}{g.frequency === "WEEKLY" && <span className="text-neutral-400"> · starts {WEEKDAYS[g.weekStartDay].slice(0, 3)}</span>}{g.contributionTiming !== "EVERY_RUN" && <span className="text-neutral-400"> · gov. contributions {g.contributionTiming === "FIRST_RUN" ? "1st" : "last"} run</span>}</td>
               <td className="py-1.5 pr-3 text-xs">{flags.filter(([k]) => g[k]).map(([, t]) => t).join(", ") || "None"}</td>
               <td className="py-1.5 text-right">{canEdit && <>
                 <button onClick={() => { const { id: _id, ...rest } = g; setForm(rest); setEditing(g.id); setError(null); }} className="rounded px-2 py-1 text-xs text-brand-blue hover:bg-blue-50">Edit</button>

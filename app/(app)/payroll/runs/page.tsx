@@ -18,7 +18,7 @@ export default async function PayrollRunsPage() {
   await getOrCreateSetup(company.id);
   const [runs, groups, branches] = await Promise.all([
     prisma.payrollRun.findMany({ where: { companyId: company.id }, include: { payGroup: true, _count: { select: { lines: true } } }, orderBy: [{ periodStart: "desc" }, { runNo: "desc" }], take: 200 }),
-    prisma.payGroup.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" }, select: { id: true, name: true, frequency: true } }),
+    prisma.payGroup.findMany({ where: { companyId: company.id, isActive: true }, orderBy: { code: "asc" }, select: { id: true, name: true, frequency: true, weekStartDay: true } }),
     prisma.location.findMany({ where: { companyId: company.id }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
 

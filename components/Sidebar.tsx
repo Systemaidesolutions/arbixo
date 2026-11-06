@@ -38,6 +38,7 @@ import {
   Banknote,
   SlidersHorizontal,
   CalendarDays,
+  Clock,
   type LucideIcon,
 } from "lucide-react";
 import type { SubscriberSubtype } from "@prisma/client";
@@ -156,6 +157,7 @@ const LINK_ICONS: Record<NavIcon, LucideIcon> = {
   payroll: Banknote,
   payrollSetup: SlidersHorizontal,
   leave: CalendarDays,
+  timesheet: Clock,
   manual: BookOpen,
 };
 

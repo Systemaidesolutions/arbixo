@@ -7,7 +7,7 @@ import { formatPeso } from "@/lib/format";
 import { FREQUENCY_LABEL, type PayFrequency } from "@/lib/payroll/compute";
 
 type Run = { id: string; runNo: string; group: string; periodStart: string; periodEnd: string; payDate: string; status: "DRAFT" | "POSTED" | "CANCELLED"; employees: number; totalGross: number; totalNet: number; branch: string | null; kind: "REGULAR" | "THIRTEENTH_MONTH" };
-type Group = { id: string; name: string; frequency: PayFrequency };
+type Group = { id: string; name: string; frequency: PayFrequency; weekStartDay: number };
 
 const field = "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm";
 const label = "block text-xs text-neutral-500";
@@ -20,17 +20,17 @@ export const STATUS_BADGE: Record<Run["status"], string> = {
   CANCELLED: "bg-neutral-100 text-neutral-500",
 };
 
-/** Suggests the current period for a frequency (1–15 / 16–end, Mon–Sun, whole month, or today). */
-function suggestPeriod(freq: PayFrequency): { start: string; end: string } {
+/** Suggests the current period for a frequency (1–15 / 16–end, the pay week, whole month, or today). */
+function suggestPeriod(freq: PayFrequency, weekStartDay = 1): { start: string; end: string } {
   const t = new Date();
   if (freq === "MONTHLY") return { start: iso(new Date(t.getFullYear(), t.getMonth(), 1)), end: iso(new Date(t.getFullYear(), t.getMonth() + 1, 0)) };
   if (freq === "SEMI_MONTHLY") return t.getDate() <= 15
     ? { start: iso(new Date(t.getFullYear(), t.getMonth(), 1)), end: iso(new Date(t.getFullYear(), t.getMonth(), 15)) }
     : { start: iso(new Date(t.getFullYear(), t.getMonth(), 16)), end: iso(new Date(t.getFullYear(), t.getMonth() + 1, 0)) };
   if (freq === "WEEKLY") {
-    const mon = new Date(t); mon.setDate(t.getDate() - ((t.getDay() + 6) % 7));
-    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
-    return { start: iso(mon), end: iso(sun) };
+    const first = new Date(t); first.setDate(t.getDate() - ((t.getDay() - weekStartDay + 7) % 7));
+    const last = new Date(first); last.setDate(first.getDate() + 6);
+    return { start: iso(first), end: iso(last) };
   }
   return { start: iso(t), end: iso(t) };
 }
@@ -46,7 +46,7 @@ export function RunsClient({ runs, groups, branches, canEdit }: { runs: Run[]; g
   function pickGroup(id: string) {
     const g = groups.find((x) => x.id === id);
     if (!g) return setForm({ ...form, payGroupId: id });
-    const p = suggestPeriod(g.frequency);
+    const p = suggestPeriod(g.frequency, g.weekStartDay);
     setForm({ ...form, payGroupId: id, periodStart: p.start, periodEnd: p.end, payDate: form.payDate || (thirteenth ? `${form.year}-12-24` : p.end) });
   }
 
@@ -96,6 +96,12 @@ export function RunsClient({ runs, groups, branches, canEdit }: { runs: Run[]; g
                 </label>
                 <label className={`${label} sm:col-span-3`}>Remarks<input value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} className={field} /></label>
               </div>
+              {!thirteenth && (
+                <p className="mt-2 text-xs text-neutral-500">
+                  The run starts with days worked, late, overtime and night hours filled in from the <Link href="/payroll/timesheets" className="text-brand-blue hover:underline">timesheets</Link> encoded for the period.
+                  {groups.find((g) => g.id === form.payGroupId)?.frequency === "WEEKLY" && <> Weekly pay group: pay week {mdy(form.periodStart || iso(new Date())).slice(0, 5)} to {form.periodEnd ? mdy(form.periodEnd).slice(0, 5) : "…"}; change the week start day in Payroll setup › Pay groups.</>}
+                </p>
+              )}
               <div className="mt-3 flex items-center gap-2">
                 <button onClick={create} disabled={busy} className="rounded bg-brand-navy px-3 py-1.5 text-sm text-white hover:bg-brand-navyLight disabled:opacity-50">Create run</button>
                 <button onClick={() => setOpen(false)} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50">Cancel</button>

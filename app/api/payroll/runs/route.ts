@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRun, payrollAuth } from "@/lib/payroll/server";
+import { fillRunFromTimesheets } from "@/lib/payroll/timesheetServer";
 import { payrollSubscriptionProblem } from "@/lib/payroll/subscription";
 
 export async function POST(request: NextRequest) {
@@ -18,5 +19,8 @@ export async function POST(request: NextRequest) {
     }
   }
   const r = await createRun(auth.companyId, auth.userId, body);
-  return NextResponse.json(r.error ? { error: r.error } : { run: r.run }, { status: r.status });
+  if (r.error || !r.run) return NextResponse.json({ error: r.error }, { status: r.status });
+  // The timesheets are the basis of the run: employees with entries in the period start with them filled in.
+  const filled = r.run.kind === "REGULAR" ? await fillRunFromTimesheets(auth.companyId, r.run.id).catch((e) => { console.error("Filling run from timesheets failed", e); return 0; }) : 0;
+  return NextResponse.json({ run: r.run, filledFromTimesheets: filled }, { status: r.status });
 }

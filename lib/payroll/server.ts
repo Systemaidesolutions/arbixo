@@ -83,7 +83,7 @@ export function toRules(s: PayrollSetup): PayrollRules {
 }
 
 export function toGroupRules(g: PayGroup): GroupRules {
-  return { frequency: g.frequency, deductSss: g.deductSss, deductPhilhealth: g.deductPhilhealth, deductHdmf: g.deductHdmf, withholdTax: g.withholdTax };
+  return { frequency: g.frequency, contributionTiming: g.contributionTiming, deductSss: g.deductSss, deductPhilhealth: g.deductPhilhealth, deductHdmf: g.deductHdmf, withholdTax: g.withholdTax };
 }
 
 /** Resolves stored [{ payItemId, amount }] against the company's pay items. */
@@ -128,6 +128,20 @@ export async function createRun(companyId: string, userId: string, raw: CreateRu
   if (kind === "REGULAR" && periodDates(raw.periodStart, raw.periodEnd).length > 31) return { status: 400, error: "A payroll period can't be longer than 31 days." };
   const group = await prisma.payGroup.findFirst({ where: { id: raw.payGroupId, companyId } });
   if (!group) return { status: 404, error: "Pay group not found." };
+
+  // The same people shouldn't be paid twice for the same days (easy to do with
+  // weekly runs): refuse a run overlapping a draft or posted run of this group.
+  if (kind === "REGULAR") {
+    const clash = await prisma.payrollRun.findFirst({
+      where: {
+        companyId, payGroupId: group.id, kind: "REGULAR", status: { not: "CANCELLED" },
+        periodStart: { lte: new Date(`${raw.periodEnd}T00:00:00Z`) }, periodEnd: { gte: new Date(`${raw.periodStart}T00:00:00Z`) },
+        ...(raw.locationId ? { OR: [{ locationId: null }, { locationId: raw.locationId }] } : {}),
+      },
+      select: { runNo: true, status: true, periodStart: true, periodEnd: true },
+    });
+    if (clash) return { status: 409, error: `${clash.runNo} (${clash.status.toLowerCase()}, ${isoDate(clash.periodStart)} to ${isoDate(clash.periodEnd)}) already covers part of this period for ${group.name}. Open it, or delete the draft / cancel the posted run first.` };
+  }
 
   const branch = raw.locationId ? { locationId: raw.locationId } : {};
   let profiles = await prisma.payrollProfile.findMany({
@@ -301,6 +315,7 @@ export async function recomputeRun(companyId: string, runId: string) {
   const ctx: RunContext = {
     periodStart: isoDate(run.periodStart),
     periodEnd: isoDate(run.periodEnd),
+    payDate: isoDate(run.payDate),
     dayTypes: (run.dayTypes ?? {}) as Record<string, DayType>,
     rules: toRules(setup),
     group: toGroupRules(run.payGroup),

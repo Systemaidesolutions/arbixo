@@ -439,6 +439,7 @@ model Company {
   payGroups      PayGroup[]
   payItems       PayItem[]
   payrollRuns    PayrollRun[]
+  timesheetEntries TimesheetEntry[]
   leaveTypes     LeaveType[]
   items          Item[]
   stockMovements StockMovement[]
@@ -815,6 +816,7 @@ model Employee {
   leaveCredits   LeaveCredit[]
   leaveRequests  LeaveRequest[]
   reimbursements Reimbursement[]
+  timesheetEntries TimesheetEntry[]
 
   @@unique([companyId, code])
 }
@@ -1185,6 +1187,24 @@ enum PayFrequency {
   DAILY // short custom periods, e.g. paid out daily or every few days
 }
 
+// When SSS / PhilHealth / Pag-IBIG are deducted for a weekly or semi-monthly
+// group. EVERY_RUN splits the monthly amount across the month's runs; FIRST_RUN
+// / LAST_RUN take the whole monthly amount on one run a month (the run whose
+// pay date is the first / last of its month).
+enum ContributionTiming {
+  EVERY_RUN
+  FIRST_RUN
+  LAST_RUN
+}
+
+// One employee's day on the timesheet. PRESENT rows carry the computed days /
+// late / OT / night figures (editable by the encoder); ABSENT rows mean the
+// employee didn't report (a day with no row is simply not encoded yet).
+enum TimesheetStatus {
+  PRESENT
+  ABSENT
+}
+
 enum PayItemKind {
   EARNING
   DEDUCTION
@@ -1289,6 +1309,11 @@ model PayGroup {
   code      String
   name      String
   frequency PayFrequency @default(SEMI_MONTHLY)
+  // WEEKLY groups: the weekday a pay week starts on (0 = Sunday ... 6 = Saturday),
+  // used to suggest the period when creating a run.
+  weekStartDay Int @default(1)
+  // WEEKLY / SEMI_MONTHLY groups: which run of the month takes the government contributions.
+  contributionTiming ContributionTiming @default(EVERY_RUN)
 
   deductSss        Boolean @default(true)
   deductPhilhealth Boolean @default(true)
@@ -1375,6 +1400,33 @@ model PayrollProfile {
   updatedAt DateTime @updatedAt
 
   @@index([companyId])
+}
+
+// Daily timesheet encoded by staff (Payroll > Timesheets). It is the basis of a
+// payroll run: "Fill from timesheets" copies the period's entries into each
+// employee's run line (days worked, late/undertime, OT and night hours).
+model TimesheetEntry {
+  id          String          @id @default(cuid())
+  company     Company         @relation(fields: [companyId], references: [id])
+  companyId   String
+  employee    Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId  String
+  workDate    DateTime        @db.Date
+  status      TimesheetStatus @default(PRESENT)
+  timeIn      String? // HH:mm; the work date is the day the shift starts
+  timeOut     String? // HH:mm; at or before timeIn = the next morning
+  days        Decimal         @default(0) @db.Decimal(4, 2) // 1 = full day, 0.5 = half day
+  lateMinutes Int             @default(0) // late + undertime
+  otHours     Decimal         @default(0) @db.Decimal(5, 2)
+  ndHours     Decimal         @default(0) @db.Decimal(5, 2) // night hours within the shift
+  ndOtHours   Decimal         @default(0) @db.Decimal(5, 2) // OT hours at night
+  remarks     String?
+  enteredById String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([employeeId, workDate])
+  @@index([companyId, workDate])
 }
 
 model PayrollRun {

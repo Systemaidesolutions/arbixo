@@ -15,6 +15,7 @@ Open Payroll from the app launcher after you log in. If your account has only Pa
 | Menu item | What it is for |
 | --- | --- |
 | Dashboard | Employee counts, draft runs, gross paid this year, recent runs, contracts ending in 30 days and setup warnings |
+| Timesheets | Encode each employee's daily time in and out; the basis of the payroll run |
 | Payroll runs | Create, encode, post and print regular and 13th-month payroll |
 | Payroll employees | Each employee's pay details: rate, pay group, shift, rest days, IDs, bank, recurring items |
 | Leave | File and approve leave; view and adjust leave balances |
@@ -104,7 +105,12 @@ A pay group is a set of employees paid on the same schedule with the same statut
 | REG-SM | Regular staff (semi-monthly) | Semi-monthly | SSS, PhilHealth, Pag-IBIG, withholding tax |
 | CON-WK | Contractuals (weekly, daily rate) | Weekly | No withholding tax |
 
-Press **+ Add pay group** to add one. Choose a code, name, frequency (monthly, semi-monthly, weekly or daily) and which of SSS, PhilHealth, Pag-IBIG and withholding tax to deduct. Monthly contributions are split evenly across the runs in a month.
+Press **+ Add pay group** to add one. Choose a code, name, frequency (monthly, semi-monthly, weekly or daily) and which of SSS, PhilHealth, Pag-IBIG and withholding tax to deduct.
+
+Two extra choices appear for **weekly** and **semi-monthly** groups:
+
+- **Pay week starts on** (weekly only): the weekday your pay week begins, e.g. Monday for Monday to Sunday or Saturday for Saturday to Friday. New runs suggest that week.
+- **SSS / PhilHealth / Pag-IBIG are deducted**: *Every run* splits each month's contribution across that month's runs (a weekly run takes about 12/52 of it). *First run of the month only* or *Last run of the month only* takes the whole month's amount on one run and nothing on the others. The run is placed by its pay date: for weekly groups the first run is the one paid on the 1st to 7th and the last run the one paid in the last 7 days of the month; for semi-monthly groups the first run is paid on the 1st to 15th and the last run from the 16th. The whole-month amount is worked out from that run's pay as a monthly equivalent.
 
 ### Earnings & deductions
 
@@ -247,16 +253,38 @@ For leave types marked convertible, such as SIL, use the convert button in that 
 
 A payroll run pays one pay group for one period. It starts as a DRAFT you can edit freely. Once POSTED, it creates the General Journal entry and can't be edited. If a posted run is cancelled, its status changes to CANCELLED.
 
+### Timesheets
+
+Payroll > **Timesheets** is where a secretary (or anyone who can post) encodes each employee's day. It has three views:
+
+- **Daily sheet**: pick a date and fill in every employee for that day. Type the time in and time out (08:00, 730 or 5:30 PM). The day (1 or 0.5), late/undertime minutes, overtime hours and night hours (10 pm to 6 am) are worked out from the shift in Payroll setup, or the employee's own shift, with the same rules as the biometric import. You can change any figure afterwards. Choose **Absent** for a no-show, or **Present** with no times for a plain full day. Rest days and approved leave are flagged next to the name.
+- **By employee**: pick an employee and a period (this week, last week, 1st to 15th, 16th to end, or any dates) and fill in the whole period at once. **Save & next employee** saves and moves down the list.
+- **Summary**: one row per employee with a mark for every date (1, half day, A absent, L leave, ? workday not encoded) and the totals. Click a name to open their sheet.
+
+**Mark the rest present** fills every workday not yet encoded as a present full day, skipping rest days and approved leave, so you only change the exceptions. Press **Save**; changed rows are highlighted until then.
+
+A day with no entry is "not encoded". It is never counted as an absence: only days marked **Absent** are deducted from monthly-paid staff, while daily-rate staff are paid only for **Present** days.
+
 ### The run step by step
 
 1. **Create the run.** Press **+ New payroll run**, choose **Regular payroll**, then set the pay group, period from and to, pay date, branch (or All branches) and remarks. Press **Create run**. Active employees in that pay group are added with their recurring items.
 2. **Mark holidays.** Under **Holidays in this period**, set each special day or regular holiday from the President's proclamation. A special working day is an ordinary day.
 3. **Check rest days.** Fixed rest days fill in from each employee's schedule. Employees with rest days that aren't fixed are highlighted; click their dates to mark rest days.
-4. **Enter attendance**, by hand or with the biometric import (below).
+4. **Check attendance.** A new run starts with each employee's days worked, late, overtime and night hours filled in from their timesheet entries for the period (employees with no entries are left blank). Press **Fill from timesheets** to refresh it, for example after more days were encoded or after you marked holidays or rest days; the register then lists workdays still not encoded, absences and employees with no entries. You can also enter attendance by hand or with the biometric import (below).
 5. **Add earnings and deductions** for this run under each employee's **Items**.
 6. **Review** the payroll register. Unsaved changes show as a live preview. Press **Save**.
 7. **Post.** Press **Post to GL** and confirm.
 8. **Print** the payslips and the register.
+
+### Weekly payroll
+
+For companies that pay weekly, make a pay group with frequency **Weekly** (the default CON-WK group is one) and set the week start day. Then:
+
+1. Encode the week's time in **Timesheets**.
+2. In **Payroll runs**, create a run for the weekly pay group; the period and pay date suggest the current pay week.
+3. Check holidays, press **Fill from timesheets** if needed, add earnings and deductions, review and post as usual.
+
+Daily-rate employees are paid for the days worked that week; monthly-paid employees in a weekly group receive 12/52 of their monthly salary per run. Withholding tax is worked out on the week and annualized over 52 weeks. The app refuses to create a run that overlaps a draft or posted run of the same pay group (and branch), so the same days are not paid twice; delete the draft or cancel the posted run first if you need to redo a week.
 
 ### Day codes
 
@@ -366,6 +394,9 @@ Platform admins are never restricted.
 | An employee is missing from a new run | No pay details, "Include in payroll" is unticked, or they are in another pay group | Check Payroll employees; add them with "Add employee from this pay group…" |
 | Basic pay is zero for a monthly employee | Absent hours are at or above the period's workdays | Correct Absent hrs; the cell shows the maximum |
 | "No {type} credits for {year} yet" when filing | The year's credits were not granted | Leave › Grant {year} credits |
+| "... already covers part of this period" when creating a run | A draft or posted run of the same pay group and branch overlaps those dates | Open that run, or delete the draft / cancel the posted run first |
+| "Fill from timesheets" found nothing | No timesheet entries for these employees in the period | Encode them under Payroll › Timesheets; check the pay group and dates |
+| A daily-rate employee is short of pay after filling from timesheets | Some workdays weren't encoded (listed under the header) | Encode or mark those days, then press Fill from timesheets again |
 | Biometric rows flagged "only one punch" | The device has a time in without a time out, or the reverse | Fix that date in the attendance grid after importing |
 | Biometric employee not matched | The device user ID differs from the employee code | Set Biometric ID in Payroll employees |
 | Import row skipped: "Pay group not found" | The code or name doesn't match | Use the exact pay group code, e.g. REG-SM or CON-WK |

@@ -67,6 +67,8 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
   const [expanded, setExpanded] = useState<string | null>(null);
   const [addId, setAddId] = useState("");
   const [importing, setImporting] = useState(false);
+  // What the last "Fill from timesheets" found: who has no entries, and workdays still not encoded.
+  const [fillInfo, setFillInfo] = useState<{ filled: number; noEntries: string[]; missing: { name: string; count: number }[]; absent: { name: string; count: number }[] } | null>(null);
 
   /** Merges imported attendance into the lines; the user reviews and saves. */
   function applyImport(patches: Map<string, LinePatch>) {
@@ -77,6 +79,33 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
     setDirty(true);
     setImporting(false);
     setMsg({ ok: true, text: `Imported biometric attendance for ${patches.size} employee(s). Review the figures, then Save.` });
+  }
+
+  /** Pulls the period's timesheet entries into the lines; the user reviews and saves, like the biometric import. */
+  async function fillFromTimesheets() {
+    setBusy(true); setMsg(null);
+    const res = await fetch(`/api/payroll/runs/${run.id}/timesheet`);
+    const d = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) return setMsg({ ok: false, text: d.error ?? "Could not read the timesheets." });
+    type Fill = { employeeId: string; attendance: Record<string, number>; absentDays: number; lateMinutes: number; otHours: number; nightDiffHours: number; dayHours: Record<string, DayHours>; missingDates: string[]; absentDates: string[] };
+    const fills = new Map<string, Fill>((d.fills as Fill[]).map((x) => [x.employeeId, x]));
+    const nameOf = (id: string) => lines.find((l) => l.employeeId === id)?.name ?? id;
+    setLines((ls) => ls.map((l) => {
+      const p = fills.get(l.employeeId);
+      return p ? { ...l, attendance: p.attendance, absentDays: p.absentDays, lateMinutes: p.lateMinutes, otHours: 0, nightDiffHours: 0, dayHours: p.dayHours, absentHours: l.payBasis === "MONTHLY" ? h2(p.absentDays * hpd) : l.absentHours, lateHours: h2(p.lateMinutes / 60) } : l;
+    }));
+    const list = [...fills.values()];
+    setFillInfo({
+      filled: list.length,
+      noEntries: (d.noEntries as string[]).map(nameOf),
+      missing: list.filter((x) => x.missingDates.length).map((x) => ({ name: nameOf(x.employeeId), count: x.missingDates.length })),
+      absent: list.filter((x) => x.absentDates.length).map((x) => ({ name: nameOf(x.employeeId), count: x.absentDates.length })),
+    });
+    if (list.length) setDirty(true);
+    setMsg(list.length
+      ? { ok: true, text: `Filled ${list.length} employee(s) from the timesheets. Review the figures, then Save.` }
+      : { ok: false, text: "No timesheet entries found for this period. Encode them under Payroll › Timesheets first." });
   }
 
   const dates = useMemo(() => periodDates(run.periodStart, run.periodEnd), [run.periodStart, run.periodEnd]);
@@ -105,7 +134,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
   }
 
   const results = useMemo(() => {
-    const ctx = { periodStart: run.periodStart, periodEnd: run.periodEnd, dayTypes, rules, group };
+    const ctx = { periodStart: run.periodStart, periodEnd: run.periodEnd, payDate: run.payDate, dayTypes, rules, group };
     const map = new Map<string, LineResult>();
     for (const l of lines) {
       const adjustments: Adjustment[] = l.adjustments.flatMap((a) => {
@@ -260,6 +289,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {canEdit && <>
+            <button onClick={fillFromTimesheets} disabled={busy} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-50" title="Copy days worked, late, overtime and night hours from the timesheets encoded for this period">Fill from timesheets</button>
             <button onClick={() => setImporting(!importing)} className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">Import biometrics</button>
             <button onClick={save} disabled={busy || !dirty} className="rounded border border-brand-blue px-3 py-1.5 text-sm text-brand-blue hover:bg-blue-50 disabled:opacity-40">Save</button>
             <button onClick={post} disabled={busy || lines.length === 0} className="rounded bg-brand-navy px-3 py-1.5 text-sm text-white hover:bg-brand-navyLight disabled:opacity-50">Post to GL</button>
@@ -272,6 +302,13 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
       </div>
       {msg && <p className={`mt-2 text-sm ${msg.ok ? "text-green-700" : "text-red-600"} print:hidden`}>{msg.text}</p>}
       {dirty && canEdit && <p className="mt-2 text-xs text-amber-700 print:hidden">Unsaved changes. Figures below are a live preview.</p>}
+      {fillInfo && (fillInfo.noEntries.length > 0 || fillInfo.missing.length > 0 || fillInfo.absent.length > 0) && (
+        <div className="mt-2 space-y-1 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 print:hidden">
+          {fillInfo.missing.length > 0 && <p><b>Workdays not encoded on the timesheet</b> (daily-rate staff aren&apos;t paid for them yet; monthly staff aren&apos;t deducted): {fillInfo.missing.map((m) => `${m.name} (${m.count})`).join("; ")}.</p>}
+          {fillInfo.absent.length > 0 && <p><b>Marked absent:</b> {fillInfo.absent.map((m) => `${m.name} (${m.count})`).join("; ")}.</p>}
+          {fillInfo.noEntries.length > 0 && <p><b>No timesheet entries at all</b> (left as they were): {fillInfo.noEntries.join("; ")}.</p>}
+        </div>
+      )}
 
       {/* Totals */}
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5 print:hidden">
@@ -299,7 +336,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
       {/* Day types of the period (DOLE handbook pay rates apply per date) */}
       <section className="mt-6 rounded-lg border border-neutral-200 p-4 print:hidden">
         <h2 className="text-sm font-medium text-neutral-800">Holidays in this period</h2>
-        <p className="text-xs text-neutral-500">Mark special days and regular holidays (from the President&apos;s proclamation). Rest days are per employee (below). Pay for work on each date, overtime (125% ordinary, 130% of the day&apos;s rate otherwise) and night shift (+10%) follow the day type; a holiday on an employee&apos;s rest day uses the &ldquo;+R&rdquo; rate. A special <i>working</i> day is an ordinary day.</p>
+        <p className="text-xs text-neutral-500">Mark special days and regular holidays (from the President&apos;s proclamation). Rest days are per employee (below). Pay for work on each date, overtime (125% ordinary, 130% of the day&apos;s rate otherwise) and night shift (+10%) follow the day type; a holiday on an employee&apos;s rest day uses the &ldquo;+R&rdquo; rate. A special <i>working</i> day is an ordinary day.{canEdit && <> If you use timesheets, press <b>Fill from timesheets</b> again after changing holidays or rest days so monthly-paid staff are worked out against them.</>}</p>
         <div className="mt-2 flex flex-wrap gap-1">
           {dates.map((d) => {
             const t = runType(d);

@@ -113,7 +113,7 @@ export function parseTime(s: string): number | null {
   return null;
 }
 
-const toAt = (date: string, minutes: number) => {
+export const toAt = (date: string, minutes: number) => {
   const [y, m, d] = date.split("-").map(Number);
   return Date.UTC(y, m - 1, d) / 60000 + minutes;
 };

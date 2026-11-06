@@ -64,8 +64,12 @@ export const DEFAULT_RULES: PayrollRules = {
   monthlyIncludesSpecialDays: true,
 };
 
+export type ContributionTiming = "EVERY_RUN" | "FIRST_RUN" | "LAST_RUN";
+
 export type GroupRules = {
   frequency: PayFrequency;
+  /** Weekly / semi-monthly groups: which run of the month takes SSS/PhilHealth/Pag-IBIG (default every run). */
+  contributionTiming?: ContributionTiming;
   deductSss: boolean;
   deductPhilhealth: boolean;
   deductHdmf: boolean;
@@ -101,6 +105,7 @@ export type LineInput = {
 export type RunContext = {
   periodStart: string; // YYYY-MM-DD
   periodEnd: string;
+  payDate?: string; // YYYY-MM-DD; decides the first/last run of the month for contribution timing
   dayTypes?: Record<string, DayType> | null; // holidays (and legacy run-wide rest days)
   rules: PayrollRules;
   group: GroupRules;
@@ -157,6 +162,23 @@ export function periodsPerYear(frequency: PayFrequency, periodDayCount: number):
     case "WEEKLY": return 52;
     case "DAILY": return 365 / Math.max(1, periodDayCount);
   }
+}
+
+/**
+ * How this run takes the monthly government contributions: "split" = its share
+ * (monthly ÷ runs a month), "full" = the whole monthly amount, "none" = nothing.
+ * Only weekly and semi-monthly groups can pick the first or last run of the
+ * month; the run is placed by its pay date (weekly: pay date in the month's
+ * first 7 days / last 7 days; semi-monthly: 1st–15th / 16th on).
+ */
+export function contributionShare(frequency: PayFrequency, timing: ContributionTiming | undefined, payDate: string | undefined): "split" | "full" | "none" {
+  if (!timing || timing === "EVERY_RUN" || !payDate || (frequency !== "WEEKLY" && frequency !== "SEMI_MONTHLY")) return "split";
+  const [y, m, d] = payDate.split("-").map(Number);
+  if (!y || !m || !d) return "split";
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const first = frequency === "WEEKLY" ? d <= 7 : d <= 15;
+  const last = frequency === "WEEKLY" ? d + 7 > daysInMonth : d > 15;
+  return (timing === "FIRST_RUN" ? first : last) ? "full" : "none";
 }
 
 // ---------------- Day types ----------------
@@ -392,8 +414,12 @@ export function computeLine(input: LineInput, ctx: RunContext): LineResult {
   //   without 13th-month-type benefits, de minimis or commuted leave.
   const basic = r.basicPay + r.holidayPay + r.leavePay - r.lateDeduction;
   const compensation = basic + r.premiumPay + r.otPay + r.nightDiffPay + taxableExtras;
+  // A weekly/semi-monthly group can take the whole month's amount on its first
+  // or last run (computed from this run's pay as a monthly equivalent).
+  const share = contributionShare(group.frequency, group.contributionTiming, ctx.payDate);
+  const divisor = share === "full" ? 1 : runsPerMonth;
   const per = (m: { ee: number; er: number }, on: boolean) =>
-    on ? { ee: round2(m.ee / runsPerMonth), er: round2(m.er / runsPerMonth) } : { ee: 0, er: 0 };
+    on && share !== "none" ? { ee: round2(m.ee / divisor), er: round2(m.er / divisor) } : { ee: 0, er: 0 };
   const sss = per(sssMonthly(Math.max(0, compensation * runsPerMonth)), group.deductSss);
   const ph = per(philhealthMonthly(Math.max(0, basic * runsPerMonth)), group.deductPhilhealth);
   const hdmf = per(hdmfMonthly(Math.max(0, compensation * runsPerMonth)), group.deductHdmf);

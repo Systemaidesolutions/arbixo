@@ -35,6 +35,7 @@ export type NavIcon =
   | "payroll"
   | "payrollSetup"
   | "leave"
+  | "timesheet"
   | "manual";
 
 // external: opens in a new browser tab instead of the in-app page stack.
@@ -159,6 +160,7 @@ export const PAYROLL_NAV_SECTIONS: NavSection[] = [
     title: "Payroll",
     icon: "transactions",
     links: [
+      { href: "/payroll/timesheets", label: "Timesheets", icon: "timesheet" },
       { href: "/payroll/runs", label: "Payroll runs", icon: "payroll" },
       { href: "/payroll/employees", label: "Payroll employees", icon: "employees" },
       { href: "/payroll/leaves", label: "Leave", icon: "leave" },

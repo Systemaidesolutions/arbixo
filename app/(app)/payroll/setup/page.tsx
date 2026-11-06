@@ -54,7 +54,7 @@ export default async function PayrollSetupPage() {
             hdmfPayableAccountId: setup.hdmfPayableAccountId, withholdingTaxPayableAccountId: setup.withholdingTaxPayableAccountId,
             otherDeductionsAccountId: setup.otherDeductionsAccountId, netPayAccountId: setup.netPayAccountId,
           }}
-          groups={groups.map((g) => ({ id: g.id, code: g.code, name: g.name, frequency: g.frequency, deductSss: g.deductSss, deductPhilhealth: g.deductPhilhealth, deductHdmf: g.deductHdmf, withholdTax: g.withholdTax, isActive: g.isActive }))}
+          groups={groups.map((g) => ({ id: g.id, code: g.code, name: g.name, frequency: g.frequency, weekStartDay: g.weekStartDay, contributionTiming: g.contributionTiming, deductSss: g.deductSss, deductPhilhealth: g.deductPhilhealth, deductHdmf: g.deductHdmf, withholdTax: g.withholdTax, isActive: g.isActive }))}
           items={items.map((i) => ({ id: i.id, code: i.code, name: i.name, kind: i.kind, taxable: i.taxable, isOtherBenefit: i.isOtherBenefit, accountId: i.accountId, isActive: i.isActive }))}
         />
       </div>

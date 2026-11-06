@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { EmploymentType, PayBasis, PayFrequency, PayItemKind, Prisma, Sex } from "@prisma/client";
+import type { ContributionTiming, EmploymentType, PayBasis, PayFrequency, PayItemKind, Prisma, Sex } from "@prisma/client";
 
 // Save handlers for the payroll master data: pay groups, pay items and the
 // per-employee payroll profile. `id` null = create.
@@ -9,6 +9,7 @@ const clean = (v: unknown) => (typeof v === "string" ? v.trim() : "") || null;
 const isDup = (e: unknown) => (e as { code?: string }).code === "P2002";
 
 const FREQUENCIES: PayFrequency[] = ["MONTHLY", "SEMI_MONTHLY", "WEEKLY", "DAILY"];
+const TIMINGS: ContributionTiming[] = ["EVERY_RUN", "FIRST_RUN", "LAST_RUN"];
 const KINDS: PayItemKind[] = ["EARNING", "DEDUCTION"];
 const EMPLOYMENT: EmploymentType[] = ["REGULAR", "PROBATIONARY", "CONTRACTUAL", "PROJECT_BASED", "CASUAL"];
 const BASES: PayBasis[] = ["MONTHLY", "DAILY"];
@@ -23,6 +24,8 @@ export async function savePayGroup(companyId: string, id: string | null, raw: Re
   if ("code" in raw || !id) { const c = clean(raw.code); if (!c) return { status: 400, error: "Code is required." }; data.code = c.toUpperCase(); }
   if ("name" in raw || !id) { const nm = clean(raw.name); if (!nm) return { status: 400, error: "Name is required." }; data.name = nm; }
   if ("frequency" in raw) { if (!FREQUENCIES.includes(raw.frequency as PayFrequency)) return { status: 400, error: "Invalid frequency." }; data.frequency = raw.frequency as PayFrequency; }
+  if ("weekStartDay" in raw) { const w = Number(raw.weekStartDay); if (!Number.isInteger(w) || w < 0 || w > 6) return { status: 400, error: "Week start must be a weekday." }; data.weekStartDay = w; }
+  if ("contributionTiming" in raw) { if (!TIMINGS.includes(raw.contributionTiming as ContributionTiming)) return { status: 400, error: "Invalid contribution timing." }; data.contributionTiming = raw.contributionTiming as ContributionTiming; }
   for (const f of ["deductSss", "deductPhilhealth", "deductHdmf", "withholdTax", "isActive"] as const) if (typeof raw[f] === "boolean") data[f] = raw[f] as boolean;
   try {
     if (!id) return { status: 200, record: await prisma.payGroup.create({ data: { ...(data as Prisma.PayGroupUncheckedCreateInput), companyId } }) };
