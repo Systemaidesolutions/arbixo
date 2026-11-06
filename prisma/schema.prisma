@@ -1372,6 +1372,12 @@ model PayrollProfile {
   pagibigNo     String?
   // Minimum wage earner: exempt from withholding tax on compensation.
   isMinimumWage Boolean @default(false)
+  // Optional government deductions per employee. null = follow the pay
+  // group's switch; true / false = always / never for this employee.
+  deductSss        Boolean?
+  deductPhilhealth Boolean?
+  deductHdmf       Boolean?
+  withholdTax      Boolean?
   // Used for leave eligibility (maternity, paternity, solo parent, VAWC…).
   sex           Sex?
   isSoloParent  Boolean @default(false)

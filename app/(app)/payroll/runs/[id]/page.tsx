@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getCurrentCompany, getCurrentCapability, getCurrentUserRecord } from "@/lib/currentUser";
 import { payrollSubscriptionProblem } from "@/lib/payroll/subscription";
 import { prisma } from "@/lib/prisma";
-import { getOrCreateSetup, isoDate, lineRestDates, recomputeRun, scheduledRestDates, toGroupRules, toRules } from "@/lib/payroll/server";
+import { getOrCreateSetup, govOf, isoDate, lineRestDates, recomputeRun, scheduledRestDates, toGroupRules, toRules } from "@/lib/payroll/server";
 import { conversionsForRun, leaveForRun } from "@/lib/payroll/leaveServer";
 import { claimReimbursementsForRun } from "@/lib/payroll/reimbursementServer";
 import type { DayHours, DayType } from "@/lib/payroll/compute";
@@ -90,6 +90,7 @@ export default async function PayrollRunPage({ params }: { params: { id: string 
       payBasis: l.payBasis,
       rate: num(l.rate),
       isMinimumWage: l.employee.payrollProfile?.isMinimumWage ?? false,
+      govDeductions: govOf(l.employee.payrollProfile),
       attendance: (l.attendance ?? {}) as Record<string, number>,
       absentDays: num(l.absentDays),
       lateMinutes: num(l.lateMinutes),

@@ -100,7 +100,21 @@ export type LineInput = {
   restDates?: string[] | null; // this employee's rest days; null = use the run's day types as is
   leaveConversionDays?: number; // unused leave paid in cash this run
   benefitsExemptRemaining?: number; // what's left of the yearly 13th-month/benefits exemption
+  // Per-employee government deduction overrides; null/undefined = pay group's switch.
+  govDeductions?: GovDeductions | null;
 };
+
+export type GovDeductions = { sss?: boolean | null; philhealth?: boolean | null; hdmf?: boolean | null; tax?: boolean | null };
+
+/** The employee's own switch when set, otherwise the pay group's. */
+export function effectiveGov(group: { deductSss: boolean; deductPhilhealth: boolean; deductHdmf: boolean; withholdTax: boolean }, own?: GovDeductions | null) {
+  return {
+    sss: own?.sss ?? group.deductSss,
+    philhealth: own?.philhealth ?? group.deductPhilhealth,
+    hdmf: own?.hdmf ?? group.deductHdmf,
+    tax: own?.tax ?? group.withholdTax,
+  };
+}
 
 export type RunContext = {
   periodStart: string; // YYYY-MM-DD
@@ -420,9 +434,10 @@ export function computeLine(input: LineInput, ctx: RunContext): LineResult {
   const divisor = share === "full" ? 1 : runsPerMonth;
   const per = (m: { ee: number; er: number }, on: boolean) =>
     on && share !== "none" ? { ee: round2(m.ee / divisor), er: round2(m.er / divisor) } : { ee: 0, er: 0 };
-  const sss = per(sssMonthly(Math.max(0, compensation * runsPerMonth)), group.deductSss);
-  const ph = per(philhealthMonthly(Math.max(0, basic * runsPerMonth)), group.deductPhilhealth);
-  const hdmf = per(hdmfMonthly(Math.max(0, compensation * runsPerMonth)), group.deductHdmf);
+  const gov = effectiveGov(group, input.govDeductions);
+  const sss = per(sssMonthly(Math.max(0, compensation * runsPerMonth)), gov.sss);
+  const ph = per(philhealthMonthly(Math.max(0, basic * runsPerMonth)), gov.philhealth);
+  const hdmf = per(hdmfMonthly(Math.max(0, compensation * runsPerMonth)), gov.hdmf);
 
   // 13th-month-type benefits are tax-exempt up to the yearly cap (₱90,000).
   const exemptBenefits = round2(Math.min(benefits, Math.max(0, input.benefitsExemptRemaining ?? Infinity)));
@@ -435,7 +450,7 @@ export function computeLine(input: LineInput, ctx: RunContext): LineResult {
   const taxableIncome = round2(Math.max(0, input.isMinimumWage
     ? taxableExtras + benefitsExcess
     : grossPay - nonTaxableEarnings - exemptBenefits - r.leaveConversionPay - sss.ee - ph.ee - hdmf.ee));
-  const withholdingTax = group.withholdTax ? round2(annualIncomeTax(taxableIncome * ppy) / ppy) : 0;
+  const withholdingTax = gov.tax ? round2(annualIncomeTax(taxableIncome * ppy) / ppy) : 0;
 
   const totalDeductions = round2(sss.ee + ph.ee + hdmf.ee + withholdingTax + otherDeductions);
   return {

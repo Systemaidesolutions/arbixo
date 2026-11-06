@@ -46,6 +46,7 @@ export default async function PayrollEmployeesPage() {
                 payGroupId: p.payGroupId, locationId: p.locationId, employmentType: p.employmentType, payBasis: p.payBasis, rate: Number(p.rate),
                 hireDate: p.hireDate ? isoDate(p.hireDate) : "", contractEnd: p.contractEnd ? isoDate(p.contractEnd) : "",
                 sssNo: p.sssNo ?? "", philhealthNo: p.philhealthNo ?? "", pagibigNo: p.pagibigNo ?? "", isMinimumWage: p.isMinimumWage,
+                deductSss: p.deductSss, deductPhilhealth: p.deductPhilhealth, deductHdmf: p.deductHdmf, withholdTax: p.withholdTax,
                 sex: p.sex, isSoloParent: p.isSoloParent, thirteenthMonthEligible: p.thirteenthMonthEligible,
                 biometricId: p.biometricId ?? "", shiftStart: p.shiftStart ?? "", shiftEnd: p.shiftEnd ?? "",
                 restDayMode: p.restDayMode, restWeekdays: p.restWeekdays, leaveMonthlyAccrual: p.leaveMonthlyAccrual,

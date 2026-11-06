@@ -189,3 +189,35 @@ describe("per-employee rest days", () => {
     expect(computeLine({ ...base, restDates: ["2026-11-04"] }, ctx).premiumPay).toBe(180);
   });
 });
+
+describe("optional government deductions per employee", () => {
+  const ctx = {
+    periodStart: "2026-10-19",
+    periodEnd: "2026-10-24",
+    rules: DEFAULT_RULES,
+    group: { frequency: "WEEKLY" as const, ...allOn },
+  };
+  const att = { "2026-10-19": 1, "2026-10-20": 1, "2026-10-21": 1, "2026-10-22": 1, "2026-10-23": 1, "2026-10-24": 1 };
+  const line = { payBasis: "DAILY" as const, rate: 700, isMinimumWage: false, attendance: att };
+
+  it("follows the pay group when the employee has no override", () => {
+    const r = computeLine(line, ctx);
+    expect(r.sssEe).toBeGreaterThan(0);
+    expect(r.philhealthEe).toBeGreaterThan(0);
+    expect(r.hdmfEe).toBeGreaterThan(0);
+  });
+  it("skips deductions the employee opted out of, keeps the rest", () => {
+    const r = computeLine({ ...line, govDeductions: { sss: false, philhealth: false, hdmf: null, tax: false } }, ctx);
+    expect(r.sssEe).toBe(0);
+    expect(r.sssEr).toBe(0);
+    expect(r.philhealthEe).toBe(0);
+    expect(r.hdmfEe).toBeGreaterThan(0);
+    expect(r.withholdingTax).toBe(0);
+  });
+  it("can turn a deduction on for one employee when the group has it off", () => {
+    const off = { ...ctx, group: { frequency: "WEEKLY" as const, deductSss: false, deductPhilhealth: false, deductHdmf: false, withholdTax: false } };
+    const r = computeLine({ ...line, govDeductions: { sss: true } }, off);
+    expect(r.sssEe).toBeGreaterThan(0);
+    expect(r.philhealthEe).toBe(0);
+  });
+});

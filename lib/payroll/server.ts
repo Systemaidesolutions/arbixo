@@ -29,6 +29,10 @@ export async function payrollAuth(need: "canPost" | "canCancel" = "canPost"): Pr
 export const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 const n = (v: unknown) => (v == null ? 0 : Number(v));
 
+/** A profile's per-employee government deduction overrides (null = pay group's switch). */
+export const govOf = (p: { deductSss: boolean | null; deductPhilhealth: boolean | null; deductHdmf: boolean | null; withholdTax: boolean | null } | null | undefined) =>
+  p ? { sss: p.deductSss, philhealth: p.deductPhilhealth, hdmf: p.deductHdmf, tax: p.withholdTax } : null;
+
 /** The company's PayrollSetup, created with Labor Code defaults on first use. New companies also get starter pay groups and pay items. */
 export async function getOrCreateSetup(companyId: string): Promise<PayrollSetup> {
   const existing = await prisma.payrollSetup.findUnique({ where: { companyId } });
@@ -365,6 +369,7 @@ export async function recomputeRun(companyId: string, runId: string) {
           payBasis: line.payBasis,
           rate: n(line.rate),
           isMinimumWage: line.employee.payrollProfile?.isMinimumWage ?? false,
+          govDeductions: govOf(line.employee.payrollProfile),
           attendance: (line.attendance ?? {}) as Record<string, number>,
           absentDays: n(line.absentDays),
           lateMinutes: n(line.lateMinutes),

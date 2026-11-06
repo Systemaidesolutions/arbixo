@@ -10,6 +10,8 @@ type PayBasis = "MONTHLY" | "DAILY";
 type Profile = {
   payGroupId: string | null; locationId: string | null; employmentType: EmploymentType; payBasis: PayBasis; rate: number;
   hireDate: string; contractEnd: string; sssNo: string; philhealthNo: string; pagibigNo: string; isMinimumWage: boolean;
+  // Optional government deductions: null = follow the pay group.
+  deductSss: boolean | null; deductPhilhealth: boolean | null; deductHdmf: boolean | null; withholdTax: boolean | null;
   sex: "MALE" | "FEMALE" | null; isSoloParent: boolean; thirteenthMonthEligible: boolean;
   biometricId: string; shiftStart: string; shiftEnd: string;
   restDayMode: "FIXED" | "FLEXIBLE"; restWeekdays: number[];
@@ -30,7 +32,7 @@ const label = "block text-xs text-neutral-500";
 
 const blankProfile = (): Profile => ({
   payGroupId: null, locationId: null, employmentType: "CONTRACTUAL", payBasis: "DAILY", rate: 0, hireDate: "", contractEnd: "",
-  sssNo: "", philhealthNo: "", pagibigNo: "", isMinimumWage: false, sex: null, isSoloParent: false, thirteenthMonthEligible: true, biometricId: "", shiftStart: "", shiftEnd: "", restDayMode: "FIXED", restWeekdays: [], leaveMonthlyAccrual: null, recurring: [], bankName: "", bankAccountNo: "", isActive: true,
+  sssNo: "", philhealthNo: "", pagibigNo: "", isMinimumWage: false, deductSss: null, deductPhilhealth: null, deductHdmf: null, withholdTax: null, sex: null, isSoloParent: false, thirteenthMonthEligible: true, biometricId: "", shiftStart: "", shiftEnd: "", restDayMode: "FIXED", restWeekdays: [], leaveMonthlyAccrual: null, recurring: [], bankName: "", bankAccountNo: "", isActive: true,
 });
 
 export function PayrollEmployeesClient({ employees, groups, items, branches, canEdit, companyRestWeekdays, companyLeaveMonthly }: { employees: Employee[]; groups: Option[]; items: PayItemOption[]; branches: Option[]; canEdit: boolean; companyRestWeekdays: number[]; companyLeaveMonthly: boolean }) {
@@ -77,6 +79,21 @@ export function PayrollEmployeesClient({ employees, groups, items, branches, can
           <label className={label}>Hire / start date<input type="date" value={form.hireDate} onChange={(e) => setForm({ ...form, hireDate: e.target.value })} className={field} /></label>
           <label className={label}>Contract end<input type="date" value={form.contractEnd} onChange={(e) => setForm({ ...form, contractEnd: e.target.value })} className={field} /></label>
           <label className="flex items-center gap-2 pt-5 text-sm text-neutral-700"><input type="checkbox" checked={form.isMinimumWage} onChange={(e) => setForm({ ...form, isMinimumWage: e.target.checked })} /> Minimum wage earner (MWE)</label>
+          <fieldset className="sm:col-span-2 lg:col-span-3 rounded border border-neutral-200 p-2">
+            <legend className="px-1 text-xs font-medium text-neutral-600">Government deductions</legend>
+            <div className="grid gap-2 sm:grid-cols-4">
+              {([["deductSss", "SSS"], ["deductPhilhealth", "PhilHealth"], ["deductHdmf", "Pag-IBIG"], ["withholdTax", "Withholding tax"]] as const).map(([k, name]) => (
+                <label key={k} className={label}>{name}
+                  <select value={form[k] == null ? "" : form[k] ? "YES" : "NO"} onChange={(e) => setForm({ ...form, [k]: e.target.value === "" ? null : e.target.value === "YES" })} className={field}>
+                    <option value="">Pay group setting</option>
+                    <option value="YES">Deduct</option>
+                    <option value="NO">Don&apos;t deduct</option>
+                  </select>
+                </label>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-neutral-400">For optional coverage: choose &quot;Don&apos;t deduct&quot; for employees not enrolled, or &quot;Deduct&quot; to include someone the pay group skips.</p>
+          </fieldset>
           <label className={label}>SSS no.<input value={form.sssNo} onChange={(e) => setForm({ ...form, sssNo: e.target.value })} className={field} /></label>
           <label className={label}>PhilHealth no.<input value={form.philhealthNo} onChange={(e) => setForm({ ...form, philhealthNo: e.target.value })} className={field} /></label>
           <label className={label}>Pag-IBIG no.<input value={form.pagibigNo} onChange={(e) => setForm({ ...form, pagibigNo: e.target.value })} className={field} /></label>
