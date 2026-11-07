@@ -4,7 +4,7 @@
 // Mirrors the Claude Docs copy of the manual; edit here to change the in-app page.
 
 export const PAYROLL_MANUAL_MD = `
-ARbixo Payroll computes pay for regular and daily-rate employees, tracks leave, prints payslips and posts the payroll journal to ARbixo Accounting.
+ARbixo Payroll computes pay for regular and daily-rate employees, tracks leave and reimbursements, lets employees file their own leave and expenses from their phone, prints payslips and posts the payroll journal to ARbixo Accounting.
 
 ## 1. Getting started
 
@@ -17,13 +17,17 @@ Open Payroll from the app launcher after you log in. If your account has only Pa
 | Dashboard | Employee counts, draft runs, gross paid this year, recent runs, contracts ending in 30 days and setup warnings |
 | Timesheets | Encode each employee's daily time in and out; the basis of the payroll run |
 | Payroll runs | Create, encode, post and print regular and 13th-month payroll |
-| Payroll employees | Each employee's pay details: rate, pay group, shift, rest days, IDs, bank, recurring items |
+| Payroll employees | Each employee's pay details: rate, pay group, government deductions, shift, rest days, IDs, bank, recurring items |
 | Leave | File and approve leave; view and adjust leave balances |
-| Payroll setup | Pay rules, work schedule, posting accounts, pay groups, earnings and deductions, leave credits |
-| Leave types | Statutory and company leave policies |
-| User manual | This page |
+| Reimbursements | Approve expenses employees filed with receipt photos; they are paid in the next payroll run |
+| Setup › Payroll setup | Pay rules, work schedule, posting accounts, pay groups, earnings and deductions, leave credits |
+| Setup › Leave types | Statutory and company leave policies |
+| Setup › Employee portal | Turn the employee portal on, share its link and set each employee's PIN |
+| Setup › Employees | Employee records, with each employee's leave credits and portal PIN |
+| Setup › Branches, Company details | Shared with ARbixo Accounting |
+| Setup › User manual | This page |
 
-Shared pages, such as Master Data › Employees, Branches, Company details and My profile, are available in both apps.
+Shared pages, such as Employees, Branches, Company details and My profile, are available in both apps. The leave section of an employee record appears only in Payroll.
 
 ### First-time setup, in order
 
@@ -34,7 +38,8 @@ Shared pages, such as Master Data › Employees, Branches, Company details and M
 5. **Leave types**: review the default leave types and choose how credits are earned (section 3).
 6. **Payroll employees**: give every employee pay details (section 4). The dashboard warns about active employees with none.
 7. **Leave credits**: on the Leave page, press **Grant {year} credits** (section 5).
-8. **First payroll run** (section 6).
+8. **Employee portal** (optional): turn it on and give employees their PINs (section 9).
+9. **First payroll run** (section 6).
 
 The dashboard shows a yellow banner while posting accounts are missing, employees have no pay details, or leave filings wait for approval. Each line links to the page that fixes it.
 
@@ -95,6 +100,7 @@ A posted run creates one General Journal entry in ARbixo Accounting using these 
 - Withholding tax on compensation payable (Cr)
 - Other deductions, default (Cr)
 - Net pay: salaries payable or cash (Cr)
+- Employee reimbursements (Dr): needed once a run pays approved reimbursements (section 10)
 
 ### Pay groups
 
@@ -105,7 +111,7 @@ A pay group is a set of employees paid on the same schedule with the same statut
 | REG-SM | Regular staff (semi-monthly) | Semi-monthly | SSS, PhilHealth, Pag-IBIG, withholding tax |
 | CON-WK | Contractuals (weekly, daily rate) | Weekly | No withholding tax |
 
-Press **+ Add pay group** to add one. Choose a code, name, frequency (monthly, semi-monthly, weekly or daily) and which of SSS, PhilHealth, Pag-IBIG and withholding tax to deduct.
+Press **+ Add pay group** to add one. Choose a code, name, frequency (monthly, semi-monthly, weekly or daily) and which of SSS, PhilHealth, Pag-IBIG and withholding tax to deduct. An employee can be set to always or never deduct any of these, whatever the pay group says (section 4).
 
 Two extra choices appear for **weekly** and **semi-monthly** groups:
 
@@ -187,6 +193,7 @@ Click an employee to open their pay details, fill in the fields below, then pres
 | Branch | Optional; lets you run payroll per branch |
 | Hire / start date, Contract end | Contract end feeds the dashboard's "Contracts ending in 30 days" |
 | Minimum wage earner (MWE) | Tick to exempt from withholding tax |
+| Government deductions | For each of SSS, PhilHealth, Pag-IBIG and withholding tax: **Pay group setting** (the default), **Deduct** or **Don't deduct** |
 | SSS, PhilHealth, Pag-IBIG no. | Government numbers |
 | Sex, Solo parent | Used for leave eligibility (maternity, paternity, solo parent, VAWC) |
 | Gets 13th-month pay | Tick for rank-and-file; untick for managerial employees |
@@ -196,6 +203,10 @@ Click an employee to open their pay details, fill in the fields below, then pres
 | Leave credits | Company setting, Earned monthly, or All on Jan 1 |
 | Bank, Bank account no. | For payout reference |
 | Include in payroll | Untick to leave the employee out of new runs |
+
+### Government deductions per employee
+
+Normally an employee's SSS, PhilHealth, Pag-IBIG and withholding tax follow their pay group. Change one only for an exception: for example, choose **Don't deduct** for SSS for a crew member who isn't covered, or **Deduct** for Pag-IBIG for one person in a group that doesn't deduct it. The run uses the employee's choice; everyone else keeps following the group.
 
 ### Recurring earnings and deductions
 
@@ -218,6 +229,16 @@ Rules the import follows:
 - Dates are YYYY-MM-DD or MM/DD/YYYY. Shift times are 24-hour HH:mm, and Shift Start and Shift End must be filled in together.
 - Rest Days are weekday names separated by commas, such as Sun or Sat,Sun.
 - Recurring items aren't imported; add them per employee.
+
+### Employee records (Setup › Employees)
+
+Setup › **Employees** holds the employee record itself: name, code, position and contact details. Open an employee to edit it. In Payroll the form also has a **Leave** section:
+
+- **Leave credits are earned**: Company setting, Monthly, or All on Jan 1 (the same setting as in Payroll employees).
+- **Credits {year}**: Earned, Used and Left for each leave type. **Adjust credits** opens the balances on the Leave page.
+- **Leave portal PIN**: the employee's PIN for the employee portal, with **Generate PIN** or **Reset PIN**, and the portal link. A new PIN is shown once; give it to the employee straight away.
+
+If the employee has no pay details yet, the section says so and links to Payroll employees.
 
 ## 5. Leave
 
@@ -243,7 +264,7 @@ The form warns when the employee has no credits for that year yet or the filing 
 
 ### Approving, rejecting and cancelling
 
-Pending filings show **Approve** and **Reject** buttons. Approved filings can be cancelled with **Cancel**. Filter the list by status or search by employee. The dashboard counts filings waiting for approval.
+Pending filings show **Approve** and **Reject** buttons. Filings employees make from the employee portal (section 9) arrive here as pending too. Approved filings can be cancelled with **Cancel**. Filter the list by status or search by employee. The dashboard counts filings waiting for approval.
 
 ### Converting unused leave to cash
 
@@ -329,7 +350,7 @@ The import matches employees by **Biometric ID**, or by employee code when it is
 
 ### What the register shows
 
-For each employee: Basic, Prem/OT/ND, Other earnings, Gross, SSS, PhilHealth, Pag-IBIG, withholding tax, Other deductions and Net pay. Expand a row to see days worked, taxable income, the late/undertime deduction, the employer share, holiday pay and any leave converted to cash. **Totals** are at the bottom.
+For each employee: Basic, Prem/OT/ND, Other earnings, Gross, SSS, PhilHealth, Pag-IBIG, withholding tax, Other deductions and Net pay. Net pay includes any approved reimbursements, shown underneath as "incl. reimb." (section 10). Expand a row to see days worked, taxable income, the late/undertime deduction, the employer share, holiday pay and any leave converted to cash. **Totals** are at the bottom.
 
 To add someone left out, use **Add employee from this pay group…**. To drop someone, use **Remove** on their row.
 
@@ -362,30 +383,103 @@ Each payslip shows:
 - **Deductions**: SSS, PhilHealth, Pag-IBIG, withholding tax and other deductions. Totals to Total deductions.
 - **Leave this period**: each approved leave in the period with its dates and days, marked "(without pay)" where it applies.
 - **Leave balance as of** the period end: Earned, Used and Remaining for each leave type with yearly credits. A negative remaining shows in red.
-- **Net pay**, and a "Received by / date" line for the employee's signature.
+- **Net pay**, with "Add: reimbursements (not taxed)" above it when the run pays any, and a "Received by / date" line for the employee's signature.
 
 13th-month payslips don't include the leave section.
 
-## 9. User access
+## 9. Employee portal
 
-A platform admin decides which apps each user can open: ARbixo Accounting, ARbixo Payroll, or both.
+The employee portal lets employees file their own **leave** and **reimbursements** from their phone, without an ARbixo account. They sign in with their employee number and a PIN. Everything they file arrives as pending for payroll staff to approve.
+
+### Turning it on
+
+1. Go to Setup › **Employee portal**.
+2. Switch **Leave portal link** on. While it's off, the link shows "not active".
+3. Press **Copy link** and share it with employees, for example in the company group chat. The link alone isn't enough to sign in: each employee also needs a PIN.
+
+**New link** replaces the link. The old one stops working, so share the new one. Use it if the link reached people it shouldn't have.
+
+### Giving employees a PIN
+
+In the employee list on the same page:
+
+- **Generate PIN** creates a random 6-digit PIN. **Type PIN** lets you choose one (4 to 6 digits).
+- The PIN is shown **once**. Give it to the employee straight away.
+- **Reset PIN** gives a new PIN, unlocks the employee and signs them out of the portal. **Remove** takes the PIN away, so they can't sign in until you set a new one.
+
+After 5 wrong PINs an employee is locked for 15 minutes; the list shows "Locked (wrong PINs)". Resetting the PIN unlocks them at once. Employees without pay details can sign in but can't file anything. Only users who can post set or reset PINs. PINs can also be managed from the employee's record (Setup › Employees).
+
+### What employees see
+
+After signing in, an employee has two tabs:
+
+- **Leave**: their leave balances for the year (pending filings already count as used), a form to file leave (type, dates, half day where allowed, reason), and **My filings** with each filing's status. Rest days are skipped automatically. They can withdraw a filing while it's still pending.
+- **Reimbursement**: a form to file an expense (date, category, amount, details and up to 3 receipt photos or PDFs), and **My reimbursements** with each one's status. They can withdraw one while it's pending.
+
+A forgotten PIN can't be recovered; the employee asks payroll staff to reset it.
+
+## 10. Reimbursements
+
+Payroll › **Reimbursements** lists the expenses employees filed from the employee portal, with their receipts. Categories are Transportation, Meals, Supplies, Communication, Accommodation, Medical and Others.
+
+### Approving
+
+1. Open the **Pending** tab. Click a receipt to view the photo or PDF.
+2. Press **Approve**, or **Reject** and type the reason. The employee sees the reason in the portal.
+
+### How approved reimbursements are paid
+
+- An approved reimbursement goes into the employee's **next draft payroll run** when that run is saved or refreshed. Until then it shows "Goes into the next payroll run".
+- It is added to **net pay only**: it isn't part of gross pay, isn't taxed and has no SSS, PhilHealth or Pag-IBIG.
+- Posting the run marks it **Paid** ("Paid in payroll run PR-…") and debits the **Employee reimbursements** account in Payroll setup. Set that account before posting.
+- Cancelling the posted run puts it back to Approved, ready for the next run.
+- If you pay one outside payroll, for example in cash or by GCash, press **Mark paid** and enter a reference. You can also **Cancel** an approved one that shouldn't be paid.
+
+## 11. User access and sign-in security
+
+### Which companies and apps a user can open
+
+A platform admin decides, for each user, which companies they can open and which apps (ARbixo Accounting, ARbixo Payroll, or both) in each company.
 
 1. Go to **Admin › Users** and press **Edit** on the user (or create a new user).
-2. Under **App access**, tick **ARbixo Accounting**, **ARbixo Payroll**, or both. At least one is required.
-3. Save.
+2. In the **Companies and apps** table, tick each company the user can open, then tick **Accounting**, **Payroll**, or both for that company. Use **Find a company** to search.
+3. Choose which ticked company is their **Home** company.
+4. Save.
 
-The Users list shows each user's access as "Accounting only", "Payroll only" or "Accounting + Payroll". Existing and new users have both apps until changed.
+Every ticked company needs at least one app. A user can have different apps in different companies, for example Payroll only in one company and both apps in another.
 
-For a user with only one app:
+For a user with only one app in the company they are in:
 
 - After login they go straight into their app, and the app switcher is hidden.
 - Pages and data of the other app are blocked. Opening one of its pages sends them back to their own app.
-- Shared pages stay available: My profile, Company details, Branches and Master Data › Employees.
+- Shared pages stay available: My profile, Company details, Branches and Employees.
 - A Payroll-only user can still cancel a posted payroll run, including its journal entry.
 
 Platform admins are never restricted.
 
-## 10. Troubleshooting
+### What a user can do in Accounting
+
+**Admin › User access** limits what each user can do in ARbixo Accounting. New users have full access. Untick any of: Can do transactions, Can import transactions, Can view reports, Can print, Can generate files, Can view history, Can view setup, Can change setup, Can use Ask ARbi and Can use utility. Blocked pages, menu items and Print/Export/Import buttons disappear for that user. These permissions don't affect Payroll.
+
+### Two-factor authentication (2FA)
+
+Two-factor adds a 6-digit code from an authenticator app (such as Google Authenticator or Microsoft Authenticator) to the password.
+
+- **Turning it on yourself:** go to **My profile › Two-factor authentication**, press **Set up two-factor**, scan the QR code with the app and type the 6-digit code it shows. From then on you'll be asked for a code each time you sign in.
+- **Requiring it:** in **Admin › User access**, tick **Require 2FA** for a user. Next time they sign in, the login screen walks them through setting it up, and they can't turn it off from My profile.
+- **Lost phone:** a platform admin presses **Reset 2FA** for the user in **Admin › Users**. The user can then sign in with just their password and set it up again.
+
+### Allowed login hours
+
+A platform admin can set the hours a company's users sign in normally: **Admin › Companies**, open the company, then **Allowed login hours**. Choose the days and the time range (Philippine time) and press **Save login hours**.
+
+Inside those hours, users sign in as usual. Outside them, they must enter a two-factor code. A user without two-factor can't sign in outside the hours; they should turn it on from My profile during allowed hours. Turn the setting off to allow sign-in any time.
+
+### Night-time login alerts
+
+Any sign-in between **8:00 PM and 4:00 AM** Philippine time sends an email alert to the platform admins, with the user and the time. Nothing needs to be set up.
+
+## 12. Troubleshooting
 
 | You see | Why | What to do |
 | --- | --- | --- |
@@ -400,6 +494,14 @@ Platform admins are never restricted.
 | Biometric rows flagged "only one punch" | The device has a time in without a time out, or the reverse | Fix that date in the attendance grid after importing |
 | Biometric employee not matched | The device user ID differs from the employee code | Set Biometric ID in Payroll employees |
 | Import row skipped: "Pay group not found" | The code or name doesn't match | Use the exact pay group code, e.g. REG-SM or CON-WK |
-| "You don't have access to ARbixo Payroll" | The user's App access excludes Payroll | Ask a platform admin to tick ARbixo Payroll in Admin › Users |
+| An employee is deducted SSS (or another contribution) they shouldn't be | Their pay group deducts it | In Payroll employees, set that deduction to **Don't deduct** for the employee |
+| "Set these accounts in Payroll setup first: Employee reimbursements" | The run pays reimbursements but no account is set | Payroll setup › Posting accounts › Employee reimbursements, then Save setup |
+| An approved reimbursement isn't in the run | The run wasn't saved or refreshed after approval, or the employee isn't in the run | Press Save on the draft run; check the employee is in it |
+| The portal link says "not active" | The employee portal is switched off | Setup › Employee portal, switch it on |
+| An employee can't sign in to the portal | No PIN, wrong PIN, or locked after 5 wrong PINs | Reset the PIN in Setup › Employee portal |
+| An employee can sign in but can't file | They have no pay details | Set them up in Payroll employees |
+| "You don't have access to ARbixo Payroll" | The user's apps for this company exclude Payroll | Ask a platform admin to tick Payroll for that company in Admin › Users |
+| "Your company allows sign-in only …" | Signing in outside allowed hours without two-factor | Sign in during allowed hours and turn on two-factor in My profile, or ask an admin |
+| Lost the phone with the authenticator app | The two-factor code can't be generated | Ask a platform admin to press Reset 2FA in Admin › Users |
 | A posted run has an error | Posted runs can't be edited | Cancel the run with a reason, then create and post a new one |
 `;
