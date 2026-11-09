@@ -30,6 +30,10 @@ export const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 const n = (v: unknown) => (v == null ? 0 : Number(v));
 
 /** A profile's per-employee government deduction overrides (null = pay group's switch). */
+/** The employee's own OT hourly rate, or null when blank. */
+export const otRateOf = (p: { otHourlyRate: unknown } | null | undefined) =>
+  p?.otHourlyRate != null && Number(p.otHourlyRate) > 0 ? Number(p.otHourlyRate) : null;
+
 export const govOf = (p: { deductSss: boolean | null; deductPhilhealth: boolean | null; deductHdmf: boolean | null; withholdTax: boolean | null } | null | undefined) =>
   p ? { sss: p.deductSss, philhealth: p.deductPhilhealth, hdmf: p.deductHdmf, tax: p.withholdTax } : null;
 
@@ -83,6 +87,8 @@ export function toRules(s: PayrollSetup): PayrollRules {
     holidayRequiresPriorPresence: s.holidayRequiresPriorPresence,
     monthlyIncludesRestDays: s.monthlyIncludesRestDays,
     monthlyIncludesSpecialDays: s.monthlyIncludesSpecialDays,
+    otRateBasis: s.otRateBasis,
+    otEmployeeRateUsesPremiums: s.otEmployeeRateUsesPremiums,
   };
 }
 
@@ -370,6 +376,7 @@ export async function recomputeRun(companyId: string, runId: string) {
           rate: n(line.rate),
           isMinimumWage: line.employee.payrollProfile?.isMinimumWage ?? false,
           govDeductions: govOf(line.employee.payrollProfile),
+          otHourlyRate: otRateOf(line.employee.payrollProfile),
           attendance: (line.attendance ?? {}) as Record<string, number>,
           absentDays: n(line.absentDays),
           lateMinutes: n(line.lateMinutes),

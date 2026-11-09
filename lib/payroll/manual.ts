@@ -78,6 +78,15 @@ The checkboxes under Pay rules:
 - **Monthly salary already pays special days** and **already pays rest days**: match these to your salary factor (365, 313 or 261).
 - **Rest days**: the company's default rest days (Sunday by default). They are skipped when counting leave days.
 
+### Overtime rate
+
+Choose how the hourly rate for overtime is worked out, then press **Save setup**:
+
+- **Per hour, based on the basic salary** (the default): OT hour = daily rate ÷ hours per day (a monthly salary is first turned into a daily rate with the salary factor), times the OT rates above.
+- **Per hour, using each employee's own OT rate**: each employee's **OT rate per hour** from Payroll employees is used instead. Employees with no OT rate set still use the basic-salary rate.
+
+With the employee's own rate, **Apply the OT rates above to the employee's OT rate** decides the premiums. On (the default): OT hour = employee rate × 125%, or × the day's rate × 130% on rest days and holidays. Off: the employee rate is paid as is for every OT hour. Night differential is always worked out from the basic salary.
+
 ### Work schedule (biometric import)
 
 The biometric import compares punches with this shift to work out late/undertime, overtime and night hours. Employees can have their own shift in Payroll employees.
@@ -198,6 +207,7 @@ Click an employee to open their pay details, fill in the fields below, then pres
 | Sex, Solo parent | Used for leave eligibility (maternity, paternity, solo parent, VAWC) |
 | Gets 13th-month pay | Tick for rank-and-file; untick for managerial employees |
 | Biometric ID | The user ID on the biometric device; blank matches by employee code |
+| OT rate per hour | Used only when Payroll setup › Overtime rate uses each employee's own OT rate; blank uses the basic-salary rate |
 | Own shift start / end | Blank uses the company shift |
 | Rest days | **Fixed** (same weekdays every week) or **Not fixed** (marked on every run) |
 | Leave credits | Company setting, Earned monthly, or All on Jan 1 |

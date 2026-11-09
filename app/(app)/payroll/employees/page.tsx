@@ -34,6 +34,7 @@ export default async function PayrollEmployeesPage() {
           canEdit={Boolean(capability?.canPost)}
           companyRestWeekdays={setup.restWeekdays}
           companyLeaveMonthly={setup.leaveMonthlyAccrual}
+          companyOtEmployeeRate={setup.otRateBasis === "EMPLOYEE_RATE"}
           groups={groups}
           items={items}
           branches={branches}
@@ -44,6 +45,7 @@ export default async function PayrollEmployeesPage() {
               position: e.position, isActive: e.isActive,
               profile: p ? {
                 payGroupId: p.payGroupId, locationId: p.locationId, employmentType: p.employmentType, payBasis: p.payBasis, rate: Number(p.rate),
+                otHourlyRate: p.otHourlyRate == null ? "" : String(Number(p.otHourlyRate)),
                 hireDate: p.hireDate ? isoDate(p.hireDate) : "", contractEnd: p.contractEnd ? isoDate(p.contractEnd) : "",
                 sssNo: p.sssNo ?? "", philhealthNo: p.philhealthNo ?? "", pagibigNo: p.pagibigNo ?? "", isMinimumWage: p.isMinimumWage,
                 deductSss: p.deductSss, deductPhilhealth: p.deductPhilhealth, deductHdmf: p.deductHdmf, withholdTax: p.withholdTax,

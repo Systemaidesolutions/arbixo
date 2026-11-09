@@ -7,7 +7,7 @@ const NUMBER_FIELDS = [
   "doubleSpecialMultiplier", "doubleSpecialRestDayMultiplier", "regularHolidayMultiplier", "regularHolidayRestDayMultiplier",
   "doubleHolidayMultiplier", "doubleHolidayRestDayMultiplier", "nightDiffRate", "benefitsExemptCap",
 ] as const;
-const BOOLEAN_FIELDS = ["payUnworkedRegularHoliday", "holidayRequiresPriorPresence", "monthlyIncludesRestDays", "monthlyIncludesSpecialDays", "leaveMonthlyAccrual"] as const;
+const BOOLEAN_FIELDS = ["otEmployeeRateUsesPremiums", "payUnworkedRegularHoliday", "holidayRequiresPriorPresence", "monthlyIncludesRestDays", "monthlyIncludesSpecialDays", "leaveMonthlyAccrual"] as const;
 const ACCOUNT_FIELDS = [
   "salariesExpenseAccountId", "contributionsExpenseAccountId", "sssPayableAccountId", "philhealthPayableAccountId",
   "hdmfPayableAccountId", "withholdingTaxPayableAccountId", "otherDeductionsAccountId", "netPayAccountId", "thirteenthMonthAccountId", "reimbursementAccountId",
@@ -38,6 +38,10 @@ export async function PUT(request: NextRequest) {
     const v = Math.round(Number(body[f]));
     if (!Number.isFinite(v) || v < 0 || v > 600) return NextResponse.json({ error: `Invalid value for ${f}.` }, { status: 400 });
     data[f] = v;
+  }
+  if ("otRateBasis" in body) {
+    if (body.otRateBasis !== "BASIC" && body.otRateBasis !== "EMPLOYEE_RATE") return NextResponse.json({ error: "Invalid OT rate basis." }, { status: 400 });
+    data.otRateBasis = body.otRateBasis;
   }
   if ("restWeekdays" in body) {
     const days = Array.isArray(body.restWeekdays) ? [...new Set((body.restWeekdays as unknown[]).map(Number))] : [];

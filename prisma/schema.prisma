@@ -45,14 +45,14 @@ enum SubscriberSubtype {
 // Branding page. Kept out of the app payload — only the image bytes are
 // fetched, and only when actually shown.
 model AppSettings {
-  id              String   @id @default("singleton")
+  id              String  @id @default("singleton")
   backgroundImage String?
   loginImage      String?
   headerLogo      String?
   // GCash collection account for subscription payments (admin-set).
   gcashName       String?
   gcashNumber     String?
-  gcashQrImage    String?  @db.Text // the admin's real GCash QR (base64 data URL)
+  gcashQrImage    String? @db.Text // the admin's real GCash QR (base64 data URL)
 
   // ARbixo's own BIR-registered business profile — the "seller" details
   // printed on subscription invoices issued to subscribers. Free-text (not
@@ -73,12 +73,12 @@ model AppSettings {
   // invoices — printed in the invoice footer as BIR requires. Left blank
   // until the admin fills them in from the actual ATP.
   atpNumber           String?
-  atpSeriesFrom        String?
-  atpSeriesTo          String?
-  atpValidUntil        DateTime?
+  atpSeriesFrom       String?
+  atpSeriesTo         String?
+  atpValidUntil       DateTime?
   // Next number to assign to a subscription invoice (lib/subscriptionInvoice.ts
   // increments this atomically when a payment is verified).
-  nextInvoiceNo        Int      @default(1)
+  nextInvoiceNo       Int       @default(1)
 
   // Which Company row IS "ARbixo" itself (Systemaide Solutions Inc., a
   // subscriber of its own app) and which of ITS accounts a verified
@@ -91,7 +91,7 @@ model AppSettings {
   arbixoReceivableAccountId String?
   arbixoRevenueAccountId    String?
 
-  updatedAt       DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 }
 
 // Business-Central-style dated subscription pricing. The "current" price is the
@@ -99,18 +99,18 @@ model AppSettings {
 // or >= now). Adding a new price closes the previously open one (sets its
 // effectiveTo), so history is preserved and status is derivable from dates.
 model SubscriptionPrice {
-  id            String    @id @default(cuid())
-  name          String                        // e.g. "Price A"
-  amount        Decimal   @db.Decimal(10, 2)  // monthly rate
-  currency      String    @default("PHP")
+  id            String          @id @default(cuid())
+  name          String // e.g. "Price A"
+  amount        Decimal         @db.Decimal(10, 2) // monthly rate
+  currency      String          @default("PHP")
   effectiveFrom DateTime
-  effectiveTo   DateTime?                      // null = open-ended / current
+  effectiveTo   DateTime? // null = open-ended / current
   // Which app this price is for. PAYROLL prices are per employee tier
   // (maxEmployees = 20, 50, 100, 200 …); each tier has its own dated chain.
   app           SubscriptionApp @default(ACCOUNTING)
   maxEmployees  Int?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   @@index([effectiveFrom])
   @@index([app, maxEmployees])
@@ -125,17 +125,17 @@ enum VoucherDiscountType {
 // random + unique so they can't be guessed. A voucher is usable only while
 // isActive and unredeemed (redeemedAt is null).
 model Voucher {
-  id              String              @id @default(cuid())
-  code            String              @unique
-  discountType    VoucherDiscountType @default(FIXED)
-  discountValue   Decimal             @db.Decimal(10, 2) // amount, or percent when PERCENT
-  isActive        Boolean             @default(true)
-  redeemedAt      DateTime?
+  id                  String              @id @default(cuid())
+  code                String              @unique
+  discountType        VoucherDiscountType @default(FIXED)
+  discountValue       Decimal             @db.Decimal(10, 2) // amount, or percent when PERCENT
+  isActive            Boolean             @default(true)
+  redeemedAt          DateTime?
   redeemedByCompanyId String?
-  batchId         String?                                // groups a batch generation
-  note            String?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  batchId             String? // groups a batch generation
+  note                String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
   @@index([batchId])
 }
@@ -155,43 +155,43 @@ enum SubscriptionApp {
 // Audit log of subscription payments. Snapshots the price and voucher used so
 // the record stays accurate even if those are edited later.
 model SubscriptionPayment {
-  id             String        @id @default(cuid())
-  company        Company       @relation(fields: [companyId], references: [id])
-  companyId      String
-  priceName      String
-  baseAmount     Decimal       @db.Decimal(10, 2)
-  currency       String        @default("PHP")
+  id               String          @id @default(cuid())
+  company          Company         @relation(fields: [companyId], references: [id])
+  companyId        String
+  priceName        String
+  baseAmount       Decimal         @db.Decimal(10, 2)
+  currency         String          @default("PHP")
   // ACCOUNTING covers posting dates (lib/subscriptionCoverage.ts); PAYROLL
   // covers payroll runs for up to maxEmployees active employees
   // (lib/payroll/subscription.ts).
-  app            SubscriptionApp @default(ACCOUNTING)
-  maxEmployees   Int?
-  voucherCode    String?
-  discountAmount Decimal       @db.Decimal(10, 2) @default(0)
-  amountDue      Decimal       @db.Decimal(10, 2)
-  gcashRef       String?
+  app              SubscriptionApp @default(ACCOUNTING)
+  maxEmployees     Int?
+  voucherCode      String?
+  discountAmount   Decimal         @default(0) @db.Decimal(10, 2)
+  amountDue        Decimal         @db.Decimal(10, 2)
+  gcashRef         String?
   // Proof of payment — a photo/screenshot of the receipt or bank/GCash
   // transfer, uploaded by the subscriber. Base64 data URL, same approach as
   // TransactionAttachment and company logos (no external object store).
-  receiptImage   String?       @db.Text
-  status         PaymentStatus @default(PENDING)
-  periodStart    DateTime?
-  periodEnd      DateTime?     // the subscription end this payment sets when verified
+  receiptImage     String?         @db.Text
+  status           PaymentStatus   @default(PENDING)
+  periodStart      DateTime?
+  periodEnd        DateTime? // the subscription end this payment sets when verified
   // Set when the payment is verified — the official ARbixo invoice number
   // (lib/subscriptionInvoice.ts) and the moment it was issued.
-  invoiceNo      String?
-  invoiceIssuedAt DateTime?
+  invoiceNo        String?
+  invoiceIssuedAt  DateTime?
   // The Sales on Account document number posted into ARbixo's own books for
   // this payment (lib/arbixoBookkeeping.ts), reusing invoiceNo as the doc
   // no. Null if that sync was skipped (not configured, $0 payment) or failed
   // — best-effort, never blocks verifying the payment itself.
   arbixoDocumentNo String?
-  createdById    String?
-  createdByEmail String?
-  verifiedById   String?
-  verifiedAt     DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdById      String?
+  createdByEmail   String?
+  verifiedById     String?
+  verifiedAt       DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   @@index([companyId, createdAt])
   @@index([status])
@@ -232,19 +232,19 @@ model RelatedLink {
 }
 
 model User {
-  id                    String    @id @default(cuid())
-  email                 String    @unique
-  passwordHash          String
-  role                  UserRole  @default(USER)
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(USER)
 
   // Simple self-service profile: a display name and an optional profile
   // photo (stored as a base64 data URL, same approach as company logos).
-  name                  String?
-  photoUrl              String?   @db.Text
+  name     String?
+  photoUrl String? @db.Text
 
   // Only meaningful for subscriber (USER role) accounts; null for admins.
   // Determines transaction/approval permissions — see SubscriberSubtype.
-  subscriberSubtype     SubscriberSubtype?
+  subscriberSubtype SubscriberSubtype?
 
   isVerified            Boolean   @default(false)
   verificationCode      String?
@@ -253,37 +253,37 @@ model User {
   // An admin can disable an account (e.g. a lapsed subscriber) without
   // deleting it — disabled users keep all their data but can't log in,
   // and any still-valid session is rejected on the next page load.
-  isDisabled            Boolean   @default(false)
+  isDisabled Boolean @default(false)
 
   // ARbixo apps this subscriber may open ("accounting", "payroll"). Set by a
   // platform admin; ignored for ADMIN accounts. See lib/appAccess.ts.
-  appAccess             String[]  @default(["accounting", "payroll"])
+  appAccess String[] @default(["accounting", "payroll"])
 
   // Accounting access groups an admin REMOVED from this user (Admin › User
   // access). Empty = full access. See lib/userPermissions.ts.
-  deniedPermissions     String[]  @default([])
+  deniedPermissions String[] @default([])
 
   // Two-factor authentication (authenticator app, TOTP). totpPendingSecret
   // holds the secret during enrolment until the user confirms a code.
   // totpLastStep blocks reusing the same code; totpFailedCount locks the
   // code step after repeated wrong codes. See lib/totp.ts.
-  totpEnabled           Boolean   @default(false)
-  totpSecret            String?
-  totpPendingSecret     String?
-  totpLastStep          Int?
-  totpFailedCount       Int       @default(0)
+  totpEnabled       Boolean @default(false)
+  totpSecret        String?
+  totpPendingSecret String?
+  totpLastStep      Int?
+  totpFailedCount   Int     @default(0)
   // Admin › User access: when true the user must sign in with two-factor
   // every time. Not enrolled yet = they set it up on the login screen.
-  require2fa            Boolean   @default(false)
+  require2fa        Boolean @default(false)
 
   // Password reset — admin (or a future "forgot password" flow) issues a
   // single-use token emailed to the user; it verifies against this hash
   // and expires. Stored hashed so a leaked DB row can't be used to reset.
-  resetTokenHash        String?
-  resetTokenExpiresAt   DateTime?
+  resetTokenHash      String?
+  resetTokenExpiresAt DateTime?
 
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // ADMIN users are Arbixo staff — platform-wide, no single company.
   // USER (subscriber) accounts have exactly one PRIMARY company (their
@@ -330,64 +330,64 @@ model CompanyAccess {
 // 1.1 Setup Company  (manual section 1.1)
 // ------------------------------------------------------------
 model Company {
-  id                   String   @id @default(cuid())
-  tin                  String
-  taxClassification    TaxClassification
-  registeredName       String?
-  taxpayerLastName     String?
-  taxpayerFirstName    String?
-  taxpayerMiddleName   String?
-  tradeName            String
-  businessAddress      String
+  id                    String            @id @default(cuid())
+  tin                   String
+  taxClassification     TaxClassification
+  registeredName        String?
+  taxpayerLastName      String?
+  taxpayerFirstName     String?
+  taxpayerMiddleName    String?
+  tradeName             String
+  businessAddress       String
   // Structured PH address (added alongside the free-text businessAddress,
   // which now holds the street/building line).
-  barangay             String?
-  district             String?
-  city                 String?
-  province             String?
-  zipCode              String
-  rdoCode              String
-  periodType           PeriodType @default(CALENDAR)
-  fiscalMonthEnd       Int?
-  businessType         String?
-  registrationType     RegistrationType
-  lineOfBusiness       String?
-  telNo                String?
-  faxNo                String?
-  website              String?
-  email                String?
-  authorizedRep        String?
+  barangay              String?
+  district              String?
+  city                  String?
+  province              String?
+  zipCode               String
+  rdoCode               String
+  periodType            PeriodType        @default(CALENDAR)
+  fiscalMonthEnd        Int?
+  businessType          String?
+  registrationType      RegistrationType
+  lineOfBusiness        String?
+  telNo                 String?
+  faxNo                 String?
+  website               String?
+  email                 String?
+  authorizedRep         String?
   authorizedRepPosition String?
 
   // When off, no audit-trail entries are recorded for this company —
   // an admin control to cap log growth / database size.
-  auditLogEnabled      Boolean  @default(true)
+  auditLogEnabled Boolean @default(true)
 
   // Allowed login hours (Philippine time). Outside them, users of this
   // company must sign in with two-factor authentication. Days: 0=Sun..6=Sat.
   // start > end means the window crosses midnight. See lib/loginHours.ts.
-  loginHoursEnabled    Boolean  @default(false)
-  loginStart           String   @default("08:00")
-  loginEnd             String   @default("20:00")
-  loginDays            Int[]    @default([1, 2, 3, 4, 5, 6])
+  loginHoursEnabled Boolean @default(false)
+  loginStart        String  @default("08:00")
+  loginEnd          String  @default("20:00")
+  loginDays         Int[]   @default([1, 2, 3, 4, 5, 6])
 
   // Employee leave portal: the shareable link is /leave/<leavePortalCode>.
-  leavePortalEnabled   Boolean  @default(false)
-  leavePortalCode      String?  @unique
+  leavePortalEnabled Boolean @default(false)
+  leavePortalCode    String? @unique
 
   // Company logo (image URL) — shown on the subscriber dashboard.
-  logoUrl              String?
+  logoUrl String?
 
   // Key of the project auto-created in the ARbixo Core ticketing app when this
   // company was created (best-effort link; null if ticketing sync was off or
   // failed).
-  ticketProjectKey     String?
+  ticketProjectKey String?
 
   // The Customer id auto-created for this company within ARbixo's own books
   // (lib/arbixoBookkeeping.ts) the first time one of its subscription
   // payments was posted there — reused on later payments instead of
   // creating a duplicate customer. Null until that first posting happens.
-  billingCustomerId    String?
+  billingCustomerId String?
 
   // This company's own Authority to Print for its Sales on Account
   // e-invoices (lib/salesInvoice.ts) — the same concept as AppSettings'
@@ -395,19 +395,19 @@ model Company {
   // (lib/subscriptionInvoice.ts), scoped per company instead of the one
   // global ARbixo-as-seller record. Left blank until the company's own
   // admin fills them in from their actual ATP.
-  atpNumber            String?
-  atpSeriesFrom        String?
-  atpSeriesTo          String?
-  atpValidUntil        DateTime?
+  atpNumber     String?
+  atpSeriesFrom String?
+  atpSeriesTo   String?
+  atpValidUntil DateTime?
   // Next number to assign to this company's own Sales on Account e-invoice
   // (lib/salesInvoice.ts increments this atomically when one is generated).
-  nextInvoiceNo        Int      @default(1)
-  salesInvoices        SalesInvoice[]
+  nextInvoiceNo Int            @default(1)
+  salesInvoices SalesInvoice[]
 
   // Company-level sign-in control. When false, NO user of this company can
   // log in (admin action for unpaid/closed accounts). A lapsed
   // subscription alone does not set this — only an admin does.
-  isActive             Boolean  @default(true)
+  isActive Boolean @default(true)
 
   // Monthly subscription (admin-managed). Expiry shows a renew reminder
   // but never blocks access by itself.
@@ -416,33 +416,33 @@ model Company {
   subscriptionEndsAt         DateTime?
   subscriptionReminderSentAt DateTime? // guards against duplicate reminder emails
 
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  locations     Location[]
-  accounts      Account[]
-  customers     Customer[]
-  vendors       Vendor[]
-  employees     Employee[]
-  contacts      Contact[]
-  ledgerEntries LedgerEntry[]
+  locations              Location[]
+  accounts               Account[]
+  customers              Customer[]
+  vendors                Vendor[]
+  employees              Employee[]
+  contacts               Contact[]
+  ledgerEntries          LedgerEntry[]
   receivableApplications ReceivableApplication[]
-  payableApplications PayableApplication[]
-  auditLogs     AuditLog[]
-  taxPostingSetup TaxPostingSetup?
-  users         User[] @relation("PrimaryCompany")
-  userAccess    CompanyAccess[] @relation("CompanyUserAccess")
-  numberSeries  NumberSeries[]
-  importations  Importation[]
-  subscriptionPayments SubscriptionPayment[]
-  payrollSetup   PayrollSetup?
-  payGroups      PayGroup[]
-  payItems       PayItem[]
-  payrollRuns    PayrollRun[]
-  timesheetEntries TimesheetEntry[]
-  leaveTypes     LeaveType[]
-  items          Item[]
-  stockMovements StockMovement[]
+  payableApplications    PayableApplication[]
+  auditLogs              AuditLog[]
+  taxPostingSetup        TaxPostingSetup?
+  users                  User[]                  @relation("PrimaryCompany")
+  userAccess             CompanyAccess[]         @relation("CompanyUserAccess")
+  numberSeries           NumberSeries[]
+  importations           Importation[]
+  subscriptionPayments   SubscriptionPayment[]
+  payrollSetup           PayrollSetup?
+  payGroups              PayGroup[]
+  payItems               PayItem[]
+  payrollRuns            PayrollRun[]
+  timesheetEntries       TimesheetEntry[]
+  leaveTypes             LeaveType[]
+  items                  Item[]
+  stockMovements         StockMovement[]
   transactionAttachments TransactionAttachment[]
 }
 
@@ -455,14 +455,14 @@ model Importation {
   company           Company  @relation(fields: [companyId], references: [id])
   companyId         String
   assessReleaseDate DateTime // Assessment / release date from customs
-  sellerName        String   // Name of foreign seller
+  sellerName        String // Name of foreign seller
   importDate        DateTime // Date of importation
   countryOrigin     String
   dutiableValue     Decimal  @db.Decimal(18, 2)
-  charges           Decimal  @db.Decimal(18, 2) @default(0) // all charges before release from customs custody
+  charges           Decimal  @default(0) @db.Decimal(18, 2) // all charges before release from customs custody
   isVatExempt       Boolean  @default(false)
-  vatAmount         Decimal  @db.Decimal(18, 2) @default(0) // 12% of (dutiable + charges) when taxable
-  orNo              String   // Official Receipt no. of the duty/VAT payment
+  vatAmount         Decimal  @default(0) @db.Decimal(18, 2) // 12% of (dutiable + charges) when taxable
+  orNo              String // Official Receipt no. of the duty/VAT payment
   paymentDate       DateTime
   createdById       String?
   createdAt         DateTime @default(now())
@@ -492,8 +492,8 @@ model NumberSeries {
 // 3.4 Setup Location — branches. Reports stay consolidated by
 // default; Location just tags where an entry originated.
 model Location {
-  id          String   @id @default(cuid())
-  company     Company  @relation(fields: [companyId], references: [id])
+  id          String  @id @default(cuid())
+  company     Company @relation(fields: [companyId], references: [id])
   companyId   String
   name        String
   address     String?
@@ -503,7 +503,7 @@ model Location {
   // BIR 3- or 5-digit branch code (head office = 000). Used in the branch's
   // alphalist/RELIEF filenames; falls back to the branch/company TIN suffix.
   branchCode  String?
-  isDefault   Boolean  @default(false)
+  isDefault   Boolean @default(false)
 
   ledgerEntries LedgerEntry[]
 
@@ -594,7 +594,7 @@ model Account {
 
   // Hierarchy — lets "Cash in Bank" be a parent of "Cash in Bank - BPI",
   // "Cash in Bank - EIB", etc. (the manual's per-bank sub-accounts).
-  parent         Account?  @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
+  parent          Account?  @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
   parentAccountId String?
   children        Account[] @relation("AccountHierarchy")
 
@@ -603,13 +603,13 @@ model Account {
   // is classified as an asset-side account but carries a CREDIT normal
   // balance.
   normalBalance      NormalBalance
-  openingBalance      Decimal?  @db.Decimal(18, 2) @default(0)
+  openingBalance     Decimal?      @default(0) @db.Decimal(18, 2)
   openingBalanceDate DateTime?
 
-  ledgerEntries  LedgerEntry[]
-  inputVatPostingFor         TaxPostingSetup[] @relation("InputVatPostingAccount")
-  outputVatPostingFor        TaxPostingSetup[] @relation("OutputVatPostingAccount")
-  withholdingTaxPostingFor   TaxPostingSetup[] @relation("WithholdingTaxPayablePostingAccount")
+  ledgerEntries                      LedgerEntry[]
+  inputVatPostingFor                 TaxPostingSetup[] @relation("InputVatPostingAccount")
+  outputVatPostingFor                TaxPostingSetup[] @relation("OutputVatPostingAccount")
+  withholdingTaxPostingFor           TaxPostingSetup[] @relation("WithholdingTaxPayablePostingAccount")
   creditableWithholdingTaxPostingFor TaxPostingSetup[] @relation("CreditableWithholdingTaxPostingAccount")
 
   @@unique([companyId, code])
@@ -656,8 +656,8 @@ enum VendorType {
 }
 
 model Customer {
-  id                String   @id @default(cuid())
-  company           Company  @relation(fields: [companyId], references: [id])
+  id                String            @id @default(cuid())
+  company           Company           @relation(fields: [companyId], references: [id])
   companyId         String
   code              String
   tin               String?
@@ -682,11 +682,11 @@ model Customer {
   cellNo            String?
   email             String?
   website           String?
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
-  ledgerEntries LedgerEntry[]
+  ledgerEntries          LedgerEntry[]
   receivableApplications ReceivableApplication[]
 
   @@unique([companyId, code])
@@ -743,8 +743,8 @@ model PayableApplication {
 }
 
 model Vendor {
-  id                String   @id @default(cuid())
-  company           Company  @relation(fields: [companyId], references: [id])
+  id                String            @id @default(cuid())
+  company           Company           @relation(fields: [companyId], references: [id])
   companyId         String
   code              String
   tin               String?
@@ -769,11 +769,11 @@ model Vendor {
   cellNo            String?
   email             String?
   website           String?
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
-  ledgerEntries LedgerEntry[]
+  ledgerEntries       LedgerEntry[]
   payableApplications PayableApplication[]
 
   @@unique([companyId, code])
@@ -810,12 +810,12 @@ model Employee {
   portalFailedCount Int       @default(0)
   portalLockedUntil DateTime?
 
-  ledgerEntries  LedgerEntry[]
-  payrollProfile PayrollProfile?
-  payrollLines   PayrollRunLine[]
-  leaveCredits   LeaveCredit[]
-  leaveRequests  LeaveRequest[]
-  reimbursements Reimbursement[]
+  ledgerEntries    LedgerEntry[]
+  payrollProfile   PayrollProfile?
+  payrollLines     PayrollRunLine[]
+  leaveCredits     LeaveCredit[]
+  leaveRequests    LeaveRequest[]
+  reimbursements   Reimbursement[]
   timesheetEntries TimesheetEntry[]
 
   @@unique([companyId, code])
@@ -825,8 +825,8 @@ model Employee {
 // but still show up on a transaction — e.g. a lender on a loan payable,
 // an owner on an equity drawdown. Same role as BC's Contact table.
 model Contact {
-  id                String   @id @default(cuid())
-  company           Company  @relation(fields: [companyId], references: [id])
+  id                String            @id @default(cuid())
+  company           Company           @relation(fields: [companyId], references: [id])
   companyId         String
   code              String
   tin               String?
@@ -846,9 +846,9 @@ model Contact {
   telNo             String?
   cellNo            String?
   email             String?
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
   ledgerEntries LedgerEntry[]
 
@@ -903,12 +903,12 @@ enum JournalType {
 }
 
 enum DocumentType {
-  PAYMENT       // Cash Disbursement (CV)
-  RECEIPT       // Cash Receipts (OR)
-  INVOICE       // Sales on Account
-  CREDIT_MEMO   // Sales/Purchase Return
-  PURCHASE      // Purchase on Account (PV)
-  JOURNAL       // General Journal (JV)
+  PAYMENT // Cash Disbursement (CV)
+  RECEIPT // Cash Receipts (OR)
+  INVOICE // Sales on Account
+  CREDIT_MEMO // Sales/Purchase Return
+  PURCHASE // Purchase on Account (PV)
+  JOURNAL // General Journal (JV)
 }
 
 enum VatType {
@@ -933,18 +933,18 @@ enum CounterpartyType {
 }
 
 model LedgerEntry {
-  id         String   @id @default(cuid())
-  entryNo    Int      @default(autoincrement()) // permanent ledger sequence, never reused/edited
+  id      String @id @default(cuid())
+  entryNo Int    @default(autoincrement()) // permanent ledger sequence, never reused/edited
 
-  company    Company  @relation(fields: [companyId], references: [id])
+  company    Company   @relation(fields: [companyId], references: [id])
   companyId  String
   location   Location? @relation(fields: [locationId], references: [id])
   locationId String?
 
   journalType  JournalType
   documentType DocumentType?
-  documentNo   String        // CV no. / OR no. / Invoice no. / PV no. / JV no. — groups related lines
-  lineNo       Int           // display order within the document
+  documentNo   String // CV no. / OR no. / Invoice no. / PV no. / JV no. — groups related lines
+  lineNo       Int // display order within the document
   isReturn     Boolean       @default(false)
   postingDate  DateTime
 
@@ -956,26 +956,26 @@ model LedgerEntry {
   // counterpartyType mirrors whichever FK is populated, so reports can
   // filter/group without four separate null-checks.
   counterpartyType CounterpartyType?
-  customer         Customer? @relation(fields: [customerId], references: [id])
+  customer         Customer?         @relation(fields: [customerId], references: [id])
   customerId       String?
-  vendor           Vendor?   @relation(fields: [vendorId], references: [id])
+  vendor           Vendor?           @relation(fields: [vendorId], references: [id])
   vendorId         String?
-  employee         Employee? @relation(fields: [employeeId], references: [id])
+  employee         Employee?         @relation(fields: [employeeId], references: [id])
   employeeId       String?
-  contact          Contact?  @relation(fields: [contactId], references: [id])
+  contact          Contact?          @relation(fields: [contactId], references: [id])
   contactId        String?
 
-  debitAmount  Decimal @db.Decimal(18, 2) @default(0)
-  creditAmount Decimal @db.Decimal(18, 2) @default(0)
+  debitAmount  Decimal @default(0) @db.Decimal(18, 2)
+  creditAmount Decimal @default(0) @db.Decimal(18, 2)
 
-  description  String? // Particulars (document-level, same on every line)
-  lineDescription String? // per-line Description (shown as line items on the voucher)
-  referenceNo  String? // per-line reference; the balancing line carries the concatenation
-  checkNo      String? // Cash Disbursement only
-  isCancelled  Boolean @default(false)
+  description        String? // Particulars (document-level, same on every line)
+  lineDescription    String? // per-line Description (shown as line items on the voucher)
+  referenceNo        String? // per-line reference; the balancing line carries the concatenation
+  checkNo            String? // Cash Disbursement only
+  isCancelled        Boolean   @default(false)
   cancellationReason String? // set on the original + its reversal when cancelled
-  paymentTerms String? // e.g. "Net 30" (document-level, carried on the balancing line)
-  dueDate      DateTime? // transaction date + payment-term days (document-level)
+  paymentTerms       String? // e.g. "Net 30" (document-level, carried on the balancing line)
+  dueDate            DateTime? // transaction date + payment-term days (document-level)
 
   // Maker-checker review. A document posted by a subscriber "User" starts
   // unapproved (pending a Manager's review); one posted by a Manager is
@@ -987,9 +987,9 @@ model LedgerEntry {
 
   // --- VAT computation (VAT Computation popup in the manual) ---
   vatType     VatType?
-  grossAmount Decimal? @db.Decimal(18, 2)
-  netAmount   Decimal? @db.Decimal(18, 2)
-  vatAmount   Decimal? @db.Decimal(18, 2) // Input Tax or Output Tax
+  grossAmount Decimal?   @db.Decimal(18, 2)
+  netAmount   Decimal?   @db.Decimal(18, 2)
+  vatAmount   Decimal?   @db.Decimal(18, 2) // Input Tax or Output Tax
   taxSource   TaxSource?
 
   // --- Withholding tax ---
@@ -1003,8 +1003,8 @@ model LedgerEntry {
   importDate          DateTime?
   importCountryOrigin String?
   importEntryNo       String?
-  importDutiableValue Decimal? @db.Decimal(18, 2)
-  importLandedCost    Decimal? @db.Decimal(18, 2)
+  importDutiableValue Decimal?  @db.Decimal(18, 2)
+  importLandedCost    Decimal?  @db.Decimal(18, 2)
 
   createdById String?
   createdAt   DateTime @default(now())
@@ -1094,11 +1094,11 @@ model Item {
   type        ItemType @default(INVENTORY)
   uom         String? // unit of measure, e.g. "pcs", "ream"
   vatType     VatType  @default(VAT_12)
-  defaultCost Decimal  @db.Decimal(18, 4) @default(0) // last/default purchase cost
+  defaultCost Decimal  @default(0) @db.Decimal(18, 4) // last/default purchase cost
 
   // Perpetual inventory running state (moving weighted average).
-  quantityOnHand Decimal @db.Decimal(18, 4) @default(0)
-  avgCost        Decimal @db.Decimal(18, 4) @default(0)
+  quantityOnHand Decimal @default(0) @db.Decimal(18, 4)
+  avgCost        Decimal @default(0) @db.Decimal(18, 4)
 
   // Posting accounts (plain IDs referencing Account).
   inventoryAccountId String? // Inventory asset (INVENTORY items)
@@ -1219,6 +1219,11 @@ enum PayrollRunKind {
 
 // FIXED = same weekdays every week, filled in automatically on each run;
 // FLEXIBLE = rotating/shifting, marked by the payroll processor on each run.
+enum OtRateBasis {
+  BASIC
+  EMPLOYEE_RATE
+}
+
 enum RestDayMode {
   FIXED
   FLEXIBLE
@@ -1242,47 +1247,54 @@ model PayrollSetup {
   hoursPerDay     Decimal @default(8) @db.Decimal(5, 2)
 
   // Premium multipliers (Labor Code defaults, editable per company).
-  otMultiplier              Decimal @default(1.25) @db.Decimal(6, 4)
-  restDayMultiplier         Decimal @default(1.30) @db.Decimal(6, 4)
-  specialHolidayMultiplier  Decimal @default(1.30) @db.Decimal(6, 4)
-  regularHolidayMultiplier  Decimal @default(2.00) @db.Decimal(6, 4)
-  nightDiffRate             Decimal @default(0.10) @db.Decimal(6, 4)
+  otMultiplier                    Decimal     @default(1.25) @db.Decimal(6, 4)
+  // How the hourly rate for overtime is found: BASIC = from the salary / daily
+  // rate (rate ÷ hours per day); EMPLOYEE_RATE = each employee's own OT hourly
+  // rate (PayrollProfile.otHourlyRate), falling back to BASIC when it is blank.
+  otRateBasis                     OtRateBasis @default(BASIC)
+  // EMPLOYEE_RATE only: multiply the employee's OT rate by the OT premiums
+  // (125% / 130% × day rate). Off = the employee rate is paid flat per OT hour.
+  otEmployeeRateUsesPremiums      Boolean     @default(true)
+  restDayMultiplier               Decimal     @default(1.30) @db.Decimal(6, 4)
+  specialHolidayMultiplier        Decimal     @default(1.30) @db.Decimal(6, 4)
+  regularHolidayMultiplier        Decimal     @default(2.00) @db.Decimal(6, 4)
+  nightDiffRate                   Decimal     @default(0.10) @db.Decimal(6, 4)
   // DOLE Handbook on Workers' Statutory Monetary Benefits (2024) rates for
   // combined days, and the OT rate on rest days / special days / holidays
   // (130% of that day's hourly rate; 125% is for ordinary days only).
-  specialRestDayMultiplier       Decimal @default(1.50) @db.Decimal(6, 4)
-  doubleSpecialMultiplier        Decimal @default(1.50) @db.Decimal(6, 4)
-  doubleSpecialRestDayMultiplier Decimal @default(1.95) @db.Decimal(6, 4)
-  regularHolidayRestDayMultiplier Decimal @default(2.60) @db.Decimal(6, 4)
-  doubleHolidayMultiplier        Decimal @default(3.00) @db.Decimal(6, 4)
-  doubleHolidayRestDayMultiplier Decimal @default(3.90) @db.Decimal(6, 4)
-  premiumOtMultiplier            Decimal @default(1.30) @db.Decimal(6, 4)
+  specialRestDayMultiplier        Decimal     @default(1.50) @db.Decimal(6, 4)
+  doubleSpecialMultiplier         Decimal     @default(1.50) @db.Decimal(6, 4)
+  doubleSpecialRestDayMultiplier  Decimal     @default(1.95) @db.Decimal(6, 4)
+  regularHolidayRestDayMultiplier Decimal     @default(2.60) @db.Decimal(6, 4)
+  doubleHolidayMultiplier         Decimal     @default(3.00) @db.Decimal(6, 4)
+  doubleHolidayRestDayMultiplier  Decimal     @default(3.90) @db.Decimal(6, 4)
+  premiumOtMultiplier             Decimal     @default(1.30) @db.Decimal(6, 4)
   // Holiday pay only if present (or on paid leave) on the workday before the
   // regular holiday (Art. 94 rules, handbook "Absences").
-  holidayRequiresPriorPresence   Boolean @default(true)
+  holidayRequiresPriorPresence    Boolean     @default(true)
   // What a monthly salary already covers: 365 factor = rest days + special
   // days; 313/261 = special days; 305/253 = neither. Work on a covered day
   // earns only the premium portion.
-  monthlyIncludesRestDays        Boolean @default(false)
-  monthlyIncludesSpecialDays     Boolean @default(true)
+  monthlyIncludesRestDays         Boolean     @default(false)
+  monthlyIncludesSpecialDays      Boolean     @default(true)
   // 13th-month pay + other benefits exempt from tax up to this amount a year.
-  benefitsExemptCap              Decimal @default(90000) @db.Decimal(18, 2)
+  benefitsExemptCap               Decimal     @default(90000) @db.Decimal(18, 2)
   // Default work schedule for biometric imports (HH:mm, 24h). An end at or
   // before the start is an overnight shift.
-  shiftStart                     String  @default("08:00")
-  shiftEnd                       String  @default("17:00")
-  breakMinutes                   Int     @default(60)
-  lateGraceMinutes               Int     @default(0) // not late within this many minutes
-  otMinimumMinutes               Int     @default(30) // OT shorter than this isn't counted
-  otRoundingMinutes              Int     @default(15) // counted OT rounds down to this block
+  shiftStart                      String      @default("08:00")
+  shiftEnd                        String      @default("17:00")
+  breakMinutes                    Int         @default(60)
+  lateGraceMinutes                Int         @default(0) // not late within this many minutes
+  otMinimumMinutes                Int         @default(30) // OT shorter than this isn't counted
+  otRoundingMinutes               Int         @default(15) // counted OT rounds down to this block
   // Daily-paid employees still get 100% of the daily rate on an unworked regular holiday.
-  payUnworkedRegularHoliday Boolean @default(true)
+  payUnworkedRegularHoliday       Boolean     @default(true)
   // Weekdays that are rest days (0 = Sunday … 6 = Saturday). Leave filings
   // skip these when counting working days.
-  restWeekdays              Int[]   @default([0])
+  restWeekdays                    Int[]       @default([0])
   // Yearly leave credits earned 1/12 on the 1st of each month instead of all
   // on Jan 1. An employee's own setting (PayrollProfile) wins over this.
-  leaveMonthlyAccrual       Boolean @default(false)
+  leaveMonthlyAccrual             Boolean     @default(false)
 
   // GL accounts (plain Account ids).
   salariesExpenseAccountId       String?
@@ -1303,15 +1315,15 @@ model PayrollSetup {
 // Employees paid on the same schedule with the same statutory rules, e.g.
 // "Office staff - semi-monthly" or "Site contractuals - weekly, daily rate".
 model PayGroup {
-  id        String       @id @default(cuid())
-  company   Company      @relation(fields: [companyId], references: [id])
-  companyId String
-  code      String
-  name      String
-  frequency PayFrequency @default(SEMI_MONTHLY)
+  id                 String             @id @default(cuid())
+  company            Company            @relation(fields: [companyId], references: [id])
+  companyId          String
+  code               String
+  name               String
+  frequency          PayFrequency       @default(SEMI_MONTHLY)
   // WEEKLY groups: the weekday a pay week starts on (0 = Sunday ... 6 = Saturday),
   // used to suggest the period when creating a run.
-  weekStartDay Int @default(1)
+  weekStartDay       Int                @default(1)
   // WEEKLY / SEMI_MONTHLY groups: which run of the month takes the government contributions.
   contributionTiming ContributionTiming @default(EVERY_RUN)
 
@@ -1332,20 +1344,20 @@ model PayGroup {
 
 // Company-defined earnings/deductions (allowances, commissions, loans, cash advances).
 model PayItem {
-  id        String      @id @default(cuid())
-  company   Company     @relation(fields: [companyId], references: [id])
-  companyId String
-  code      String
-  name      String
-  kind      PayItemKind
-  taxable   Boolean     @default(true) // EARNING only: counted in taxable compensation
+  id             String      @id @default(cuid())
+  company        Company     @relation(fields: [companyId], references: [id])
+  companyId      String
+  code           String
+  name           String
+  kind           PayItemKind
+  taxable        Boolean     @default(true) // EARNING only: counted in taxable compensation
   // EARNING only: a bonus/benefit (Christmas bonus, productivity incentive…)
   // that shares the yearly tax exemption cap with the 13th-month pay.
-  isOtherBenefit Boolean @default(false)
-  accountId String? // expense (earning) / liability or receivable (deduction)
-  isActive  Boolean     @default(true)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  isOtherBenefit Boolean     @default(false)
+  accountId      String? // expense (earning) / liability or receivable (deduction)
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   @@unique([companyId, code])
 }
@@ -1364,36 +1376,39 @@ model PayrollProfile {
   employmentType EmploymentType @default(REGULAR)
   payBasis       PayBasis       @default(MONTHLY)
   rate           Decimal        @default(0) @db.Decimal(18, 2) // monthly salary or daily rate
+  // Own hourly rate for overtime; used only when the company's otRateBasis is
+  // EMPLOYEE_RATE. null = use the salary-based hourly rate.
+  otHourlyRate   Decimal?       @db.Decimal(18, 2)
   hireDate       DateTime?
   contractEnd    DateTime?
 
-  sssNo         String?
-  philhealthNo  String?
-  pagibigNo     String?
+  sssNo                   String?
+  philhealthNo            String?
+  pagibigNo               String?
   // Minimum wage earner: exempt from withholding tax on compensation.
-  isMinimumWage Boolean @default(false)
+  isMinimumWage           Boolean     @default(false)
   // Optional government deductions per employee. null = follow the pay
   // group's switch; true / false = always / never for this employee.
-  deductSss        Boolean?
-  deductPhilhealth Boolean?
-  deductHdmf       Boolean?
-  withholdTax      Boolean?
+  deductSss               Boolean?
+  deductPhilhealth        Boolean?
+  deductHdmf              Boolean?
+  withholdTax             Boolean?
   // Used for leave eligibility (maternity, paternity, solo parent, VAWC…).
-  sex           Sex?
-  isSoloParent  Boolean @default(false)
+  sex                     Sex?
+  isSoloParent            Boolean     @default(false)
   // Rank-and-file employees get 13th-month pay (PD 851); managerial don't.
-  thirteenthMonthEligible Boolean @default(true)
+  thirteenthMonthEligible Boolean     @default(true)
   // Biometric device user ID (falls back to the employee code), and an
   // optional own shift overriding the company schedule.
-  biometricId   String?
-  shiftStart    String?
-  shiftEnd      String?
+  biometricId             String?
+  shiftStart              String?
+  shiftEnd                String?
   // Rest day schedule. FIXED with no weekdays = the company's rest days (setup).
-  restDayMode   RestDayMode @default(FIXED)
-  restWeekdays  Int[]       @default([])
+  restDayMode             RestDayMode @default(FIXED)
+  restWeekdays            Int[]       @default([])
   // Leave credits earned monthly: true = monthly, false = all on Jan 1,
   // null = follow the company setting (PayrollSetup.leaveMonthlyAccrual).
-  leaveMonthlyAccrual Boolean?
+  leaveMonthlyAccrual     Boolean?
 
   // Recurring earnings/deductions copied into every new run: [{ payItemId, amount }].
   recurring Json?
@@ -1466,7 +1481,7 @@ model PayrollRun {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  lines PayrollRunLine[]
+  lines          PayrollRunLine[]
   // Approved reimbursements paid through this run (added to net pay, not taxed).
   reimbursements Reimbursement[]
 
@@ -1506,37 +1521,37 @@ model PayrollRunLine {
   leaves         Json?
 
   // --- Computed ---
-  daysWorked      Decimal @default(0) @db.Decimal(8, 2)
-  basicPay        Decimal @default(0) @db.Decimal(18, 2)
-  premiumPay      Decimal @default(0) @db.Decimal(18, 2) // rest day / holiday premiums
-  leaveDays       Decimal @default(0) @db.Decimal(8, 2) // paid leave days
-  leavePay        Decimal @default(0) @db.Decimal(18, 2) // DAILY basis: paid leave at the daily rate
-  unpaidLeaveDays Decimal @default(0) @db.Decimal(8, 2)
-  holidayPay      Decimal @default(0) @db.Decimal(18, 2) // DAILY basis: unworked regular holidays
-  leaveConversionDays Decimal @default(0) @db.Decimal(8, 2) // unused leave converted to cash
-  leaveConversionPay  Decimal @default(0) @db.Decimal(18, 2)
-  exemptBenefits  Decimal @default(0) @db.Decimal(18, 2) // 13th month/benefits counted against the yearly cap
+  daysWorked           Decimal @default(0) @db.Decimal(8, 2)
+  basicPay             Decimal @default(0) @db.Decimal(18, 2)
+  premiumPay           Decimal @default(0) @db.Decimal(18, 2) // rest day / holiday premiums
+  leaveDays            Decimal @default(0) @db.Decimal(8, 2) // paid leave days
+  leavePay             Decimal @default(0) @db.Decimal(18, 2) // DAILY basis: paid leave at the daily rate
+  unpaidLeaveDays      Decimal @default(0) @db.Decimal(8, 2)
+  holidayPay           Decimal @default(0) @db.Decimal(18, 2) // DAILY basis: unworked regular holidays
+  leaveConversionDays  Decimal @default(0) @db.Decimal(8, 2) // unused leave converted to cash
+  leaveConversionPay   Decimal @default(0) @db.Decimal(18, 2)
+  exemptBenefits       Decimal @default(0) @db.Decimal(18, 2) // 13th month/benefits counted against the yearly cap
   thirteenthMonthBasis Decimal @default(0) @db.Decimal(18, 2) // basic salary earned this year (13th-month runs)
   thirteenthMonthPay   Decimal @default(0) @db.Decimal(18, 2)
-  otPay           Decimal @default(0) @db.Decimal(18, 2)
-  nightDiffPay    Decimal @default(0) @db.Decimal(18, 2)
-  lateDeduction   Decimal @default(0) @db.Decimal(18, 2)
-  otherEarnings   Decimal @default(0) @db.Decimal(18, 2)
-  grossPay        Decimal @default(0) @db.Decimal(18, 2)
-  sssEe           Decimal @default(0) @db.Decimal(18, 2)
-  sssEr           Decimal @default(0) @db.Decimal(18, 2) // incl. EC
-  philhealthEe    Decimal @default(0) @db.Decimal(18, 2)
-  philhealthEr    Decimal @default(0) @db.Decimal(18, 2)
-  hdmfEe          Decimal @default(0) @db.Decimal(18, 2)
-  hdmfEr          Decimal @default(0) @db.Decimal(18, 2)
-  taxableIncome   Decimal @default(0) @db.Decimal(18, 2)
-  withholdingTax  Decimal @default(0) @db.Decimal(18, 2)
-  otherDeductions Decimal @default(0) @db.Decimal(18, 2)
-  totalDeductions Decimal @default(0) @db.Decimal(18, 2)
+  otPay                Decimal @default(0) @db.Decimal(18, 2)
+  nightDiffPay         Decimal @default(0) @db.Decimal(18, 2)
+  lateDeduction        Decimal @default(0) @db.Decimal(18, 2)
+  otherEarnings        Decimal @default(0) @db.Decimal(18, 2)
+  grossPay             Decimal @default(0) @db.Decimal(18, 2)
+  sssEe                Decimal @default(0) @db.Decimal(18, 2)
+  sssEr                Decimal @default(0) @db.Decimal(18, 2) // incl. EC
+  philhealthEe         Decimal @default(0) @db.Decimal(18, 2)
+  philhealthEr         Decimal @default(0) @db.Decimal(18, 2)
+  hdmfEe               Decimal @default(0) @db.Decimal(18, 2)
+  hdmfEr               Decimal @default(0) @db.Decimal(18, 2)
+  taxableIncome        Decimal @default(0) @db.Decimal(18, 2)
+  withholdingTax       Decimal @default(0) @db.Decimal(18, 2)
+  otherDeductions      Decimal @default(0) @db.Decimal(18, 2)
+  totalDeductions      Decimal @default(0) @db.Decimal(18, 2)
   // Approved reimbursements paid with this line: added to net pay only (not
   // gross, not taxable, no contributions). See lib/payroll/server.ts.
-  reimbursements  Decimal @default(0) @db.Decimal(18, 2)
-  netPay          Decimal @default(0) @db.Decimal(18, 2)
+  reimbursements       Decimal @default(0) @db.Decimal(18, 2)
+  netPay               Decimal @default(0) @db.Decimal(18, 2)
 
   @@unique([runId, employeeId])
   @@index([employeeId])
@@ -1609,13 +1624,13 @@ model LeaveType {
   employmentTypes  EmploymentType[] // empty = every employment type
 
   // Year-end
-  maxCarryOver      Decimal @default(0) @db.Decimal(8, 2)
+  maxCarryOver Decimal @default(0) @db.Decimal(8, 2)
 
   // Limits from the statutes
-  soloParentExtraDays Decimal @default(0) @db.Decimal(8, 2) // maternity: +15 days for solo parents
+  soloParentExtraDays Decimal  @default(0) @db.Decimal(8, 2) // maternity: +15 days for solo parents
   maxFilings          Int? // lifetime filings, e.g. paternity: first 4 deliveries
   maxDaysPerYear      Decimal? @db.Decimal(8, 2) // e.g. special leave for women: 60 days a year
-  convertibleToCash Boolean @default(false)
+  convertibleToCash   Boolean  @default(false)
 
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
@@ -1650,32 +1665,32 @@ model LeaveCredit {
 }
 
 model LeaveRequest {
-  id          String      @id @default(cuid())
+  id          String           @id @default(cuid())
   companyId   String
-  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee    Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   employeeId  String
-  leaveType   LeaveType   @relation(fields: [leaveTypeId], references: [id])
+  leaveType   LeaveType        @relation(fields: [leaveTypeId], references: [id])
   leaveTypeId String
   startDate   DateTime
   endDate     DateTime
   // Each leave date and how much of it is taken: [{ date: "2026-11-03", days: 1 }].
   dates       Json
-  days        Decimal     @db.Decimal(8, 2)
+  days        Decimal          @db.Decimal(8, 2)
   isPaid      Boolean // snapshot of the leave type when filed
   reason      String?
-  status      LeaveStatus @default(PENDING)
+  status      LeaveStatus      @default(PENDING)
   // CONVERSION = unused credits paid in cash (SIL commutation). `dates` holds
   // one entry dated Dec 31 of the converted year; startDate = date to pay it.
   kind        LeaveRequestKind @default(FILING)
 
-  filedById    String?
+  filedById      String?
   // Filed by the employee from the leave portal (filedById is then null).
-  filedViaPortal Boolean @default(false)
-  decidedById  String?
-  decidedAt    DateTime?
-  decisionNote String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  filedViaPortal Boolean   @default(false)
+  decidedById    String?
+  decidedAt      DateTime?
+  decisionNote   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([companyId, startDate])
   @@index([employeeId, startDate])

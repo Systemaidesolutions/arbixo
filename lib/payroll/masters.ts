@@ -67,6 +67,9 @@ export async function saveProfile(companyId: string, employeeId: string, raw: Re
   if (!BASES.includes(raw.payBasis as PayBasis)) return { status: 400, error: "Choose monthly or daily pay basis." };
   const rate = Number(raw.rate);
   if (!Number.isFinite(rate) || rate < 0) return { status: 400, error: "Enter a valid rate." };
+  const otRaw = raw.otHourlyRate;
+  const otHourlyRate = otRaw === null || otRaw === undefined || String(otRaw).trim() === "" ? null : Number(otRaw);
+  if (otHourlyRate !== null && (!Number.isFinite(otHourlyRate) || otHourlyRate < 0)) return { status: 400, error: "Enter a valid OT rate per hour." };
   if (raw.payGroupId && !(await prisma.payGroup.count({ where: { id: String(raw.payGroupId), companyId } }))) return { status: 400, error: "Pay group not found." };
   if (raw.locationId && !(await prisma.location.count({ where: { id: String(raw.locationId), companyId } }))) return { status: 400, error: "Branch not found." };
   const date = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(`${v}T00:00:00Z`) : null);
@@ -80,6 +83,7 @@ export async function saveProfile(companyId: string, employeeId: string, raw: Re
     employmentType: raw.employmentType as EmploymentType,
     payBasis: raw.payBasis as PayBasis,
     rate,
+    otHourlyRate: otHourlyRate ? otHourlyRate : null,
     hireDate: date(raw.hireDate),
     contractEnd: date(raw.contractEnd),
     sssNo: clean(raw.sssNo),

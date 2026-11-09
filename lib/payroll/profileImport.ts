@@ -103,6 +103,8 @@ export async function importProfiles(companyId: string, sheet: SheetRow[], dryRu
     const p = emp?.payrollProfile;
     const raw: Record<string, unknown> = p ? {
       payGroupId: p.payGroupId, locationId: p.locationId, employmentType: p.employmentType, payBasis: p.payBasis, rate: Number(p.rate),
+      otHourlyRate: p.otHourlyRate == null ? null : Number(p.otHourlyRate),
+      deductSss: p.deductSss, deductPhilhealth: p.deductPhilhealth, deductHdmf: p.deductHdmf, withholdTax: p.withholdTax,
       hireDate: iso(p.hireDate), contractEnd: iso(p.contractEnd), sssNo: p.sssNo, philhealthNo: p.philhealthNo, pagibigNo: p.pagibigNo,
       isMinimumWage: p.isMinimumWage, sex: p.sex, isSoloParent: p.isSoloParent, thirteenthMonthEligible: p.thirteenthMonthEligible,
       biometricId: p.biometricId, shiftStart: p.shiftStart, shiftEnd: p.shiftEnd, restDayMode: p.restDayMode, restWeekdays: p.restWeekdays, leaveMonthlyAccrual: p.leaveMonthlyAccrual,

@@ -7,6 +7,7 @@ import { FREQUENCY_LABEL, type ContributionTiming, type PayFrequency } from "@/l
 type Account = { id: string; code: string; title: string };
 type Setup = {
   workDaysPerYear: number; hoursPerDay: number; otMultiplier: number; premiumOtMultiplier: number; restDayMultiplier: number;
+  otRateBasis: "BASIC" | "EMPLOYEE_RATE"; otEmployeeRateUsesPremiums: boolean;
   specialHolidayMultiplier: number; specialRestDayMultiplier: number; doubleSpecialMultiplier: number; doubleSpecialRestDayMultiplier: number;
   regularHolidayMultiplier: number; regularHolidayRestDayMultiplier: number; doubleHolidayMultiplier: number; doubleHolidayRestDayMultiplier: number;
   nightDiffRate: number; payUnworkedRegularHoliday: boolean; holidayRequiresPriorPresence: boolean;
@@ -141,6 +142,36 @@ export function SetupClient({ setup, groups, items, accounts, canEdit }: { setup
             <input type="checkbox" className="mt-1" disabled={!canEdit} checked={form.monthlyIncludesRestDays} onChange={(e) => setForm({ ...form, monthlyIncludesRestDays: e.target.checked })} />
             <span>Monthly salary already pays rest days (factor 365)</span>
           </label>
+        </div>
+        <div className="mt-5 rounded border border-neutral-200 bg-neutral-50 p-3">
+          <span className="text-xs font-medium text-neutral-700">Overtime rate</span>
+          <div className="mt-2 space-y-2 text-sm text-neutral-700">
+            <label className="flex items-start gap-2">
+              <input type="radio" name="otRateBasis" className="mt-1" disabled={!canEdit} checked={form.otRateBasis === "BASIC"} onChange={() => setForm({ ...form, otRateBasis: "BASIC" })} />
+              <span>
+                <b>Per hour, based on the basic salary</b> <span className="text-xs text-neutral-500">(default)</span>
+                <span className="block text-xs text-neutral-500">OT hour = daily rate ÷ hours per day (monthly salary × 12 ÷ salary factor first), times the OT rates above.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2">
+              <input type="radio" name="otRateBasis" className="mt-1" disabled={!canEdit} checked={form.otRateBasis === "EMPLOYEE_RATE"} onChange={() => setForm({ ...form, otRateBasis: "EMPLOYEE_RATE" })} />
+              <span>
+                <b>Per hour, using each employee&apos;s own OT rate</b>
+                <span className="block text-xs text-neutral-500">Set the OT rate per hour on each employee in Payroll employees. Employees with no OT rate set use the basic-salary rate.</span>
+              </span>
+            </label>
+            {form.otRateBasis === "EMPLOYEE_RATE" && (
+              <label className="ml-6 flex items-start gap-2">
+                <input type="checkbox" className="mt-1" disabled={!canEdit} checked={form.otEmployeeRateUsesPremiums} onChange={(e) => setForm({ ...form, otEmployeeRateUsesPremiums: e.target.checked })} />
+                <span>
+                  Apply the OT rates above to the employee&apos;s OT rate
+                  <span className="block text-xs text-neutral-500">
+                    On: OT hour = employee rate × 125% (or × the day&apos;s rate × 130% on rest days and holidays). Off: the employee rate is paid as is for every OT hour.
+                  </span>
+                </span>
+              </label>
+            )}
+          </div>
         </div>
         <div className="mt-4">
           <span className={label}>Rest days <span className="text-neutral-400">(skipped when counting leave days)</span></span>

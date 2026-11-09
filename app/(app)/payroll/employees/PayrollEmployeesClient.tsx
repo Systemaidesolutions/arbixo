@@ -9,6 +9,7 @@ type EmploymentType = "REGULAR" | "PROBATIONARY" | "CONTRACTUAL" | "PROJECT_BASE
 type PayBasis = "MONTHLY" | "DAILY";
 type Profile = {
   payGroupId: string | null; locationId: string | null; employmentType: EmploymentType; payBasis: PayBasis; rate: number;
+  otHourlyRate: string; // own OT rate per hour; "" = use the salary-based rate
   hireDate: string; contractEnd: string; sssNo: string; philhealthNo: string; pagibigNo: string; isMinimumWage: boolean;
   // Optional government deductions: null = follow the pay group.
   deductSss: boolean | null; deductPhilhealth: boolean | null; deductHdmf: boolean | null; withholdTax: boolean | null;
@@ -31,11 +32,11 @@ const dayList = (ds: number[]) => ds.length ? [...ds].sort().map((d) => WEEKDAYS
 const label = "block text-xs text-neutral-500";
 
 const blankProfile = (): Profile => ({
-  payGroupId: null, locationId: null, employmentType: "CONTRACTUAL", payBasis: "DAILY", rate: 0, hireDate: "", contractEnd: "",
+  payGroupId: null, locationId: null, employmentType: "CONTRACTUAL", payBasis: "DAILY", rate: 0, otHourlyRate: "", hireDate: "", contractEnd: "",
   sssNo: "", philhealthNo: "", pagibigNo: "", isMinimumWage: false, deductSss: null, deductPhilhealth: null, deductHdmf: null, withholdTax: null, sex: null, isSoloParent: false, thirteenthMonthEligible: true, biometricId: "", shiftStart: "", shiftEnd: "", restDayMode: "FIXED", restWeekdays: [], leaveMonthlyAccrual: null, recurring: [], bankName: "", bankAccountNo: "", isActive: true,
 });
 
-export function PayrollEmployeesClient({ employees, groups, items, branches, canEdit, companyRestWeekdays, companyLeaveMonthly }: { employees: Employee[]; groups: Option[]; items: PayItemOption[]; branches: Option[]; canEdit: boolean; companyRestWeekdays: number[]; companyLeaveMonthly: boolean }) {
+export function PayrollEmployeesClient({ employees, groups, items, branches, canEdit, companyRestWeekdays, companyLeaveMonthly, companyOtEmployeeRate }: { companyOtEmployeeRate: boolean; employees: Employee[]; groups: Option[]; items: PayItemOption[]; branches: Option[]; canEdit: boolean; companyRestWeekdays: number[]; companyLeaveMonthly: boolean }) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState<Profile>(blankProfile());
@@ -74,6 +75,7 @@ export function PayrollEmployeesClient({ employees, groups, items, branches, can
           <label className={label}>Employment type<select value={form.employmentType} onChange={(e) => setForm({ ...form, employmentType: e.target.value as EmploymentType })} className={field}>{Object.entries(EMPLOYMENT_LABEL).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></label>
           <label className={label}>Pay basis<select value={form.payBasis} onChange={(e) => setForm({ ...form, payBasis: e.target.value as PayBasis })} className={field}><option value="DAILY">Daily rate</option><option value="MONTHLY">Monthly salary</option></select></label>
           <label className={label}>{form.payBasis === "DAILY" ? "Daily rate" : "Monthly salary"}<input value={String(form.rate)} inputMode="decimal" onChange={(e) => setForm({ ...form, rate: e.target.value as unknown as number })} className={`${field} text-right font-mono`} /></label>
+          <label className={label} title="Used only when Payroll setup › Overtime rate is set to each employee's own OT rate.">OT rate per hour<input value={form.otHourlyRate} inputMode="decimal" placeholder="Based on salary" onChange={(e) => setForm({ ...form, otHourlyRate: e.target.value })} className={`${field} text-right font-mono`} /><span className="mt-0.5 block text-[11px] text-neutral-400">{companyOtEmployeeRate ? (form.otHourlyRate.trim() ? "Used for this employee's overtime." : "Blank: OT uses the basic-salary hourly rate.") : "Not used: Payroll setup computes OT from the basic salary."}</span></label>
           <label className={label}>Pay group<select value={form.payGroupId ?? ""} onChange={(e) => setForm({ ...form, payGroupId: e.target.value || null })} className={field}><option value="">Select…</option>{groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select></label>
           <label className={label}>Branch<select value={form.locationId ?? ""} onChange={(e) => setForm({ ...form, locationId: e.target.value || null })} className={field}><option value="">—</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
           <label className={label}>Hire / start date<input type="date" value={form.hireDate} onChange={(e) => setForm({ ...form, hireDate: e.target.value })} className={field} /></label>

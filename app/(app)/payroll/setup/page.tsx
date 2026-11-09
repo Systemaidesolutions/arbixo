@@ -38,6 +38,7 @@ export default async function PayrollSetupPage() {
           setup={{
             workDaysPerYear: setup.workDaysPerYear, hoursPerDay: n(setup.hoursPerDay), otMultiplier: n(setup.otMultiplier),
             premiumOtMultiplier: n(setup.premiumOtMultiplier),
+            otRateBasis: setup.otRateBasis, otEmployeeRateUsesPremiums: setup.otEmployeeRateUsesPremiums,
             restDayMultiplier: n(setup.restDayMultiplier), specialHolidayMultiplier: n(setup.specialHolidayMultiplier),
             specialRestDayMultiplier: n(setup.specialRestDayMultiplier), doubleSpecialMultiplier: n(setup.doubleSpecialMultiplier),
             doubleSpecialRestDayMultiplier: n(setup.doubleSpecialRestDayMultiplier),

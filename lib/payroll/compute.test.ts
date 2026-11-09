@@ -221,3 +221,37 @@ describe("optional government deductions per employee", () => {
     expect(r.philhealthEe).toBe(0);
   });
 });
+
+describe("overtime rate basis", () => {
+  // Daily ₱800, 8 h/day → ₱100/h from the salary. Mon Nov 2 ordinary, Sun Nov 8 rest day.
+  const weekly = { frequency: "WEEKLY" as const, deductSss: false, deductPhilhealth: false, deductHdmf: false, withholdTax: false };
+  const line = {
+    payBasis: "DAILY" as const, rate: 800, isMinimumWage: false,
+    attendance: { "2026-11-02": 1, "2026-11-08": 1 },
+    otHours: 2,
+    dayHours: { "2026-11-08": { ot: 1 } },
+    restDates: ["2026-11-08"],
+  };
+  const ctx = (rules = DEFAULT_RULES) => ({ periodStart: "2026-11-02", periodEnd: "2026-11-08", dayTypes: {}, rules, group: weekly });
+
+  it("defaults to the basic-salary hourly rate", () => {
+    // 2 × 100 × 1.25 + 1 × 100 × 1.3 × 1.3
+    expect(computeLine({ ...line, otHourlyRate: 150 }, ctx()).otPay).toBeCloseTo(250 + 169, 2);
+  });
+
+  it("uses the employee's OT rate with premiums", () => {
+    const rules = { ...DEFAULT_RULES, otRateBasis: "EMPLOYEE_RATE" as const, otEmployeeRateUsesPremiums: true };
+    // 2 × 150 × 1.25 + 1 × 150 × 1.3 × 1.3
+    expect(computeLine({ ...line, otHourlyRate: 150 }, ctx(rules)).otPay).toBeCloseTo(375 + 253.5, 2);
+  });
+
+  it("pays the employee's OT rate flat when premiums are off", () => {
+    const rules = { ...DEFAULT_RULES, otRateBasis: "EMPLOYEE_RATE" as const, otEmployeeRateUsesPremiums: false };
+    expect(computeLine({ ...line, otHourlyRate: 150 }, ctx(rules)).otPay).toBeCloseTo(450, 2);
+  });
+
+  it("falls back to the salary rate when the employee has no OT rate", () => {
+    const rules = { ...DEFAULT_RULES, otRateBasis: "EMPLOYEE_RATE" as const, otEmployeeRateUsesPremiums: false };
+    expect(computeLine({ ...line, otHourlyRate: null }, ctx(rules)).otPay).toBeCloseTo(250 + 169, 2);
+  });
+});

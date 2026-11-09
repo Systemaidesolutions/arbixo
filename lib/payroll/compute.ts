@@ -41,6 +41,10 @@ export type PayrollRules = {
   holidayRequiresPriorPresence: boolean;
   monthlyIncludesRestDays: boolean;
   monthlyIncludesSpecialDays: boolean;
+  /** BASIC = OT hour from the salary; EMPLOYEE_RATE = the employee's own OT hourly rate (when set). */
+  otRateBasis?: "BASIC" | "EMPLOYEE_RATE";
+  /** EMPLOYEE_RATE only: apply the OT premiums to the employee rate (default) or pay it flat. */
+  otEmployeeRateUsesPremiums?: boolean;
 };
 
 export const DEFAULT_RULES: PayrollRules = {
@@ -62,6 +66,8 @@ export const DEFAULT_RULES: PayrollRules = {
   holidayRequiresPriorPresence: true,
   monthlyIncludesRestDays: false,
   monthlyIncludesSpecialDays: true,
+  otRateBasis: "BASIC",
+  otEmployeeRateUsesPremiums: true,
 };
 
 export type ContributionTiming = "EVERY_RUN" | "FIRST_RUN" | "LAST_RUN";
@@ -102,6 +108,7 @@ export type LineInput = {
   benefitsExemptRemaining?: number; // what's left of the yearly 13th-month/benefits exemption
   // Per-employee government deduction overrides; null/undefined = pay group's switch.
   govDeductions?: GovDeductions | null;
+  otHourlyRate?: number | null; // employee's own OT hourly rate (company OT basis EMPLOYEE_RATE)
 };
 
 export type GovDeductions = { sss?: boolean | null; philhealth?: boolean | null; hdmf?: boolean | null; tax?: boolean | null };
@@ -378,7 +385,12 @@ export function computeLine(input: LineInput, ctx: RunContext): LineResult {
   // Work on rest days / special days / holidays entered by date. Daily-rate
   // staff get the day itself from the grid; monthly-paid staff get the part
   // of the day's rate their salary doesn't already include.
-  let otPay = hourlyRate * rules.otMultiplier * Math.max(0, input.otHours ?? 0);
+  // Overtime: by default the hour comes from the salary. A company can switch to
+  // each employee's own OT hourly rate, with or without the OT premiums.
+  const ownOt = rules.otRateBasis === "EMPLOYEE_RATE" && Number(input.otHourlyRate) > 0 ? Number(input.otHourlyRate) : null;
+  const flatOt = ownOt !== null && rules.otEmployeeRateUsesPremiums === false;
+  const otHour = ownOt ?? hourlyRate;
+  let otPay = otHour * (flatOt ? 1 : rules.otMultiplier) * Math.max(0, input.otHours ?? 0);
   let nightDiffPay = hourlyRate * rules.nightDiffRate * Math.max(0, input.nightDiffHours ?? 0);
   for (const [date, h] of Object.entries(dayHours)) {
     if (date < ctx.periodStart || date > ctx.periodEnd) continue;
@@ -391,7 +403,7 @@ export function computeLine(input: LineInput, ctx: RunContext): LineResult {
       const days = Math.min(1, Math.max(0, Number(h.days) || 0));
       premiumPay += dailyRate * days * Math.max(0, mult - monthlyCoveredDays(type, rules));
     }
-    otPay += hourlyRate * mult * otFactor(type, rules) * ot;
+    otPay += flatOt ? otHour * ot : otHour * mult * otFactor(type, rules) * ot;
     // Night shift: +10% of the hour's rate, including OT hours at night.
     nightDiffPay += hourlyRate * mult * rules.nightDiffRate * nd + hourlyRate * mult * otFactor(type, rules) * rules.nightDiffRate * ndOt;
   }

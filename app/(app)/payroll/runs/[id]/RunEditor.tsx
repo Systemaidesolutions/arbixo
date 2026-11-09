@@ -22,6 +22,7 @@ type Line = {
   leaveConversionDays: number; // unused leave converted to cash, paid this run
   reimbursements: number; // approved reimbursements paid with this run (net pay only, not taxed)
   govDeductions: { sss: boolean | null; philhealth: boolean | null; hdmf: boolean | null; tax: boolean | null } | null; // per-employee overrides
+  otHourlyRate: number | null; // own OT hourly rate (company OT basis "employee rate")
   benefitsExemptRemaining: number; // left of the yearly 13th-month/bonus exemption
   biometricId: string | null; shiftStart: string | null; shiftEnd: string | null; // for the biometric import
   restDayMode: "FIXED" | "FLEXIBLE"; // FLEXIBLE = no fixed rest day, marked here every run
