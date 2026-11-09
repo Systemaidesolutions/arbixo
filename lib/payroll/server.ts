@@ -29,11 +29,11 @@ export async function payrollAuth(need: "canPost" | "canCancel" = "canPost"): Pr
 export const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 const n = (v: unknown) => (v == null ? 0 : Number(v));
 
-/** A profile's per-employee government deduction overrides (null = pay group's switch). */
 /** The employee's own OT hourly rate, or null when blank. */
 export const otRateOf = (p: { otHourlyRate: unknown } | null | undefined) =>
   p?.otHourlyRate != null && Number(p.otHourlyRate) > 0 ? Number(p.otHourlyRate) : null;
 
+/** A profile's per-employee government deduction overrides (null = pay group's switch). */
 export const govOf = (p: { deductSss: boolean | null; deductPhilhealth: boolean | null; deductHdmf: boolean | null; withholdTax: boolean | null } | null | undefined) =>
   p ? { sss: p.deductSss, philhealth: p.deductPhilhealth, hdmf: p.deductHdmf, tax: p.withholdTax } : null;
 

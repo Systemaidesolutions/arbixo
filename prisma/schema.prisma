@@ -1255,6 +1255,11 @@ model PayrollSetup {
   // EMPLOYEE_RATE only: multiply the employee's OT rate by the OT premiums
   // (125% / 130% × day rate). Off = the employee rate is paid flat per OT hour.
   otEmployeeRateUsesPremiums      Boolean     @default(true)
+  // Payslip output layout (like Business Central report layouts): STANDARD
+  // (default), COMPACT, DETAILED or CUSTOM. CUSTOM uses payslipOptions (see
+  // lib/payroll/payslipLayout.ts); the presets ignore it.
+  payslipLayout                   String      @default("STANDARD")
+  payslipOptions                  Json?
   restDayMultiplier               Decimal     @default(1.30) @db.Decimal(6, 4)
   specialHolidayMultiplier        Decimal     @default(1.30) @db.Decimal(6, 4)
   regularHolidayMultiplier        Decimal     @default(2.00) @db.Decimal(6, 4)

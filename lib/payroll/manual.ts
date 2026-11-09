@@ -21,6 +21,7 @@ Open Payroll from the app launcher after you log in. If your account has only Pa
 | Leave | File and approve leave; view and adjust leave balances |
 | Reimbursements | Approve expenses employees filed with receipt photos; they are paid in the next payroll run |
 | Setup › Payroll setup | Pay rules, work schedule, posting accounts, pay groups, earnings and deductions, leave credits |
+| Setup › Payslip layout | How this company's payslips print: Standard, Compact, Detailed or a Custom layout |
 | Setup › Leave types | Statutory and company leave policies |
 | Setup › Employee portal | Turn the employee portal on, share its link and set each employee's PIN |
 | Setup › Employees | Employee records, with each employee's leave credits and portal PIN |
@@ -386,7 +387,20 @@ A 13th-month run pays 1/12 of the basic salary each employee earned in the year,
 
 Open a run and press **Payslips** for one payslip per employee, ready to print. Press **Print register** for the whole run on one report.
 
-Each payslip shows:
+### Payslip layout
+
+Each company chooses how its payslips print under Setup › **Payslip layout**, like report layouts in Business Central. Pick a layout, check the preview (it uses sample figures), then press **Save layout**.
+
+| Layout | What it prints |
+| --- | --- |
+| Standard (default) | Two per page: earnings, deductions, leave taken, leave balances and a signature line |
+| Compact | Three short payslips per page: earnings, deductions and net pay only |
+| Detailed | One per page, adding the company logo and TIN, branch, attendance, employer contributions and Prepared by / Approved by lines |
+| Custom | Your own layout, built from the options below |
+
+For a **Custom** layout, set the title (e.g. PAYSLIP or PAY ADVICE), payslips per page (1, 2 or 3), text size, which parts show (logo, address, TIN, employee code, position, branch, attendance, employer share, leave taken, leave balances), the signature line and its label, Prepared by / Approved by lines, and a footer note. **Customize a copy of …** starts the Custom layout from one of the ready-made ones. The logo comes from Company details.
+
+The Standard layout shows:
 
 - **Header**: employee, period and pay date. A draft run's payslip notes that figures can still change until posting.
 - **Earnings**: basic pay, holiday pay, rest day / special day / holiday premium, overtime, night differential, other earnings, and late/undertime as a minus. Totals to Gross pay.

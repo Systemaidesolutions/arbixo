@@ -172,6 +172,7 @@ export const PAYROLL_NAV_SECTIONS: NavSection[] = [
     icon: "settings",
     links: [
       { href: "/payroll/setup", label: "Payroll setup", icon: "payrollSetup" },
+      { href: "/payroll/payslip-layout", label: "Payslip layout", icon: "manual" },
       { href: "/payroll/leave-types", label: "Leave types", icon: "leave" },
       { href: "/payroll/leave-portal", label: "Employee portal", icon: "leave" },
       { href: "/payroll/employee-records", label: "Employees", icon: "employees" },

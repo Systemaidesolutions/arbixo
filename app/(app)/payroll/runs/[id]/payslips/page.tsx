@@ -5,16 +5,20 @@ import { formatPeso } from "@/lib/format";
 import { isoDate } from "@/lib/payroll/server";
 import { PrintControls } from "@/components/PrintControls";
 import { payslipLeave, type PayslipLeave } from "@/lib/payroll/leaveServer";
+import { getOrCreateSetup } from "@/lib/payroll/server";
+import { resolvePayslipOptions } from "@/lib/payroll/payslipLayout";
+import { PayslipView, type PayslipData } from "@/components/payroll/PayslipView";
 
 const mdy = (d: Date) => { const [y, m, dd] = isoDate(d).split("-"); return `${m}/${dd}/${y}`; };
 
-// One payslip per employee, two per printed page.
+// One payslip per employee, printed in the company's payslip layout
+// (Payroll › Setup › Payslip layout; Standard = two per page).
 export default async function PayslipsPage({ params, searchParams }: { params: { id: string }; searchParams: { employeeId?: string } }) {
   const company = await getCurrentCompany();
   if (!company) notFound();
   const run = await prisma.payrollRun.findFirst({
     where: { id: params.id, companyId: company.id },
-    include: { payGroup: true, lines: { where: searchParams.employeeId ? { employeeId: searchParams.employeeId } : {}, include: { employee: true } } },
+    include: { payGroup: true, lines: { where: searchParams.employeeId ? { employeeId: searchParams.employeeId } : {}, include: { employee: { include: { payrollProfile: { select: { locationId: true } } } } } } },
   });
   if (!run) notFound();
   const items = await prisma.payItem.findMany({ where: { companyId: company.id } });
@@ -23,122 +27,61 @@ export default async function PayslipsPage({ params, searchParams }: { params: {
   const leave = run.kind === "THIRTEENTH_MONTH"
     ? new Map<string, PayslipLeave>()
     : await payslipLeave(company.id, lines.map((l) => l.employeeId), isoDate(run.periodStart), isoDate(run.periodEnd));
-  const md = (iso: string) => `${iso.slice(5, 7)}/${iso.slice(8, 10)}`;
-  const d2 = (v: number) => (Math.round(v * 100) / 100).toString();
+  const setup = await getOrCreateSetup(company.id);
+  const options = resolvePayslipOptions(setup.payslipLayout, setup.payslipOptions);
+  const locIds = [...new Set(lines.map((l) => l.employee.payrollProfile?.locationId).filter((v): v is string => !!v))];
+  const branches = new Map((locIds.length ? await prisma.location.findMany({ where: { companyId: company.id, id: { in: locIds } }, select: { id: true, name: true } }) : []).map((b) => [b.id, b.name]));
+  const thirteenth = run.kind === "THIRTEENTH_MONTH";
+
+  const slips: PayslipData[] = lines.map((l) => {
+    const adj = (Array.isArray(l.adjustments) ? l.adjustments : []) as { payItemId: string; amount: number }[];
+    const named = adj.flatMap((a) => { const it = items.find((i) => i.id === a.payItemId); return it ? [{ ...it, amount: Math.abs(Number(a.amount) || 0) }] : []; });
+    const lv = leave.get(l.employeeId);
+    const loc = l.employee.payrollProfile?.locationId;
+    return {
+      key: l.id,
+      company: { name: company.registeredName || company.tradeName, address: company.businessAddress, tin: company.tin, logoUrl: company.logoUrl },
+      thirteenth,
+      runNo: run.runNo,
+      period: thirteenth ? `Year ${run.periodStart.getUTCFullYear()}` : `${mdy(run.periodStart)} – ${mdy(run.periodEnd)}`,
+      payDate: mdy(run.payDate),
+      employee: { name: `${l.employee.lastName}, ${l.employee.firstName}`, code: l.employee.code, position: l.employee.position, branch: loc ? branches.get(loc) ?? null : null },
+      earnings: [
+        [l.payBasis === "DAILY" ? `Basic pay (${n(l.daysWorked)} day/s × ${formatPeso(n(l.rate))})` : `Basic pay${n(l.unpaidLeaveDays) ? ` (less ${n(l.unpaidLeaveDays)} day/s leave without pay)` : ""}`, n(l.basicPay)],
+        ["Holiday pay (unworked regular holiday)", n(l.holidayPay)],
+        [`Paid leave (${n(l.leaveDays)} day/s)`, n(l.leavePay)],
+        ["Rest day / special day / holiday premium", n(l.premiumPay)],
+        ["Overtime", n(l.otPay)],
+        ["Night differential", n(l.nightDiffPay)],
+        ["Late / undertime", -n(l.lateDeduction)],
+        [`Unused leave converted to cash (${n(l.leaveConversionDays)} day/s)`, n(l.leaveConversionPay)],
+        [`13th-month pay (1/12 of ${formatPeso(n(l.thirteenthMonthBasis))})`, n(l.thirteenthMonthPay)],
+        ...named.filter((x) => x.kind === "EARNING").map((x) => [x.name, x.amount] as [string, number]),
+      ],
+      deductions: [
+        ["SSS", n(l.sssEe)],
+        ["PhilHealth", n(l.philhealthEe)],
+        ["Pag-IBIG", n(l.hdmfEe)],
+        ["Withholding tax", n(l.withholdingTax)],
+        ...named.filter((x) => x.kind === "DEDUCTION").map((x) => [x.name, x.amount] as [string, number]),
+      ],
+      grossPay: n(l.grossPay),
+      totalDeductions: n(l.totalDeductions),
+      reimbursements: n(l.reimbursements),
+      netPay: n(l.netPay),
+      attendance: thirteenth ? null : { payBasis: l.payBasis, daysWorked: n(l.daysWorked), absentDays: n(l.absentDays), lateMinutes: n(l.lateMinutes), otHours: n(l.otHours), nightHours: n(l.nightDiffHours) },
+      employer: thirteenth ? null : { sss: n(l.sssEr), philhealth: n(l.philhealthEr), hdmf: n(l.hdmfEr) },
+      leave: lv ? { asOf: mdy(run.periodEnd), taken: lv.taken, balances: lv.balances } : null,
+    };
+  });
 
   return (
-    <div className="mx-auto max-w-3xl bg-white p-6 text-neutral-900 print:p-0">
+    <div className={`mx-auto bg-white p-6 text-neutral-900 print:p-0 ${options.perPage === 1 ? "max-w-4xl" : "max-w-3xl"}`}>
       <PrintControls auto={false} />
       {run.status === "DRAFT" && <p className="mb-3 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800 print:hidden">Draft run: figures can still change until the run is posted.</p>}
-      {lines.map((l) => {
-        const adj = (Array.isArray(l.adjustments) ? l.adjustments : []) as { payItemId: string; amount: number }[];
-        const named = adj.flatMap((a) => { const it = items.find((i) => i.id === a.payItemId); return it ? [{ ...it, amount: Math.abs(Number(a.amount) || 0) }] : []; });
-        const earnings: [string, number][] = [
-          [l.payBasis === "DAILY" ? `Basic pay (${n(l.daysWorked)} day/s × ${formatPeso(n(l.rate))})` : `Basic pay${n(l.unpaidLeaveDays) ? ` (less ${n(l.unpaidLeaveDays)} day/s leave without pay)` : ""}`, n(l.basicPay)],
-          ["Holiday pay (unworked regular holiday)", n(l.holidayPay)],
-          [`Paid leave (${n(l.leaveDays)} day/s)`, n(l.leavePay)],
-          ["Rest day / special day / holiday premium", n(l.premiumPay)],
-          ["Overtime", n(l.otPay)],
-          ["Night differential", n(l.nightDiffPay)],
-          ["Late / undertime", -n(l.lateDeduction)],
-          [`Unused leave converted to cash (${n(l.leaveConversionDays)} day/s)`, n(l.leaveConversionPay)],
-          [`13th-month pay (1/12 of ${formatPeso(n(l.thirteenthMonthBasis))})`, n(l.thirteenthMonthPay)],
-          ...named.filter((x) => x.kind === "EARNING").map((x) => [x.name, x.amount] as [string, number]),
-        ];
-        const deductions: [string, number][] = [
-          ["SSS", n(l.sssEe)],
-          ["PhilHealth", n(l.philhealthEe)],
-          ["Pag-IBIG", n(l.hdmfEe)],
-          ["Withholding tax", n(l.withholdingTax)],
-          ...named.filter((x) => x.kind === "DEDUCTION").map((x) => [x.name, x.amount] as [string, number]),
-        ];
-        return (
-          <section key={l.id} className="mb-6 break-inside-avoid border border-neutral-400 p-4 text-xs print:mb-4 [&:nth-of-type(2n)]:print:break-after-page">
-            <div className="flex items-start justify-between border-b border-neutral-300 pb-2">
-              <div>
-                <div className="text-sm font-semibold">{company.registeredName || company.tradeName}</div>
-                <div className="text-neutral-500">{company.businessAddress}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-semibold">{run.kind === "THIRTEENTH_MONTH" ? "13TH-MONTH PAY SLIP" : "PAYSLIP"}</div>
-                <div>{run.runNo}</div>
-              </div>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-0.5">
-              <div>Employee: <b>{l.employee.lastName}, {l.employee.firstName}</b> ({l.employee.code})</div>
-              <div>Period: <b>{run.kind === "THIRTEENTH_MONTH" ? `Year ${run.periodStart.getUTCFullYear()}` : `${mdy(run.periodStart)} – ${mdy(run.periodEnd)}`}</b></div>
-              <div>Position: {l.employee.position ?? "—"}</div>
-              <div>Pay date: <b>{mdy(run.payDate)}</b></div>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-6">
-              <table className="w-full">
-                <thead><tr className="border-b border-neutral-300 text-left"><th className="py-1">Earnings</th><th className="py-1 text-right">Amount</th></tr></thead>
-                <tbody>{earnings.filter(([, v]) => v).map(([k, v]) => <tr key={k}><td className="py-0.5">{k}</td><td className="py-0.5 text-right font-mono">{formatPeso(v)}</td></tr>)}</tbody>
-                <tfoot><tr className="border-t border-neutral-300 font-semibold"><td className="py-1">Gross pay</td><td className="py-1 text-right font-mono">{formatPeso(n(l.grossPay))}</td></tr></tfoot>
-              </table>
-              <table className="w-full">
-                <thead><tr className="border-b border-neutral-300 text-left"><th className="py-1">Deductions</th><th className="py-1 text-right">Amount</th></tr></thead>
-                <tbody>{deductions.filter(([, v]) => v).map(([k, v]) => <tr key={k}><td className="py-0.5">{k}</td><td className="py-0.5 text-right font-mono">{formatPeso(v)}</td></tr>)}</tbody>
-                <tfoot><tr className="border-t border-neutral-300 font-semibold"><td className="py-1">Total deductions</td><td className="py-1 text-right font-mono">{formatPeso(n(l.totalDeductions))}</td></tr></tfoot>
-              </table>
-            </div>
-            {(() => {
-              const lv = leave.get(l.employeeId);
-              if (!lv || (lv.taken.length === 0 && lv.balances.length === 0)) return null;
-              return (
-                <div className="mt-3 grid grid-cols-2 gap-6 border-t border-neutral-300 pt-2">
-                  <div>
-                    <div className="py-1 font-semibold">Leave this period</div>
-                    {lv.taken.length === 0
-                      ? <div className="text-neutral-500">No leave taken.</div>
-                      : (
-                        <table className="w-full">
-                          <tbody>
-                            {lv.taken.map((t) => (
-                              <tr key={`${t.code}${t.paid}`}>
-                                <td className="py-0.5 align-top">{t.name}{t.paid ? "" : " (without pay)"}<div className="text-[10px] text-neutral-500">{t.dates.map(md).join(", ")}</div></td>
-                                <td className="py-0.5 text-right align-top font-mono">{d2(t.days)} day/s</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
-                  </div>
-                  <div>
-                    <div className="py-1 font-semibold">Leave balance as of {mdy(run.periodEnd)}</div>
-                    {lv.balances.length === 0
-                      ? <div className="text-neutral-500">No leave credits.</div>
-                      : (
-                        <table className="w-full">
-                          <thead><tr className="border-b border-neutral-300 text-left text-neutral-500"><th className="py-0.5 font-normal">Type</th><th className="py-0.5 text-right font-normal">Earned</th><th className="py-0.5 text-right font-normal">Used</th><th className="py-0.5 text-right font-normal">Remaining</th></tr></thead>
-                          <tbody>
-                            {lv.balances.map((b) => (
-                              <tr key={b.code}>
-                                <td className="py-0.5">{b.name}</td>
-                                <td className="py-0.5 text-right font-mono">{d2(b.earned)}</td>
-                                <td className="py-0.5 text-right font-mono">{d2(b.used)}</td>
-                                <td className={`py-0.5 text-right font-mono font-semibold ${b.remaining < 0 ? "text-red-600" : ""}`}>{d2(b.remaining)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
-                  </div>
-                </div>
-              );
-            })()}
-            <div className="mt-3 flex items-end justify-between border-t border-neutral-400 pt-2">
-              <div>
-                {n(l.reimbursements) > 0 && (
-                  <div className="text-neutral-600">Add: reimbursements (not taxed) <span className="font-mono">{formatPeso(n(l.reimbursements))}</span></div>
-                )}
-                <div className="text-sm">NET PAY: <b className="font-mono">{formatPeso(n(l.netPay))}</b></div>
-              </div>
-              <div className="w-56 border-t border-neutral-500 pt-0.5 text-center text-neutral-500">Received by / date</div>
-            </div>
-          </section>
-        );
-      })}
+      {slips.map((p, i) => (
+        <PayslipView key={p.key} data={p} options={options} pageBreakAfter={(i + 1) % options.perPage === 0 && i < slips.length - 1} />
+      ))}
       {lines.length === 0 && <p className="text-sm text-neutral-500">No employees in this run.</p>}
     </div>
   );
