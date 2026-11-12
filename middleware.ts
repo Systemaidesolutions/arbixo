@@ -7,7 +7,11 @@ const PATH_HEADER = "x-arbixo-path";
 
 // "/leave" + "/api/leave-portal" = employee leave portal; it has its own
 // employee-code + PIN sign-in (lib/leavePortal.ts), not an ARbixo account.
-const PUBLIC_PREFIXES = ["/login", "/register", "/verify", "/reset-password", "/forgot-password", "/api/auth", "/leave", "/api/leave-portal"];
+// "/api/v1" = the external integration API (app/api/v1/**); it authenticates
+// itself via an API key (lib/externalApiAuth.ts), not a session cookie, so it
+// must bypass the session check here. "/developers" is its public,
+// no-login-required documentation page.
+const PUBLIC_PREFIXES = ["/login", "/register", "/verify", "/reset-password", "/forgot-password", "/api/auth", "/leave", "/api/leave-portal", "/api/v1", "/developers"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

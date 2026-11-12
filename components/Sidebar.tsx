@@ -39,6 +39,7 @@ import {
   SlidersHorizontal,
   CalendarDays,
   Clock,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react";
 import type { SubscriberSubtype } from "@prisma/client";
@@ -159,6 +160,7 @@ const LINK_ICONS: Record<NavIcon, LucideIcon> = {
   leave: CalendarDays,
   timesheet: Clock,
   manual: BookOpen,
+  api: KeyRound,
 };
 
 function SidebarBrand() {

@@ -36,6 +36,7 @@ export type NavIcon =
   | "payrollSetup"
   | "leave"
   | "timesheet"
+  | "api"
   | "manual";
 
 // external: opens in a new browser tab instead of the in-app page stack.
@@ -133,6 +134,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/company/branches", label: "Branches", icon: "companies" },
       { href: "/company/tax-posting-setup", label: "Tax posting setup", icon: "tax" },
       { href: "/accounts", label: "Chart of accounts", icon: "accounts" },
+      { href: "/company/api-access", label: "API Access", icon: "api" },
     ],
   },
 ];

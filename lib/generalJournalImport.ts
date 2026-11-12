@@ -8,9 +8,9 @@ import { postDocument, DuplicateDocumentError, UnbalancedEntryError, type Ledger
 import { counterpartyFields } from "@/lib/vatLineExpansion";
 import type { CounterpartyType } from "@prisma/client";
 
-type Issue = { row: number | null; ref: string; message: string };
-type PreparedLine = { accountId: string; debitAmount: number; creditAmount: number; description: string | null; counterpartyType: CounterpartyType | null; counterpartyId: string | null };
-type PreparedDoc = { documentNo: string; postingDate: Date; locationId: string | null; particulars: string | null; lines: PreparedLine[]; debit: number; credit: number };
+export type Issue = { row: number | null; ref: string; message: string };
+export type PreparedLine = { accountId: string; debitAmount: number; creditAmount: number; description: string | null; counterpartyType: CounterpartyType | null; counterpartyId: string | null };
+export type PreparedDoc = { documentNo: string; postingDate: Date; locationId: string | null; particulars: string | null; lines: PreparedLine[]; debit: number; credit: number };
 
 const ci = (s: string) => s.trim().toLowerCase();
 function parsePartyType(s: string): CounterpartyType | null {
@@ -32,7 +32,10 @@ function partyCandidates(p: PartyRow): string[] {
   return out.filter(Boolean);
 }
 
-async function buildDocs(companyId: string, rows: SheetRow[]): Promise<{ docs: PreparedDoc[]; issues: Issue[] }> {
+// Exported so the external integration API (app/api/v1/journal-entries) can
+// reuse the exact same account/branch/party matching and balance validation
+// as the CSV/XLSX import, instead of a second, divergent implementation.
+export async function buildDocs(companyId: string, rows: SheetRow[]): Promise<{ docs: PreparedDoc[]; issues: Issue[] }> {
   const [accounts, vendors, customers, employees, contacts, locations] = await Promise.all([
     prisma.account.findMany({ where: { companyId, isActive: true, accountType: "POSTING" }, select: { id: true, code: true } }),
     prisma.vendor.findMany({ where: { companyId, isActive: true }, select: { id: true, code: true, registeredName: true, lastName: true, firstName: true } }),
