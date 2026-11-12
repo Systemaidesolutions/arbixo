@@ -6,6 +6,7 @@ import { isoDate } from "@/lib/payroll/server";
 import { PrintControls } from "@/components/PrintControls";
 import { payslipLeave, type PayslipLeave } from "@/lib/payroll/leaveServer";
 import { getOrCreateSetup } from "@/lib/payroll/server";
+import { runCashAdvanceDetails } from "@/lib/payroll/cashAdvanceServer";
 import { resolvePayslipOptions } from "@/lib/payroll/payslipLayout";
 import { PayslipView, type PayslipData } from "@/components/payroll/PayslipView";
 
@@ -32,6 +33,7 @@ export default async function PayslipsPage({ params, searchParams }: { params: {
   const locIds = [...new Set(lines.map((l) => l.employee.payrollProfile?.locationId).filter((v): v is string => !!v))];
   const branches = new Map((locIds.length ? await prisma.location.findMany({ where: { companyId: company.id, id: { in: locIds } }, select: { id: true, name: true } }) : []).map((b) => [b.id, b.name]));
   const thirteenth = run.kind === "THIRTEENTH_MONTH";
+  const cash = thirteenth ? new Map<string, { label: string; amount: number; balance: number }[]>() : await runCashAdvanceDetails(company.id, run.id);
 
   const slips: PayslipData[] = lines.map((l) => {
     const adj = (Array.isArray(l.adjustments) ? l.adjustments : []) as { payItemId: string; amount: number }[];
@@ -64,6 +66,7 @@ export default async function PayslipsPage({ params, searchParams }: { params: {
         ["Pag-IBIG", n(l.hdmfEe)],
         ["Withholding tax", n(l.withholdingTax)],
         ...named.filter((x) => x.kind === "DEDUCTION").map((x) => [x.name, x.amount] as [string, number]),
+        ...(cash.get(l.employeeId) ?? []).map((c) => [`${c.label} · balance ${formatPeso(c.balance)}`, c.amount] as [string, number]),
       ],
       grossPay: n(l.grossPay),
       totalDeductions: n(l.totalDeductions),

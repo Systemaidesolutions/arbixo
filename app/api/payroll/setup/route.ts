@@ -10,7 +10,7 @@ const NUMBER_FIELDS = [
 const BOOLEAN_FIELDS = ["otEmployeeRateUsesPremiums", "payUnworkedRegularHoliday", "holidayRequiresPriorPresence", "monthlyIncludesRestDays", "monthlyIncludesSpecialDays", "leaveMonthlyAccrual"] as const;
 const ACCOUNT_FIELDS = [
   "salariesExpenseAccountId", "contributionsExpenseAccountId", "sssPayableAccountId", "philhealthPayableAccountId",
-  "hdmfPayableAccountId", "withholdingTaxPayableAccountId", "otherDeductionsAccountId", "netPayAccountId", "thirteenthMonthAccountId", "reimbursementAccountId",
+  "hdmfPayableAccountId", "withholdingTaxPayableAccountId", "otherDeductionsAccountId", "netPayAccountId", "thirteenthMonthAccountId", "reimbursementAccountId", "cashAdvanceAccountId",
 ] as const;
 
 export async function PUT(request: NextRequest) {

@@ -12,7 +12,7 @@ type Setup = {
   regularHolidayMultiplier: number; regularHolidayRestDayMultiplier: number; doubleHolidayMultiplier: number; doubleHolidayRestDayMultiplier: number;
   nightDiffRate: number; payUnworkedRegularHoliday: boolean; holidayRequiresPriorPresence: boolean;
   monthlyIncludesRestDays: boolean; monthlyIncludesSpecialDays: boolean; benefitsExemptCap: number;
-  restWeekdays: number[]; thirteenthMonthAccountId: string | null; reimbursementAccountId: string | null; leaveMonthlyAccrual: boolean;
+  restWeekdays: number[]; thirteenthMonthAccountId: string | null; reimbursementAccountId: string | null; cashAdvanceAccountId: string | null; leaveMonthlyAccrual: boolean;
   shiftStart: string; shiftEnd: string; breakMinutes: number; lateGraceMinutes: number; otMinimumMinutes: number; otRoundingMinutes: number;
   salariesExpenseAccountId: string | null; contributionsExpenseAccountId: string | null; sssPayableAccountId: string | null;
   philhealthPayableAccountId: string | null; hdmfPayableAccountId: string | null; withholdingTaxPayableAccountId: string | null;
@@ -212,6 +212,10 @@ export function SetupClient({ setup, groups, items, accounts, canEdit }: { setup
           <label className={label}>
             Employee reimbursements (Dr)
             <AccountSelect accounts={accounts} disabled={!canEdit} value={form.reimbursementAccountId} onChange={(v) => setForm({ ...form, reimbursementAccountId: v })} placeholder="Needed once a run pays reimbursements" />
+          </label>
+          <label className={label}>
+            Advances to employees: cash advances deducted (Cr)
+            <AccountSelect accounts={accounts} disabled={!canEdit} value={form.cashAdvanceAccountId} onChange={(v) => setForm({ ...form, cashAdvanceAccountId: v })} placeholder="Same as other deductions" />
           </label>
         </div>
         {canEdit && (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { payrollAuth } from "@/lib/payroll/server";
 import { releaseRunReimbursements } from "@/lib/payroll/reimbursementServer";
+import { releaseRunCashAdvances } from "@/lib/payroll/cashAdvanceServer";
 
 // The GL side is reversed first through the shared /api/ledger-entries/cancel
 // (General Journal, document no. = run no.); this then marks the run itself
@@ -19,5 +20,7 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
   await prisma.payrollRun.update({ where: { id: run.id }, data: { status: "CANCELLED" } });
   // Reimbursements it paid go back to approved, for the next run.
   await releaseRunReimbursements(auth.companyId, run.id);
+  // Cash advance installments it deducted are undone (balances restored).
+  await releaseRunCashAdvances(auth.companyId, run.id);
   return NextResponse.json({ ok: true });
 }

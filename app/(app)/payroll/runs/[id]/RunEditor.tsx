@@ -21,6 +21,7 @@ type Line = {
   dayHours: Record<string, DayHours>; // work/OT/night hours on specific dates
   leaveConversionDays: number; // unused leave converted to cash, paid this run
   reimbursements: number; // approved reimbursements paid with this run (net pay only, not taxed)
+  cashAdvance: number; // cash advance installments deducted this run (Payroll › Cash advances)
   govDeductions: { sss: boolean | null; philhealth: boolean | null; hdmf: boolean | null; tax: boolean | null } | null; // per-employee overrides
   otHourlyRate: number | null; // own OT hourly rate (company OT basis "employee rate")
   benefitsExemptRemaining: number; // left of the yearly 13th-month/bonus exemption
@@ -143,6 +144,7 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
         const it = items.find((i) => i.id === a.payItemId);
         return it && Number(a.amount) ? [{ payItemId: it.id, code: it.code, name: it.name, kind: it.kind, taxable: it.taxable, isOtherBenefit: it.isOtherBenefit, amount: Math.abs(Number(a.amount)) }] : [];
       });
+      if (l.cashAdvance > 0) adjustments.push({ payItemId: "cash-advance", code: "CASHADV", name: "Cash advance", kind: "DEDUCTION", taxable: false, amount: l.cashAdvance });
       const r = computeLine({ ...l, absentDays: absentDaysOf(l), lateMinutes: lateMinutesOf(l), adjustments }, ctx);
       // Reimbursements go on top of net pay only (not gross, not taxed).
       map.set(l.employeeId, l.reimbursements ? { ...r, netPay: Math.round((r.netPay + l.reimbursements) * 100) / 100 } : r);
@@ -572,7 +574,10 @@ export function RunEditor({ companyId, run, rules, group, items, lines: initialL
                         <td className="py-1.5 pr-2 text-right font-mono">{num(r.philhealthEe)}</td>
                         <td className="py-1.5 pr-2 text-right font-mono">{num(r.hdmfEe)}</td>
                         <td className="py-1.5 pr-2 text-right font-mono">{num(r.withholdingTax)}</td>
-                        <td className="py-1.5 pr-2 text-right font-mono">{num(r.otherDeductions)}</td>
+                        <td className="py-1.5 pr-2 text-right font-mono" title={l.cashAdvance ? `Incl. cash advance ${formatPeso(l.cashAdvance)}` : undefined}>
+                          {num(r.otherDeductions)}
+                          {l.cashAdvance > 0 && <div className="text-[10px] font-normal text-amber-700">incl. CA {formatPeso(l.cashAdvance)}</div>}
+                        </td>
                         <td className="py-1.5 pr-2 text-right font-mono font-semibold" title={l.reimbursements ? `Incl. reimbursements ${formatPeso(l.reimbursements)} (not taxed)` : undefined}>
                           {formatPeso(r.netPay)}
                           {l.reimbursements > 0 && <div className="text-[10px] font-normal text-blue-700">incl. reimb. {formatPeso(l.reimbursements)}</div>}

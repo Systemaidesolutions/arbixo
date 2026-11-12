@@ -816,6 +816,7 @@ model Employee {
   leaveCredits     LeaveCredit[]
   leaveRequests    LeaveRequest[]
   reimbursements   Reimbursement[]
+  cashAdvances     CashAdvance[]
   timesheetEntries TimesheetEntry[]
 
   @@unique([companyId, code])
@@ -1312,6 +1313,7 @@ model PayrollSetup {
   netPayAccountId                String? // Salaries payable (or Cash in bank)
   thirteenthMonthAccountId       String? // 13th-month pay expense (falls back to salaries)
   reimbursementAccountId         String? // employee reimbursements paid through payroll (expense)
+  cashAdvanceAccountId           String? // advances to employees (receivable); blank = other deductions
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1486,9 +1488,11 @@ model PayrollRun {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  lines          PayrollRunLine[]
+  lines                 PayrollRunLine[]
   // Approved reimbursements paid through this run (added to net pay, not taxed).
-  reimbursements Reimbursement[]
+  reimbursements        Reimbursement[]
+  // Cash advance installments deducted in this run (draft = reserved).
+  cashAdvanceDeductions CashAdvanceDeduction[]
 
   @@unique([companyId, runNo])
   @@index([companyId, periodStart])
@@ -1556,6 +1560,7 @@ model PayrollRunLine {
   // Approved reimbursements paid with this line: added to net pay only (not
   // gross, not taxable, no contributions). See lib/payroll/server.ts.
   reimbursements       Decimal @default(0) @db.Decimal(18, 2)
+  cashAdvance          Decimal @default(0) @db.Decimal(18, 2) // cash advance installments deducted (in otherDeductions)
   netPay               Decimal @default(0) @db.Decimal(18, 2)
 
   @@unique([runId, employeeId])
@@ -1758,4 +1763,52 @@ model ReimbursementAttachment {
   createdAt       DateTime      @default(now())
 
   @@index([reimbursementId])
+}
+
+enum CashAdvanceStatus {
+  ACTIVE // still being deducted
+  PAID // fully deducted
+  CANCELLED // stopped; posted deductions stay
+}
+
+// Cash advance given to an employee, paid back by a fixed deduction on each
+// payroll run (Payroll › Cash advances). See lib/payroll/cashAdvanceServer.ts.
+model CashAdvance {
+  id          String            @id @default(cuid())
+  companyId   String
+  employee    Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId  String
+  date        DateTime // date given
+  reference   String?
+  description String?
+  amount      Decimal           @db.Decimal(14, 2)
+  installment Decimal           @db.Decimal(14, 2) // deducted per payroll run
+  startDate   DateTime? // deduct only from runs paid on/after this date
+  status      CashAdvanceStatus @default(ACTIVE)
+  note        String? // reason when cancelled
+  createdById String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  deductions CashAdvanceDeduction[]
+
+  @@index([companyId, status])
+  @@index([employeeId])
+}
+
+// One installment of a cash advance in one payroll run. Rebuilt each time a
+// draft run is recomputed; removed when the run is deleted or cancelled.
+model CashAdvanceDeduction {
+  id            String      @id @default(cuid())
+  companyId     String
+  cashAdvance   CashAdvance @relation(fields: [cashAdvanceId], references: [id], onDelete: Cascade)
+  cashAdvanceId String
+  payrollRun    PayrollRun  @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  payrollRunId  String
+  employeeId    String
+  amount        Decimal     @db.Decimal(14, 2)
+  createdAt     DateTime    @default(now())
+
+  @@unique([cashAdvanceId, payrollRunId])
+  @@index([payrollRunId])
 }

@@ -165,6 +165,7 @@ export const PAYROLL_NAV_SECTIONS: NavSection[] = [
       { href: "/payroll/employees", label: "Payroll employees", icon: "employees" },
       { href: "/payroll/leaves", label: "Leave", icon: "leave" },
       { href: "/payroll/reimbursements", label: "Reimbursements", icon: "cashOut" },
+      { href: "/payroll/cash-advances", label: "Cash advances", icon: "payments" },
     ],
   },
   {

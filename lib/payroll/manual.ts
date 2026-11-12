@@ -20,6 +20,7 @@ Open Payroll from the app launcher after you log in. If your account has only Pa
 | Payroll employees | Each employee's pay details: rate, pay group, government deductions, shift, rest days, IDs, bank, recurring items |
 | Leave | File and approve leave; view and adjust leave balances |
 | Reimbursements | Approve expenses employees filed with receipt photos; they are paid in the next payroll run |
+| Cash advances | Record cash advances given to employees; each payroll run deducts the installment until paid |
 | Setup › Payroll setup | Pay rules, work schedule, posting accounts, pay groups, earnings and deductions, leave credits |
 | Setup › Payslip layout | How this company's payslips print: Standard, Compact, Detailed or a Custom layout |
 | Setup › Leave types | Statutory and company leave policies |
@@ -111,6 +112,7 @@ A posted run creates one General Journal entry in ARbixo Accounting using these 
 - Other deductions, default (Cr)
 - Net pay: salaries payable or cash (Cr)
 - Employee reimbursements (Dr): needed once a run pays approved reimbursements (section 10)
+- Advances to employees (Cr): where cash advance deductions go (section 10); blank uses Other deductions
 
 ### Pay groups
 
@@ -442,7 +444,7 @@ After signing in, an employee has two tabs:
 
 A forgotten PIN can't be recovered; the employee asks payroll staff to reset it.
 
-## 10. Reimbursements
+## 10. Reimbursements and cash advances
 
 Payroll › **Reimbursements** lists the expenses employees filed from the employee portal, with their receipts. Categories are Transportation, Meals, Supplies, Communication, Accommodation, Medical and Others.
 
@@ -458,6 +460,27 @@ Payroll › **Reimbursements** lists the expenses employees filed from the emplo
 - Posting the run marks it **Paid** ("Paid in payroll run PR-…") and debits the **Employee reimbursements** account in Payroll setup. Set that account before posting.
 - Cancelling the posted run puts it back to Approved, ready for the next run.
 - If you pay one outside payroll, for example in cash or by GCash, press **Mark paid** and enter a reference. You can also **Cancel** an approved one that shouldn't be paid.
+
+### Cash advances
+
+Payroll › **Cash advances** is where payroll staff record cash advances given to employees and track what is left to pay back.
+
+1. Press **+ New cash advance**.
+2. Choose the employee, the date given, the amount and **Deduct per payroll run** (the installment). Add a reference (e.g. the voucher no.) and details if you like.
+3. Optionally set **Start deducting on**: only runs paid on or after that date deduct it. Blank means from the next payroll run.
+4. Press **Save**.
+
+How it is deducted:
+
+- Every regular payroll run deducts the installment, or less when that is all that is left, until the balance is zero. An employee can have more than one cash advance; each is deducted.
+- The deduction is part of **Other deductions** in the register ("incl. CA" shows the amount) and appears on the payslip as **Cash advance** with the reference, date given and the **balance** left after that run.
+- It isn't taxable and doesn't change SSS, PhilHealth or Pag-IBIG.
+- Posting the run makes the deduction final; when the balance reaches zero the cash advance becomes **Paid**. Cancelling a posted run puts its deductions back on the balance.
+- Posting credits the **Advances to employees** account in Payroll setup, or Other deductions when that is blank.
+
+On the list, **History** shows each run that deducted it. **Edit** changes the amount, installment, dates or reference (the amount can't go below what posted runs already deducted). **Cancel** stops further deductions; **Reactivate** resumes them. **Delete** is only for one recorded by mistake, before any run deducted it.
+
+Use this page instead of adding the "Cash advance" pay item by hand, so the balance is tracked.
 
 ## 11. User access and sign-in security
 
@@ -520,6 +543,7 @@ Any sign-in between **8:00 PM and 4:00 AM** Philippine time sends an email alert
 | Import row skipped: "Pay group not found" | The code or name doesn't match | Use the exact pay group code, e.g. REG-SM or CON-WK |
 | An employee is deducted SSS (or another contribution) they shouldn't be | Their pay group deducts it | In Payroll employees, set that deduction to **Don't deduct** for the employee |
 | "Set these accounts in Payroll setup first: Employee reimbursements" | The run pays reimbursements but no account is set | Payroll setup › Posting accounts › Employee reimbursements, then Save setup |
+| A cash advance isn't deducted in a run | It is cancelled or paid, its start date is after the run's pay date, or the run is a 13th-month run | Check it in Payroll › Cash advances; open or save the draft run to refresh |
 | An approved reimbursement isn't in the run | The run wasn't saved or refreshed after approval, or the employee isn't in the run | Press Save on the draft run; check the employee is in it |
 | The portal link says "not active" | The employee portal is switched off | Setup › Employee portal, switch it on |
 | An employee can't sign in to the portal | No PIN, wrong PIN, or locked after 5 wrong PINs | Reset the PIN in Setup › Employee portal |

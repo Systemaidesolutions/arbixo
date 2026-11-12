@@ -10,6 +10,7 @@ import {
 } from "./compute";
 import { conversionsForRun, leaveForRun } from "./leaveServer";
 import { claimReimbursementsForRun, markRunReimbursementsPaid } from "./reimbursementServer";
+import { claimCashAdvancesForRun, settleRunCashAdvances } from "./cashAdvanceServer";
 
 export type PayrollAuth =
   | { ok: true; companyId: string; userId: string; isAdmin: boolean }
@@ -28,6 +29,10 @@ export async function payrollAuth(need: "canPost" | "canCancel" = "canPost"): Pr
 
 export const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 const n = (v: unknown) => (v == null ? 0 : Number(v));
+
+/** Cash advance installments enter the line as one non-taxable deduction (see cashAdvanceServer). */
+export const cashAdvanceAdjustment = (amount: number): Adjustment[] =>
+  amount > 0 ? [{ payItemId: "cash-advance", code: "CASHADV", name: "Cash advance", kind: "DEDUCTION", taxable: false, amount }] : [];
 
 /** The employee's own OT hourly rate, or null when blank. */
 export const otRateOf = (p: { otHourlyRate: unknown } | null | undefined) =>
@@ -364,10 +369,12 @@ export async function recomputeRun(companyId: string, runId: string) {
   // Approved reimbursements ride on the run: added to net pay only (not gross,
   // not taxable, no contributions).
   const reimbursements = await claimReimbursementsForRun(companyId, run.id, ids);
+  const cashAdvances = await claimCashAdvancesForRun(companyId, run.id, ids);
   setAuditSuppressed(true);
   try {
     for (const line of run.lines) {
-      const adjustments = await resolveAdjustments(companyId, line.adjustments);
+      const cashAdvance = cashAdvances.get(line.employeeId) ?? 0;
+      const adjustments = [...(await resolveAdjustments(companyId, line.adjustments)), ...cashAdvanceAdjustment(cashAdvance)];
       const lineLeaves = leaves.get(line.employeeId) ?? [];
       const restDates = lineRestDates(line.restDates, line.employee.payrollProfile, setup.restWeekdays, ctx.periodStart, ctx.periodEnd);
       const r = computeLine(
@@ -393,7 +400,7 @@ export async function recomputeRun(companyId: string, runId: string) {
       );
       const reimb = reimbursements.get(line.employeeId) ?? 0;
       const netPay = round2(r.netPay + reimb);
-      await prisma.payrollRunLine.update({ where: { id: line.id }, data: { ...r, reimbursements: reimb, netPay, leaves: lineLeaves, restDates } });
+      await prisma.payrollRunLine.update({ where: { id: line.id }, data: { ...r, reimbursements: reimb, cashAdvance, netPay, leaves: lineLeaves, restDates } });
       totals.gross += r.grossPay;
       totals.ded += r.totalDeductions;
       totals.net += netPay;
@@ -459,6 +466,7 @@ export async function postRun(companyId: string, userId: string, runId: string) 
     }
     add(debit, acct("contributionsExpenseAccountId"), n(l.sssEr) + n(l.philhealthEr) + n(l.hdmfEr));
     if (setup.reimbursementAccountId) add(debit, setup.reimbursementAccountId, n(l.reimbursements));
+    add(credit, setup.cashAdvanceAccountId ?? acct("otherDeductionsAccountId"), n(l.cashAdvance));
     add(credit, acct("sssPayableAccountId"), n(l.sssEe) + n(l.sssEr));
     add(credit, acct("philhealthPayableAccountId"), n(l.philhealthEe) + n(l.philhealthEr));
     add(credit, acct("hdmfPayableAccountId"), n(l.hdmfEe) + n(l.hdmfEr));
@@ -504,6 +512,9 @@ export async function postRun(companyId: string, userId: string, runId: string) 
     skipSubscriptionCheck: true,
   });
   await prisma.payrollRun.update({ where: { id: runId }, data: { status: "POSTED", postedAt: new Date(), postedById: userId } });
-  if (!thirteenth) await markRunReimbursementsPaid(companyId, runId, run.runNo, userId);
+  if (!thirteenth) {
+    await markRunReimbursementsPaid(companyId, runId, run.runNo, userId);
+    await settleRunCashAdvances(companyId, runId);
+  }
   return { status: 200, ok: true };
 }
